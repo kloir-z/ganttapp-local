@@ -4,10 +4,10 @@
   "description": "A local offline Gantt chart application built with React, Redux, and TypeScript",
   "author": "Your Name",
   "license": "MIT",
-  "homepage": "https://yourusername.github.io/gantapp-local",
+  "homepage": "https://kloir-z.github.io/ganttapp-local",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/gantapp-local.git"
+    "url": "https://github.com/kloir-z/ganttapp-local.git"
   },
   "keywords": [
     "gantt",
@@ -23,7 +23,7 @@
     "dev": "cross-env NODE_ENV=development vite",
     "build": "cross-env NODE_ENV=production tsc && vite build",
     "build:single": "echo 'Single HTML file build currently has technical issues. Use npm run build for regular build.'",
-    "build:gh-pages": "cross-env NODE_ENV=production tsc && vite build --base=/gantapp-local/",
+    "build:gh-pages": "cross-env NODE_ENV=production tsc && vite build --base=/ganttapp-local/",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "serve": "npm run build && serve -s dist",

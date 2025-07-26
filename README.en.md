@@ -7,7 +7,7 @@ A local Gantt chart application built with TypeScript and React.
 ## Online Demo
 
 Try the demo published on GitHub Pages:  
-**[https://kloir-z.github.io/gantapp-local/](https://kloir-z.github.io/gantapp-local/)**
+**[https://kloir-z.github.io/ganttapp-local/](https://kloir-z.github.io/ganttapp-local/)**
 
 ## Key Features
 
