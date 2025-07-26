@@ -7,7 +7,7 @@ A local Gantt chart application built with TypeScript and React.
 ## Online Demo
 
 Try the demo published on GitHub Pages:  
-**[https://yourusername.github.io/gantt-local-oss/](https://yourusername.github.io/gantt-local-oss/)**
+**[https://yourusername.github.io/gantapp-local/](https://yourusername.github.io/gantapp-local/)**
 
 ※ Replace `yourusername` with your actual GitHub username
 

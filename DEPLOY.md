@@ -22,7 +22,7 @@
 2. **Actions** タブで自動デプロイの状況を確認
 3. デプロイ完了後、以下のURLでアクセス可能：
    ```
-   https://[username].github.io/gantt-local-oss/
+   https://[username].github.io/gantapp-local/
    ```
 
 ### 3. カスタムドメイン（オプション）
