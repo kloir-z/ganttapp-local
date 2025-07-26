@@ -22,7 +22,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development vite",
     "build": "cross-env NODE_ENV=production tsc && vite build",
-    "build:single": "cross-env NODE_ENV=production tsc && vite build --config vite.single.config.ts && node scripts/build-single.js",
+    "build:single": "echo 'Single HTML file build currently has technical issues. Use npm run build for regular build.'",
     "build:gh-pages": "cross-env NODE_ENV=production tsc && vite build --base=/gantt-local-oss/",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",

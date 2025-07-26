@@ -10,32 +10,57 @@ function buildSingleFile() {
     const htmlPath = path.join(DIST_DIR, 'index.html');
     let htmlContent = fs.readFileSync(htmlPath, 'utf-8');
 
-    // Read all generated JS files and inline them
-    const jsFiles = fs.readdirSync(DIST_DIR).filter(file => file.endsWith('.js'));
-    jsFiles.forEach(jsFile => {
-      const jsPath = path.join(DIST_DIR, jsFile);
-      const jsContent = fs.readFileSync(jsPath, 'utf-8');
+    console.log('Original HTML content preview:', htmlContent.substring(0, 500));
+
+    // Parse and extract script/link tags using string parsing
+    const scriptTags = [];
+    const linkTags = [];
+    const scriptRegex = /<script[^>]*src="([^"]*)"[^>]*><\/script>/g;
+    const linkRegex = /<link[^>]*href="([^"]*\.css)"[^>]*>/g;
+
+    let match;
+    while ((match = scriptRegex.exec(htmlContent)) !== null) {
+      scriptTags.push({
+        fullTag: match[0],
+        src: match[1]
+      });
+    }
+
+    while ((match = linkRegex.exec(htmlContent)) !== null) {
+      linkTags.push({
+        fullTag: match[0],
+        href: match[1]
+      });
+    }
+
+    console.log('Found script tags:', scriptTags);
+    console.log('Found link tags:', linkTags);
+
+    // Replace script tags with inlined content
+    scriptTags.forEach(tagInfo => {
+      const fileName = path.basename(tagInfo.src);
+      const jsPath = path.join(DIST_DIR, fileName);
       
-      // Replace script tag with inline script
-      const scriptTag = `<script type="module" crossorigin src="/${jsFile}"></script>`;
-      const inlineScript = `<script type="module">${jsContent}</script>`;
-      htmlContent = htmlContent.replace(scriptTag, inlineScript);
+      if (fs.existsSync(jsPath)) {
+        const jsContent = fs.readFileSync(jsPath, 'utf-8');
+        const inlineScript = `<script type="module">${jsContent}</script>`;
+        htmlContent = htmlContent.replace(tagInfo.fullTag, inlineScript);
+        console.log(`Replaced script: ${fileName}`);
+      }
     });
 
-    // Read all CSS files and inline them
-    const cssFiles = fs.readdirSync(DIST_DIR).filter(file => file.endsWith('.css'));
-    cssFiles.forEach(cssFile => {
-      const cssPath = path.join(DIST_DIR, cssFile);
-      const cssContent = fs.readFileSync(cssPath, 'utf-8');
+    // Replace link tags with inlined content
+    linkTags.forEach(tagInfo => {
+      const fileName = path.basename(tagInfo.href);
+      const cssPath = path.join(DIST_DIR, fileName);
       
-      // Replace link tag with inline style
-      const linkTag = `<link rel="stylesheet" href="/${cssFile}">`;
-      const inlineStyle = `<style>${cssContent}</style>`;
-      htmlContent = htmlContent.replace(linkTag, inlineStyle);
+      if (fs.existsSync(cssPath)) {
+        const cssContent = fs.readFileSync(cssPath, 'utf-8');
+        const inlineStyle = `<style>${cssContent}</style>`;
+        htmlContent = htmlContent.replace(tagInfo.fullTag, inlineStyle);
+        console.log(`Replaced CSS: ${fileName}`);
+      }
     });
-
-    // Handle any remaining assets (images, fonts, etc.) that might be referenced
-    // Note: These should already be inlined due to assetsInlineLimit setting
 
     // Write the final single HTML file
     fs.writeFileSync(OUTPUT_FILE, htmlContent, 'utf-8');

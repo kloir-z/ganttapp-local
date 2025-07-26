@@ -92,11 +92,9 @@ npm run build      # Production build (output to dist/ folder)
 
 ### Single HTML File Creation
 ```bash
-npm run build:single  # Generate gantt-chart-standalone.html
+# Currently unavailable due to technical issues
+# Please use the online demo on GitHub Pages instead
 ```
-
-The single HTML file version combines all JavaScript and CSS into one HTML file.  
-Simply open the generated `gantt-chart-standalone.html` in your browser to run.
 
 ### Development Commands
 ```bash

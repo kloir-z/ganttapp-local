@@ -92,11 +92,9 @@ npm run build      # 本番用ビルド (dist/フォルダに出力)
 
 ### 単一HTMLファイル作成
 ```bash
-npm run build:single  # gantt-chart-standalone.html を生成
+# 現在技術的な問題のため利用できません
+# 代わりにGitHub Pagesのオンラインデモをご利用ください
 ```
-
-単一HTMLファイル版では、全てのJavaScript・CSSが1つのHTMLファイルにまとめられます。  
-生成された `gantt-chart-standalone.html` をブラウザで開くだけで動作します。
 
 ### 開発用コマンド
 ```bash
