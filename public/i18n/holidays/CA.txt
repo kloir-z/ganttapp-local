@@ -1,0 +1,96 @@
+2022-01-01 Sat New Year's Day
+2022-04-15 Fri Good Friday
+2022-04-17 Sun Easter Sunday
+2022-05-23 Mon Victoria Day
+2022-07-01 Fri Canada Day
+2022-08-01 Mon Civic Holiday
+2022-09-05 Mon Labour Day
+2022-09-30 Fri National Day for Truth and Reconciliation
+2022-10-10 Mon Thanksgiving
+2022-11-11 Fri Remembrance Day
+2022-12-25 Sun Christmas Day
+2022-12-26 Mon Boxing Day
+2023-01-01 Sun New Year's Day
+2023-04-07 Fri Good Friday
+2023-04-09 Sun Easter Sunday
+2023-05-22 Mon Victoria Day
+2023-07-01 Sat Canada Day
+2023-08-07 Mon Civic Holiday
+2023-09-04 Mon Labour Day
+2023-09-30 Sat National Day for Truth and Reconciliation
+2023-10-09 Mon Thanksgiving
+2023-11-11 Sat Remembrance Day
+2023-12-25 Mon Christmas Day
+2023-12-26 Tue Boxing Day
+2024-01-01 Mon New Year's Day
+2024-03-29 Fri Good Friday
+2024-03-31 Sun Easter Sunday
+2024-05-20 Mon Victoria Day
+2024-07-01 Mon Canada Day
+2024-08-05 Mon Civic Holiday
+2024-09-02 Mon Labour Day
+2024-09-30 Mon National Day for Truth and Reconciliation
+2024-10-14 Mon Thanksgiving
+2024-11-11 Mon Remembrance Day
+2024-12-25 Wed Christmas Day
+2024-12-26 Thu Boxing Day
+2025-01-01 Wed New Year's Day
+2025-04-18 Fri Good Friday
+2025-04-20 Sun Easter Sunday
+2025-05-19 Mon Victoria Day
+2025-07-01 Tue Canada Day
+2025-08-04 Mon Civic Holiday
+2025-09-01 Mon Labour Day
+2025-09-30 Tue National Day for Truth and Reconciliation
+2025-10-13 Mon Thanksgiving
+2025-11-11 Tue Remembrance Day
+2025-12-25 Thu Christmas Day
+2025-12-26 Fri Boxing Day
+2026-01-01 Thu New Year's Day
+2026-04-03 Fri Good Friday
+2026-04-05 Sun Easter Sunday
+2026-05-18 Mon Victoria Day
+2026-07-01 Wed Canada Day
+2026-08-03 Mon Civic Holiday
+2026-09-07 Mon Labour Day
+2026-09-30 Wed National Day for Truth and Reconciliation
+2026-10-12 Mon Thanksgiving
+2026-11-11 Wed Remembrance Day
+2026-12-25 Fri Christmas Day
+2026-12-26 Sat Boxing Day
+2027-01-01 Fri New Year's Day
+2027-03-26 Fri Good Friday
+2027-03-28 Sun Easter Sunday
+2027-05-24 Mon Victoria Day
+2027-07-01 Thu Canada Day
+2027-08-02 Mon Civic Holiday
+2027-09-06 Mon Labour Day
+2027-09-30 Thu National Day for Truth and Reconciliation
+2027-10-11 Mon Thanksgiving
+2027-11-11 Thu Remembrance Day
+2027-12-25 Sat Christmas Day
+2027-12-26 Sun Boxing Day
+2028-01-01 Sat New Year's Day
+2028-04-14 Fri Good Friday
+2028-04-16 Sun Easter Sunday
+2028-05-22 Mon Victoria Day
+2028-07-01 Sat Canada Day
+2028-08-07 Mon Civic Holiday
+2028-09-04 Mon Labour Day
+2028-09-30 Sat National Day for Truth and Reconciliation
+2028-10-09 Mon Thanksgiving
+2028-11-11 Sat Remembrance Day
+2028-12-25 Mon Christmas Day
+2028-12-26 Tue Boxing Day
+2029-01-01 Mon New Year's Day
+2029-03-30 Fri Good Friday
+2029-04-01 Sun Easter Sunday
+2029-05-21 Mon Victoria Day
+2029-07-01 Sun Canada Day
+2029-08-06 Mon Civic Holiday
+2029-09-03 Mon Labour Day
+2029-09-30 Sun National Day for Truth and Reconciliation
+2029-10-08 Mon Thanksgiving
+2029-11-11 Sun Remembrance Day
+2029-12-25 Tue Christmas Day
+2029-12-26 Wed Boxing Day

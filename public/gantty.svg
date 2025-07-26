@@ -1,0 +1,10 @@
+<svg width="500" height="500" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+ <g class="layer">
+  <title>Layer 1</title>
+  <rect fill="#aaffaa" height="100" id="svg_3" stroke="#000000" stroke-width="0" transform="matrix(1 0 0 1 0 0)" width="100" x="0" y="0"/>
+  <rect fill="#aaffff" height="100" id="svg_4" stroke="#000000" stroke-width="0" transform="matrix(1 0 0 1 0 0)" width="120" x="100" y="100"/>
+  <rect fill="#d4aaff" height="100" id="svg_7" stroke="#000000" stroke-width="0" transform="matrix(1 0 0 1 0 0)" width="120" x="200" y="200"/>
+  <rect fill="#ffaad4" height="100" id="svg_8" stroke="#000000" stroke-width="0" transform="matrix(1 0 0 1 0 0)" width="120" x="300" y="300"/>
+  <rect fill="#ffffaa" height="100" id="svg_9" stroke="#000000" stroke-width="0" width="100" x="400" y="400"/>
+ </g>
+</svg>

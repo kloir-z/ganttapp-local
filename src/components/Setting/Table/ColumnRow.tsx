@@ -1,0 +1,65 @@
+import React, { useState, useEffect, memo, useRef, useCallback } from 'react';
+import { clearMessageInfo, ExtendedColumn, setMessageInfo } from '../../../reduxStoreAndSlices/store';
+import { useTranslation } from 'react-i18next';
+import { useDispatch } from 'react-redux';
+
+type ColumnRowProps = {
+  column: ExtendedColumn;
+  updateColumnName: (columnId: string, newName: string) => void;
+  toggleColumnVisibility: (columnId: string) => void;
+};
+
+const ColumnRow: React.FC<ColumnRowProps> = memo(({ column, updateColumnName, toggleColumnVisibility }) => {
+  const { t } = useTranslation();
+  const dispatch = useDispatch();
+  const [localColumnName, setLocalColumnName] = useState(column.columnName);
+  const aliasTimeoutRef = useRef<number | null>(null);
+  const maxLength = 150;
+
+  const validateTextLength = (text: string, maxLength: number) => {
+    const length = text.length;
+    return length <= maxLength;
+  };
+
+  const resetAliasTimeout = useCallback(() => {
+    if (aliasTimeoutRef.current) {
+      clearTimeout(aliasTimeoutRef.current);
+    }
+    aliasTimeoutRef.current = window.setTimeout(() => {
+
+      if (validateTextLength(localColumnName, maxLength)) {
+        updateColumnName(column.columnId, localColumnName);
+      } else {
+        dispatch(clearMessageInfo());
+        const errorMessage = t('Too long text.', { maxLength, inputLength: localColumnName.length });
+        dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
+      }
+    }, 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [column.columnId, localColumnName]);
+
+  useEffect(() => {
+    resetAliasTimeout();
+  }, [localColumnName, resetAliasTimeout]);
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+      <input
+        type="checkbox"
+        checked={column.visible}
+        onChange={() => toggleColumnVisibility(column.columnId)}
+      />
+      <span onClick={() => toggleColumnVisibility(column.columnId)} style={{ width: '110px', marginRight: '10px', cursor: 'pointer' }}>
+        {t(column.columnId)}
+      </span>
+      <input
+        type="text"
+        value={localColumnName}
+        onChange={(e) => setLocalColumnName(e.target.value)}
+        style={{ width: '100px', marginRight: '10px' }}
+      />
+    </div>
+  );
+});
+
+export default ColumnRow;

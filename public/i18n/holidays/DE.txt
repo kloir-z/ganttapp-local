@@ -1,0 +1,88 @@
+01/01/2022 Sa. Neujahr
+15/04/2022 Fr. Karfreitag
+18/04/2022 Mo. Ostermontag
+01/05/2022 So. Maifeiertag
+26/05/2022 Do. Christi Himmelfahrt
+06/06/2022 Mo. Pfingstmontag
+03/10/2022 Mo. Tag der Deutschen Einheit
+24/12/2022 Sa. Heiliger Abend
+25/12/2022 So. 1. Weihnachtstag
+26/12/2022 Mo. 2. Weihnachtstag
+31/12/2022 Sa. Silvester
+01/01/2023 So. Neujahr
+07/04/2023 Fr. Karfreitag
+10/04/2023 Mo. Ostermontag
+01/05/2023 Mo. Maifeiertag
+18/05/2023 Do. Christi Himmelfahrt
+29/05/2023 Mo. Pfingstmontag
+03/10/2023 Di. Tag der Deutschen Einheit
+24/12/2023 So. Heiliger Abend
+25/12/2023 Mo. 1. Weihnachtstag
+26/12/2023 Di. 2. Weihnachtstag
+31/12/2023 So. Silvester
+01/01/2024 Mo. Neujahr
+29/03/2024 Fr. Karfreitag
+01/04/2024 Mo. Ostermontag
+01/05/2024 Mi. Maifeiertag
+09/05/2024 Do. Christi Himmelfahrt
+20/05/2024 Mo. Pfingstmontag
+03/10/2024 Do. Tag der Deutschen Einheit
+24/12/2024 Di. Heiliger Abend
+25/12/2024 Mi. 1. Weihnachtstag
+26/12/2024 Do. 2. Weihnachtstag
+31/12/2024 Di. Silvester
+01/01/2025 Mi. Neujahr
+18/04/2025 Fr. Karfreitag
+21/04/2025 Mo. Ostermontag
+01/05/2025 Do. Maifeiertag
+29/05/2025 Do. Christi Himmelfahrt
+09/06/2025 Mo. Pfingstmontag
+03/10/2025 Fr. Tag der Deutschen Einheit
+24/12/2025 Mi. Heiliger Abend
+25/12/2025 Do. 1. Weihnachtstag
+26/12/2025 Fr. 2. Weihnachtstag
+31/12/2025 Mi. Silvester
+01/01/2026 Do. Neujahr
+03/04/2026 Fr. Karfreitag
+06/04/2026 Mo. Ostermontag
+01/05/2026 Fr. Maifeiertag
+14/05/2026 Do. Christi Himmelfahrt
+25/05/2026 Mo. Pfingstmontag
+03/10/2026 Sa. Tag der Deutschen Einheit
+24/12/2026 Do. Heiliger Abend
+25/12/2026 Fr. 1. Weihnachtstag
+26/12/2026 Sa. 2. Weihnachtstag
+31/12/2026 Do. Silvester
+01/01/2027 Fr. Neujahr
+26/03/2027 Fr. Karfreitag
+29/03/2027 Mo. Ostermontag
+01/05/2027 Sa. Maifeiertag
+06/05/2027 Do. Christi Himmelfahrt
+17/05/2027 Mo. Pfingstmontag
+03/10/2027 So. Tag der Deutschen Einheit
+24/12/2027 Fr. Heiliger Abend
+25/12/2027 Sa. 1. Weihnachtstag
+26/12/2027 So. 2. Weihnachtstag
+31/12/2027 Fr. Silvester
+01/01/2028 Sa. Neujahr
+14/04/2028 Fr. Karfreitag
+17/04/2028 Mo. Ostermontag
+01/05/2028 Mo. Maifeiertag
+25/05/2028 Do. Christi Himmelfahrt
+05/06/2028 Mo. Pfingstmontag
+03/10/2028 Di. Tag der Deutschen Einheit
+24/12/2028 So. Heiliger Abend
+25/12/2028 Mo. 1. Weihnachtstag
+26/12/2028 Di. 2. Weihnachtstag
+31/12/2028 So. Silvester
+01/01/2029 Mo. Neujahr
+30/03/2029 Fr. Karfreitag
+02/04/2029 Mo. Ostermontag
+01/05/2029 Di. Maifeiertag
+10/05/2029 Do. Christi Himmelfahrt
+21/05/2029 Mo. Pfingstmontag
+03/10/2029 Mi. Tag der Deutschen Einheit
+24/12/2029 Mo. Heiliger Abend
+25/12/2029 Di. 1. Weihnachtstag
+26/12/2029 Mi. 2. Weihnachtstag
+31/12/2029 Mo. Silvester
