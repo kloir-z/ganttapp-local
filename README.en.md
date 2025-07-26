@@ -88,11 +88,6 @@ npm run dev
 npm run build      # Production build (output to dist/ folder)
 ```
 
-### Single HTML File Creation
-```bash
-# Currently unavailable due to technical issues
-# Please use the online demo on GitHub Pages instead
-```
 
 ### Development Commands
 ```bash

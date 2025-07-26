@@ -1,8 +1,6 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-    "Hiragino Sans", "Hiragino Kaku Gothic Pro", "Meiryo", "Yu Gothic", Arial,
-    sans-serif;
+  font-family: Meiryo,Hiragino Kaku Gothic Pro,Arial,sans-serif;
   font-size: 0.73rem;
 }
 
