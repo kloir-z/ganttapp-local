@@ -7,9 +7,8 @@ import { RootState } from '../../../reduxStoreAndSlices/store';
 import { updateNoteData, updateZoomLevel } from '../../../reduxStoreAndSlices/notesSlice';
 import { cdate } from 'cdate';
 import { StyledQuillContainer } from './NotesStyles';
-import { Button, Tooltip } from 'antd';
-import { ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import './quill.css';
 
 interface QuillKeyboardContext {
   quill: Quill;
@@ -138,6 +137,16 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     const time = getCurrentTime();
     return `${date} ${time}`;
   }, [getCurrentDate, getCurrentTime]);
+
+  const updateZoomButtonStates = useCallback(() => {
+    const zoomInBtn = document.querySelector('.ql-zoom-in') as HTMLButtonElement;
+    const zoomOutBtn = document.querySelector('.ql-zoom-out') as HTMLButtonElement;
+    const resetBtn = document.querySelector('.ql-zoom-reset') as HTMLButtonElement;
+    
+    if (zoomInBtn) zoomInBtn.disabled = zoomLevel >= 2;
+    if (zoomOutBtn) zoomOutBtn.disabled = zoomLevel <= 0.5;
+    if (resetBtn) resetBtn.disabled = zoomLevel === 1;
+  }, [zoomLevel]);
 
   const handleZoomIn = useCallback(() => {
     const currentSelection = editorRef.current?.getSelection();
@@ -348,6 +357,67 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
         padding-left: 8px;
         gap: 4px;
       `;
+      
+      // Zoom In ボタン
+      const zoomInBtn = document.createElement('button');
+      zoomInBtn.type = 'button';
+      zoomInBtn.className = 'ql-zoom-in';
+      zoomInBtn.title = t('Zoom In');
+      zoomInBtn.innerHTML = '<span style="font-size: 16px;">+</span>';
+      zoomInBtn.style.cssText = `
+        padding: 2px 4px;
+        min-width: 24px;
+        height: 24px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        border-radius: 3px;
+      `;
+      zoomInBtn.addEventListener('mouseover', () => zoomInBtn.style.background = '#f0f0f0');
+      zoomInBtn.addEventListener('mouseout', () => zoomInBtn.style.background = 'none');
+      zoomInBtn.addEventListener('click', handleZoomIn);
+
+      // Zoom Out ボタン
+      const zoomOutBtn = document.createElement('button');
+      zoomOutBtn.type = 'button';
+      zoomOutBtn.className = 'ql-zoom-out';
+      zoomOutBtn.title = t('Zoom Out');
+      zoomOutBtn.innerHTML = '<span style="font-size: 16px;">-</span>';
+      zoomOutBtn.style.cssText = `
+        padding: 2px 4px;
+        min-width: 24px;
+        height: 24px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        border-radius: 3px;
+      `;
+      zoomOutBtn.addEventListener('mouseover', () => zoomOutBtn.style.background = '#f0f0f0');
+      zoomOutBtn.addEventListener('mouseout', () => zoomOutBtn.style.background = 'none');
+      zoomOutBtn.addEventListener('click', handleZoomOut);
+
+      // Reset ボタン
+      const resetBtn = document.createElement('button');
+      resetBtn.type = 'button';
+      resetBtn.className = 'ql-zoom-reset';
+      resetBtn.title = t('Reset Zoom');
+      resetBtn.innerHTML = '<span style="font-size: 12px;">100%</span>';
+      resetBtn.style.cssText = `
+        padding: 2px 4px;
+        min-width: 36px;
+        height: 24px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        border-radius: 3px;
+      `;
+      resetBtn.addEventListener('mouseover', () => resetBtn.style.background = '#f0f0f0');
+      resetBtn.addEventListener('mouseout', () => resetBtn.style.background = 'none');
+      resetBtn.addEventListener('click', handleZoomReset);
+
+      zoomContainer.appendChild(zoomInBtn);
+      zoomContainer.appendChild(zoomOutBtn);
+      zoomContainer.appendChild(resetBtn);
       toolbarElement.appendChild(zoomContainer);
     }
 
@@ -395,6 +465,10 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNodeKey]);
+
+  useEffect(() => {
+    updateZoomButtonStates();
+  }, [zoomLevel, updateZoomButtonStates]);
 
   return (
     <div style={{ position: 'relative', height: '100%' }}>
@@ -498,59 +572,6 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
           height: '100%'
         }}
       />
-      <div
-        style={{
-          position: 'absolute',
-          top: '8px',
-          right: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          background: 'white',
-          borderLeft: '1px solid #ccc',
-          paddingLeft: '8px',
-          zIndex: 1000
-        }}
-      >
-        <Tooltip title={t('Zoom In')}>
-          <Button
-            type="text"
-            size="small"
-            onClick={handleZoomIn}
-            disabled={zoomLevel >= 2}
-            style={{ padding: '2px 4px', minWidth: '24px', height: '24px' }}
-          >
-            <ZoomInOutlined style={{ fontSize: '12px' }} />
-          </Button>
-        </Tooltip>
-        <Tooltip title={t('Zoom Out')}>
-          <Button
-            type="text"
-            size="small"
-            onClick={handleZoomOut}
-            disabled={zoomLevel <= 0.5}
-            style={{ padding: '2px 4px', minWidth: '24px', height: '24px' }}
-          >
-            <ZoomOutOutlined style={{ fontSize: '12px' }} />
-          </Button>
-        </Tooltip>
-        <Tooltip title={t('Reset Zoom')}>
-          <Button
-            type="text"
-            size="small"
-            onClick={handleZoomReset}
-            disabled={zoomLevel === 1}
-            style={{
-              padding: '2px 4px',
-              minWidth: '32px',
-              height: '24px',
-              fontSize: '10px'
-            }}
-          >
-            100%
-          </Button>
-        </Tooltip>
-      </div>
     </div>
   );
 });

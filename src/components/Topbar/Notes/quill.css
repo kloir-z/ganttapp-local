@@ -2,28 +2,85 @@
   content: "\2015";
 }
 
+/* ツールバーアイコンのサイズ制限 */
+.ql-toolbar button svg,
+.ql-toolbar .ql-picker-label svg {
+  width: 18px !important;
+  height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+}
+
+.ql-toolbar svg {
+  width: 18px !important;
+  height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+}
+
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="huge"]::before {
-  content: "XL";
-  font-family: Arial, sans-serif;
+  content: "XL" !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="large"]::before {
-  content: "L";
-  font-family: Arial, sans-serif;
+  content: "L" !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-size .ql-picker-label::before {
-  content: "N";
-  font-family: Arial, sans-serif;
+  content: "N" !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value]::after {
-  content: "";
-  color: transparent;
+  content: "" !important;
+  color: transparent !important;
 }
 
 .ql-snow .ql-picker.ql-size {
-  width: 45px;
+  width: 45px !important;
+}
+
+/* Quillのデフォルトテキストを隠す */
+.ql-snow .ql-picker.ql-size .ql-picker-label {
+  overflow: hidden !important;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label:not([data-value])::before {
+  content: "N" !important;
+}
+
+/* ドロップダウンオプションの幅制限 */
+.ql-snow .ql-picker.ql-size .ql-picker-options {
+  width: 45px !important;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-item {
+  width: 45px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* サイズピッカーのオプション表示をカスタマイズ */
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="small"]::before {
+  content: "S" !important;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="large"]::before {
+  content: "L" !important;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="huge"]::before {
+  content: "XL" !important;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-item:not([data-value])::before {
+  content: "N" !important;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-item {
+  font-size: 0 !important;
 }
 
 .ql-toolbar .ql-code-block {
@@ -41,7 +98,7 @@
   width: 100%;
   height: 100%;
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="22px" viewBox="0 -960 960 960" width="22px" fill="%23444444"><path d="m384-336 56-57-87-87 87-87-56-57-144 144 144 144Zm192 0 144-144-144-144-56 57 87 87-87 87 56 57ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm0-560v560-560Z"/></svg>');
-  background-size: contain;
+  background-size: 20px 20px;
   background-repeat: no-repeat;
   transition: opacity 0.1s;
 }
@@ -54,7 +111,7 @@
   width: 100%;
   height: 100%;
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="22px" viewBox="0 -960 960 960" width="22px" fill="%230066CC"><path d="m384-336 56-57-87-87 87-87-56-57-144 144 144 144Zm192 0 144-144-144-144-56 57 87 87-87 87 56 57ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm0-560v560-560Z"/></svg>');
-  background-size: contain;
+  background-size: 20px 20px;
   background-repeat: no-repeat;
   opacity: 0;
   transition: opacity 0.1s;
@@ -73,32 +130,73 @@
 }
 
 .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="1"]::before {
-  content: "H1";
-  font-family: Arial, sans-serif;
+  content: "H1" !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="2"]::before {
-  content: "H2";
-  font-family: Arial, sans-serif;
+  content: "H2" !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="3"]::before {
-  content: "H3";
-  font-family: Arial, sans-serif;
+  content: "H3" !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-header .ql-picker-label::before {
-  content: "N";
-  font-family: Arial, sans-serif;
+  content: "N" !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-header .ql-picker-label[data-value]::after {
-  content: "";
-  color: transparent;
+  content: "" !important;
+  color: transparent !important;
 }
 
 .ql-snow .ql-picker.ql-header {
-  width: 45px;
+  width: 45px !important;
+}
+
+/* Quillのデフォルトテキストを隠す */
+.ql-snow .ql-picker.ql-header .ql-picker-label {
+  overflow: hidden !important;
+}
+
+.ql-snow .ql-picker.ql-header .ql-picker-label:not([data-value])::before {
+  content: "N" !important;
+}
+
+/* ドロップダウンオプションの幅制限 */
+.ql-snow .ql-picker.ql-header .ql-picker-options {
+  width: 45px !important;
+}
+
+.ql-snow .ql-picker.ql-header .ql-picker-item {
+  width: 45px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* ヘッダーピッカーのオプション表示をカスタマイズ */
+.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="1"]::before {
+  content: "H1" !important;
+}
+
+.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="2"]::before {
+  content: "H2" !important;
+}
+
+.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="3"]::before {
+  content: "H3" !important;
+}
+
+.ql-snow .ql-picker.ql-header .ql-picker-item:not([data-value])::before {
+  content: "N" !important;
+}
+
+.ql-snow .ql-picker.ql-header .ql-picker-item {
+  font-size: 0 !important;
 }
 
 .ql-editor h1 {

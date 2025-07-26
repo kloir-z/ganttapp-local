@@ -111,7 +111,6 @@ export const ModalDragBar = styled.div`
   top: 0px;
   width : 100%;
   height: 25px;
-  padding: 5px;
   border-bottom: 1px solid #eeeeee;
   border-radius: 5px 5px 0px 0px;
   cursor: move;

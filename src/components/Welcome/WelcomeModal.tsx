@@ -124,7 +124,7 @@ const WelcomeModal: React.FC = () => {
             const result = await dispatch(handleImport(blob));
 
             if (handleImport.rejected.match(result)) {
-                throw new Error(result.error.message || 'Failed to import sample data');
+                throw new Error(result.error?.message || 'Failed to import sample data');
             }
 
             handleClose();
