@@ -4,6 +4,13 @@ English | [日本語](README.md)
 
 A local Gantt chart application built with TypeScript and React.
 
+## Online Demo
+
+Try the demo published on GitHub Pages:  
+**[https://yourusername.github.io/gantt-local-oss/](https://yourusername.github.io/gantt-local-oss/)**
+
+※ Replace `yourusername` with your actual GitHub username
+
 ## Key Features
 
 ### Project Management
@@ -76,11 +83,24 @@ npm run dev
 2. Select a task in the left tree
 3. Record notes in the right editor
 
-## Development Commands
+## Build & Distribution
 
+### Regular Build
+```bash
+npm run build      # Production build (output to dist/ folder)
+```
+
+### Single HTML File Creation
+```bash
+npm run build:single  # Generate gantt-chart-standalone.html
+```
+
+The single HTML file version combines all JavaScript and CSS into one HTML file.  
+Simply open the generated `gantt-chart-standalone.html` in your browser to run.
+
+### Development Commands
 ```bash
 npm run dev        # Start development server
-npm run build      # Production build
 npm run lint       # Code quality check
 npm run test       # Run tests
 npm run preview    # Preview build results

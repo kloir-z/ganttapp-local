@@ -4,6 +4,13 @@
 
 TypeScript + Reactで作られたローカル実行型のガントチャート作成アプリケーションです。
 
+## オンラインデモ
+
+GitHub Pagesで公開されたデモをお試しいただけます：  
+**[https://yourusername.github.io/gantt-local-oss/](https://yourusername.github.io/gantt-local-oss/)**
+
+※ `yourusername` を実際のGitHubユーザー名に置き換えてください
+
 ## 主な機能
 
 ### プロジェクト管理
@@ -76,11 +83,24 @@ npm run dev
 2. 左側のツリーでタスクを選択
 3. 右側のエディターでメモを記録
 
-## 開発用コマンド
+## ビルド・配布
 
+### 通常のビルド
+```bash
+npm run build      # 本番用ビルド (dist/フォルダに出力)
+```
+
+### 単一HTMLファイル作成
+```bash
+npm run build:single  # gantt-chart-standalone.html を生成
+```
+
+単一HTMLファイル版では、全てのJavaScript・CSSが1つのHTMLファイルにまとめられます。  
+生成された `gantt-chart-standalone.html` をブラウザで開くだけで動作します。
+
+### 開発用コマンド
 ```bash
 npm run dev        # 開発サーバー起動
-npm run build      # 本番用ビルド
 npm run lint       # コード品質チェック
 npm run test       # テスト実行
 npm run preview    # ビルド結果のプレビュー
