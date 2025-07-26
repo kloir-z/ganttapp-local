@@ -288,11 +288,6 @@ const TopBarLocal: React.FC = memo(() => {
         children: t('Show Welcome Screen'),
         onClick: handleResetWelcome,
         path: '0'
-      },
-      {
-        children: t('Back to Login'),
-        onClick: handleBackToLogin,
-        path: '1'
       }
     ];
     return options;
