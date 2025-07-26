@@ -97,7 +97,7 @@ const WelcomeModal: React.FC = () => {
 
         for (const sample of sampleDefinitions) {
             try {
-                const response = await fetch(`/samples/${sample.filename}`, { method: 'HEAD' });
+                const response = await fetch(`${import.meta.env.BASE_URL}samples/${sample.filename}`, { method: 'HEAD' });
                 if (response.ok) {
                     availableList.push(sample);
                 }
@@ -115,7 +115,7 @@ const WelcomeModal: React.FC = () => {
         dispatch(setIsLoading(true));
 
         try {
-            const response = await fetch(`/samples/${sampleDef.filename}`);
+            const response = await fetch(`${import.meta.env.BASE_URL}samples/${sampleDef.filename}`);
             if (!response.ok) {
                 throw new Error('Failed to fetch sample data');
             }

@@ -543,7 +543,7 @@ export async function getInitialHolidays(dateFormat: DateFormatType): Promise<{ 
     countryCode = (languageSetting.split('-')[1] || languageSetting).toUpperCase();
   }
   try {
-    const response = await fetch(`/i18n/holidays/${countryCode}.txt`);
+    const response = await fetch(`${import.meta.env.BASE_URL}i18n/holidays/${countryCode}.txt`);
     if (!response.ok) {
       throw new Error(`Failed to load holiday data: ${response.statusText}`);
     }

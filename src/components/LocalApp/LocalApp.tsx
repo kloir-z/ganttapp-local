@@ -19,7 +19,7 @@ const LocalApp: React.FC = () => {
         const initializeLocalApp = async () => {
             try {
                 dispatch(setLanguage(i18n.language));
-                await resetReduxStates();
+                await resetReduxStates({ skipNavigation: true });
                 dispatch(setIsLoading(false));
             } catch (error) {
                 console.error('Error initializing local app:', error);
