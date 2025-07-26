@@ -14,6 +14,10 @@ English | [日本語](README.md)
 
 **[https://kloir-z.github.io/ganttapp-local/](https://kloir-z.github.io/ganttapp-local/)**
 
+## Screenshot
+
+![Gantt Chart Screenshot](docs/images/screenshot.png)
+
 ## Why I Created This
 
 I was creating Gantt charts in Excel using conditional formatting and formulas, but when the number of rows increased (200+ rows), updates became cumbersome and felt like a typical example of "wrong way to use Excel." The performance was slow and lacked good overview capability.

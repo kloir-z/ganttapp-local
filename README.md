@@ -14,6 +14,10 @@
 
 **[https://kloir-z.github.io/ganttapp-local/](https://kloir-z.github.io/ganttapp-local/)**
 
+## スクリーンショット
+
+![Gantt Chart Screenshot](docs/images/screenshot.png)
+
 ## 制作の背景
 
 Excelで条件付き書式と数式を組み合わせてガントチャートを作成していましたが、少し行数が増える（200行以上など）と更新が煩雑で、「間違ったExcelの使い方」の代表例のような感じがしてもやもやしていました。動作も重く、俯瞰性も悪い。
