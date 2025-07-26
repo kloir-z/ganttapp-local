@@ -1,42 +1,57 @@
-# Gantt Chart Tool
+# Excel-like Gantt Chart App
 
 English | [日本語](README.md)
 
-A local Gantt chart application built with TypeScript and React.
+## System Requirements
 
-## Online Demo
+**Only works on PC Chromium-based browsers (Chrome/Edge).**
 
-Try the demo published on GitHub Pages:  
+- Does not work on Firefox/Safari (no support planned)
+- Cannot be used on mobile devices (no support planned)  
+- Originally created for personal use, but published in case it might help others with similar needs
+
+## Try It Out
+
 **[https://kloir-z.github.io/ganttapp-local/](https://kloir-z.github.io/ganttapp-local/)**
 
-## Key Features
+## Why I Created This
 
-### Project Management
-- **Task Management**: Create, edit, and delete tasks
-- **Dependency Settings**: Set relationships between tasks
-- **Progress Tracking**: Manage task progress percentages
-- **Hierarchical Structure**: Organize tasks in groups
+I was creating Gantt charts in Excel using conditional formatting and formulas, but when the number of rows increased (200+ rows), updates became cumbersome and felt like a typical example of "wrong way to use Excel." The performance was slow and lacked good overview capability.
 
-### Gantt Chart Display
-- **Visual Timeline**: Display task durations as horizontal bar charts
-- **Drag & Drop**: Adjust task periods with mouse operations
-- **Holiday Support**: Schedule calculations based on working days
-- **Color Customization**: Color-code tasks
+When ChatGPT emerged in 2023, I learned about its high code generation capabilities and thought "maybe I can create a Gantt chart app?" This was the catalyst for starting development.
 
-### File Operations
-- **Project Save**: Save entire projects in ZIP format
-- **Project Load**: Restore from saved ZIP files
-- **JSON Support**: Export data in JSON format for external integration
+**Goal**: A tool where you can directly manipulate charts with mouse, with lightweight performance, good overview capability, and support for complex dependency relationships.
 
-### Notes Feature
-- **Rich Text Editor**: Advanced memo functionality with Quill editor
-- **Task-specific Notes**: Record detailed notes for each task
-- **Formatting Support**: Headers, bullet points, tables, and more
+## Key Features and Points
 
-### Additional Features
-- **Multi-language Support**: Japanese and English support
-- **Undo/Redo**: Undo and redo operations
-- **Responsive Design**: Works on desktop and tablet devices
+### Complete Table-Chart Integration
+- Editing the table instantly reflects in the chart
+- Dragging the chart automatically updates the table
+- **Double-click to create chart**, **drag to move/adjust**, **right-click to delete**
+
+### Excel-like Table Operations
+- Cell editing, row insertion/deletion/copying
+- Row movement by dragging
+- Hierarchical structure for task grouping
+
+### Automatic Dependency Calculation (after and sameas)
+- **`after,-x,n`**: Start n days after completion of x rows above
+  - Example: `after,-1,3` → Set start date 3 days after 1 row above
+- **`sameas,-x`**: Start at the same time as x rows above
+  - Example: `sameas,-1` → Match start date of 1 row above
+- Real-time updates when any dependency relationship changes
+
+### Automatic Adjustment Considering Holidays
+- Automatically avoid weekends/holidays when changing dates (can be enabled/disabled per row)
+- Customizable holiday settings (weekend days/colors, holiday colors, custom holidays)
+- ※Japanese holidays from 2022-2029 are pre-configured by default
+
+### Chart Overview Capability
+- **Chart daily width adjustable in 0.5px increments** - Supports overview display of long-term projects
+- Displays up to 1000 tasks smoothly
+
+### Other Features
+- **Undo/Redo**: Maintains up to 30 operation history
 
 ## Setup
 
@@ -88,7 +103,6 @@ npm run dev
 npm run build      # Production build (output to dist/ folder)
 ```
 
-
 ### Development Commands
 ```bash
 npm run dev        # Start development server
@@ -107,17 +121,6 @@ npm run preview    # Preview build results
 - **File Processing**: JSZip
 - **Testing**: Jest + React Testing Library
 
-## Data Format
-
-Projects are saved as ZIP files containing:
-- `project.json`: Main project data
-- `notes.json`: Notes data  
-- Other UI configuration information
-
 ## License
 
 MIT License - See [LICENSE](LICENSE) file for details
-
----
-
-**Note**: This application runs locally. Data is stored in your browser, so we recommend regularly backing up with ZIP files.
