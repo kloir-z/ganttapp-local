@@ -1,0 +1,107 @@
+01/01/2022 Sat New Year's Day
+01/17/2022 Mon Martin Luther King Jr. Day
+02/21/2022 Mon Washington's Birthday
+05/30/2022 Mon Memorial Day
+06/19/2022 Sun Juneteenth
+06/20/2022 Mon Juneteenth (substitute day)
+07/04/2022 Mon Independence Day
+09/05/2022 Mon Labour Day
+10/10/2022 Mon Columbus Day
+11/11/2022 Fri Veterans Day
+11/24/2022 Thu Thanksgiving Day
+12/24/2022 Sat Christmas Eve
+12/25/2022 Sun Christmas Day
+12/26/2022 Mon Christmas Day (substitute day)
+01/01/2023 Sun New Year's Day
+01/02/2023 Mon New Year's Day (substitute day)
+01/16/2023 Mon Martin Luther King Jr. Day
+02/20/2023 Mon Washington's Birthday
+05/29/2023 Mon Memorial Day
+06/19/2023 Mon Juneteenth
+07/04/2023 Tue Independence Day
+09/04/2023 Mon Labour Day
+10/09/2023 Mon Columbus Day
+11/10/2023 Fri Veterans Day (substitute day)
+11/11/2023 Sat Veterans Day
+11/23/2023 Thu Thanksgiving Day
+12/24/2023 Sun Christmas Eve
+12/25/2023 Mon Christmas Day
+01/01/2024 Mon New Year's Day
+01/15/2024 Mon Martin Luther King Jr. Day
+02/19/2024 Mon Washington's Birthday
+05/27/2024 Mon Memorial Day
+06/19/2024 Wed Juneteenth
+07/04/2024 Thu Independence Day
+09/02/2024 Mon Labour Day
+10/14/2024 Mon Columbus Day
+11/11/2024 Mon Veterans Day
+11/28/2024 Thu Thanksgiving Day
+12/24/2024 Tue Christmas Eve
+12/25/2024 Wed Christmas Day
+01/01/2025 Wed New Year's Day
+01/20/2025 Mon Martin Luther King Jr. Day
+02/17/2025 Mon Washington's Birthday
+05/26/2025 Mon Memorial Day
+06/19/2025 Thu Juneteenth
+07/04/2025 Fri Independence Day
+09/01/2025 Mon Labour Day
+10/13/2025 Mon Columbus Day
+11/11/2025 Tue Veterans Day
+11/27/2025 Thu Thanksgiving Day
+12/24/2025 Wed Christmas Eve
+12/25/2025 Thu Christmas Day
+01/01/2026 Thu New Year's Day
+01/19/2026 Mon Martin Luther King Jr. Day
+02/16/2026 Mon Washington's Birthday
+05/25/2026 Mon Memorial Day
+06/19/2026 Fri Juneteenth
+07/03/2026 Fri Independence Day (substitute day)
+07/04/2026 Sat Independence Day
+09/07/2026 Mon Labour Day
+10/12/2026 Mon Columbus Day
+11/11/2026 Wed Veterans Day
+11/26/2026 Thu Thanksgiving Day
+12/24/2026 Thu Christmas Eve
+12/25/2026 Fri Christmas Day
+01/01/2027 Fri New Year's Day
+01/18/2027 Mon Martin Luther King Jr. Day
+02/15/2027 Mon Washington's Birthday
+05/31/2027 Mon Memorial Day
+06/18/2027 Fri Juneteenth (substitute day)
+06/19/2027 Sat Juneteenth
+07/04/2027 Sun Independence Day
+07/05/2027 Mon Independence Day (substitute day)
+09/06/2027 Mon Labour Day
+10/11/2027 Mon Columbus Day
+11/11/2027 Thu Veterans Day
+11/25/2027 Thu Thanksgiving Day
+12/24/2027 Fri Christmas Day (substitute day)
+12/24/2027 Fri Christmas Eve
+12/25/2027 Sat Christmas Day
+12/31/2027 Fri New Year's Day (substitute day)
+01/01/2028 Sat New Year's Day
+01/17/2028 Mon Martin Luther King Jr. Day
+02/21/2028 Mon Washington's Birthday
+05/29/2028 Mon Memorial Day
+06/19/2028 Mon Juneteenth
+07/04/2028 Tue Independence Day
+09/04/2028 Mon Labour Day
+10/09/2028 Mon Columbus Day
+11/10/2028 Fri Veterans Day (substitute day)
+11/11/2028 Sat Veterans Day
+11/23/2028 Thu Thanksgiving Day
+12/24/2028 Sun Christmas Eve
+12/25/2028 Mon Christmas Day
+01/01/2029 Mon New Year's Day
+01/15/2029 Mon Martin Luther King Jr. Day
+02/19/2029 Mon Washington's Birthday
+05/28/2029 Mon Memorial Day
+06/19/2029 Tue Juneteenth
+07/04/2029 Wed Independence Day
+09/03/2029 Mon Labour Day
+10/08/2029 Mon Columbus Day
+11/11/2029 Sun Veterans Day
+11/12/2029 Mon Veterans Day (substitute day)
+11/22/2029 Thu Thanksgiving Day
+12/24/2029 Mon Christmas Eve
+12/25/2029 Tue Christmas Day
