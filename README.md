@@ -7,9 +7,7 @@ TypeScript + Reactで作られたローカル実行型のガントチャート�
 ## オンラインデモ
 
 GitHub Pagesで公開されたデモをお試しいただけます：  
-**[https://yourusername.github.io/gantapp-local/](https://yourusername.github.io/gantapp-local/)**
-
-※ `yourusername` を実際のGitHubユーザー名に置き換えてください
+**[https://kloir-z.github.io/gantapp-local/](https://kloir-z.github.io/gantapp-local/)**
 
 ## 主な機能
 
