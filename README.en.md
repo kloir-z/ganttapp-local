@@ -52,6 +52,8 @@ When ChatGPT emerged in 2023, I learned about its high code generation capabilit
 
 ### Other Features
 - **Undo/Redo**: Maintains up to 30 operation history
+- **Multi-language Support**: Japanese and English support
+- **Date Format Options**: Choose from yyyy/mm/dd, mm/dd/yyyy, or dd/mm/yyyy formats
 
 ## Setup
 
