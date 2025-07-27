@@ -58,6 +58,12 @@ const WelcomeModal: React.FC = () => {
                     titleKey: "samples.autumnFoodExhibition.title",
                     descriptionKey: "samples.autumnFoodExhibition.description",
                     filename: "[サンプル]秋の食品見本市出展プロジェクト.zip"
+                },
+                {
+                    id: "large-scale-system-development",
+                    titleKey: "samples.largeScaleSystemDevelopment.title",
+                    descriptionKey: "samples.largeScaleSystemDevelopment.description",
+                    filename: "[サンプル]大規模システム開発プロジェクト.zip"
                 }
             ];
         } else {

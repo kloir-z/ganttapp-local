@@ -225,6 +225,10 @@ const config = {
           "weddingPlanning": {
             "title": "Wedding Planning Project",
             "description": "Detailed wedding planning timeline covering venue booking, catering, decorations, and ceremony coordination."
+          },
+          "largeScaleSystemDevelopment": {
+            "title": "Large-scale System Development Project",
+            "description": "Comprehensive large-scale system development project covering requirements analysis, design, development, testing, and deployment phases with multiple stakeholders and complex coordination."
           }
         },
         "Back to Login": "Back to Login",
@@ -609,6 +613,10 @@ const config = {
           "autumnFoodExhibition": {
             "title": "秋の食品見本市出展プロジェクト",
             "description": "秋の食品見本市への出展プロジェクト。ブース設営、商品準備、マーケティング活動、当日運営までの計画を含みます。"
+          },
+          "largeScaleSystemDevelopment": {
+            "title": "大規模システム開発プロジェクト",
+            "description": "大規模なシステム開発プロジェクト。要件定義から設計、開発、テスト、運用開始まで、複数のフェーズと多くのステークホルダーが関わる包括的な開発計画です。"
           }
         },
         "Back to Login": "ログインに戻る",
