@@ -121,8 +121,6 @@ const ModalResizer: React.FC<ModalResizerProps> = ({
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isResizing) return;
 
-    const deltaX = e.clientX - startPosition.x;
-    const deltaY = e.clientY - startPosition.y;
     const viewportMaxWidth = window.innerWidth - 50;
     const viewportMaxHeight = window.innerHeight - 50;
 
@@ -131,24 +129,56 @@ const ModalResizer: React.FC<ModalResizerProps> = ({
     let newX = startModalPosition.x;
     let newY = startModalPosition.y;
 
+    // 幅の処理
     if (isResizing.includes('right')) {
+      const deltaX = e.clientX - startPosition.x;
       newWidth = Math.max(minWidth, Math.min(startSize.width + deltaX, viewportMaxWidth));
     } else if (isResizing.includes('left')) {
-      const proposedWidth = startSize.width - deltaX;
-      newWidth = Math.max(minWidth, Math.min(proposedWidth, viewportMaxWidth));
-      // 左辺をリサイズする場合、幅の変化分だけ位置を調整
-      const actualWidthChange = newWidth - startSize.width;
-      newX = startModalPosition.x - actualWidthChange;
+      // 左辺リサイズ時：マウス位置がブラウザ外に出た場合の処理
+      const mouseX = Math.max(0, e.clientX);
+      const maxAllowedX = startModalPosition.x + startSize.width - minWidth;
+      const effectiveMouseX = Math.min(mouseX, maxAllowedX);
+      
+      newX = effectiveMouseX;
+      newWidth = startModalPosition.x + startSize.width - newX;
+      
+      // 最小幅を保証
+      if (newWidth < minWidth) {
+        newWidth = minWidth;
+        newX = startModalPosition.x + startSize.width - minWidth;
+      }
+      
+      // ビューポート制限
+      if (newWidth > viewportMaxWidth) {
+        newWidth = viewportMaxWidth;
+        newX = startModalPosition.x + startSize.width - viewportMaxWidth;
+      }
     }
 
+    // 高さの処理
     if (isResizing.includes('bottom')) {
+      const deltaY = e.clientY - startPosition.y;
       newHeight = Math.max(minHeight, Math.min(startSize.height + deltaY, viewportMaxHeight));
     } else if (isResizing.includes('top')) {
-      const proposedHeight = startSize.height - deltaY;
-      newHeight = Math.max(minHeight, Math.min(proposedHeight, viewportMaxHeight));
-      // 上辺をリサイズする場合、高さの変化分だけ位置を調整
-      const actualHeightChange = newHeight - startSize.height;
-      newY = startModalPosition.y - actualHeightChange;
+      // 上辺リサイズ時：マウス位置がブラウザ外に出た場合の処理
+      const mouseY = Math.max(0, e.clientY);
+      const maxAllowedY = startModalPosition.y + startSize.height - minHeight;
+      const effectiveMouseY = Math.min(mouseY, maxAllowedY);
+      
+      newY = effectiveMouseY;
+      newHeight = startModalPosition.y + startSize.height - newY;
+      
+      // 最小高さを保証
+      if (newHeight < minHeight) {
+        newHeight = minHeight;
+        newY = startModalPosition.y + startSize.height - minHeight;
+      }
+      
+      // ビューポート制限
+      if (newHeight > viewportMaxHeight) {
+        newHeight = viewportMaxHeight;
+        newY = startModalPosition.y + startSize.height - viewportMaxHeight;
+      }
     }
 
     setNoteWidth(newWidth);

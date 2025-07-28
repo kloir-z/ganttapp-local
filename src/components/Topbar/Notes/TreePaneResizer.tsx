@@ -21,7 +21,8 @@ const TreePaneResizer: React.FC<TreePaneResizerProps> = memo(({ treeWidth, setTr
     if (initialPositionRef.current !== null) {
       const limitedX = Math.min(event.clientX, viewportMaxWidth);
       const deltaX = limitedX - initialPositionRef.current;
-      const newWidth = Math.max(0, Math.min(initialWidthRef.current + deltaX, 500));
+      // ドラッグ中は最小幅を50pxに設定し、0以下にならないようにする
+      const newWidth = Math.max(50, Math.min(initialWidthRef.current + deltaX, 500));
       setTreeWidth(newWidth);
     }
   }, [setResizeAnimate, setTreeWidth]);
@@ -30,8 +31,16 @@ const TreePaneResizer: React.FC<TreePaneResizerProps> = memo(({ treeWidth, setTr
     window.removeEventListener('mousemove', handleMouseMove);
     window.removeEventListener('mouseup', handleMouseUp);
     if (isDraggedRef.current) {
-      lastWidthRef.current = treeWidth;
-      setResizeAnimate(false);
+      // ドラッグ後、サイズが80px以下の場合は0（非表示）にする
+      if (treeWidth <= 80) {
+        lastWidthRef.current = treeWidth > 0 ? treeWidth : 200; // デフォルト幅を保存
+        setTreeWidth(0);
+        setResizeAnimate(true);
+        setTimeout(() => setResizeAnimate(false), 400);
+      } else {
+        lastWidthRef.current = treeWidth;
+        setResizeAnimate(false);
+      }
     } else {
       setResizeAnimate(true);
       setTimeout(() => setResizeAnimate(false), 400);
