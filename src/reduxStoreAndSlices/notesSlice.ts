@@ -44,7 +44,7 @@ const initialState: NotesState = {
   noteData: {},
   modalState: {
     treeWidth: 300,
-    noteWidth: 1000,
+    noteWidth: 1050,
     noteHeight: 400,
     position: { x: 250, y: 50 }
   },
@@ -313,6 +313,10 @@ const notesSlice = createSlice({
       state.selectedNodeKey = action.payload;
       state.isSavedChanges = false;
     },
+    updateTreeData: (state, action: PayloadAction<ExtendedTreeDataNode[]>) => {
+      state.treeData = action.payload;
+      state.isSavedChanges = false;
+    },
   },
 });
 
@@ -324,6 +328,7 @@ export const {
   addTreeNode,
   removeTreeNode,
   updateTreeDataOnDrop,
+  updateTreeData,
   resetNotes,
   setNotes,
   setIsSavedChangesNotes,
