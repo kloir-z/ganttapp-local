@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, undo, redo } from '../../reduxStoreAndSlices/store';
-import { setWbsWidth, setMaxWbsWidth } from '../../reduxStoreAndSlices/baseSettingsSlice';
+import { setWbsWidth, setMaxWbsWidth, setScrollPosition } from '../../reduxStoreAndSlices/baseSettingsSlice';
 import { isChartRow, isEventRow, isSeparatorRow, WBSData } from '../../types/DataTypes';
 import Calendar from '../Chart/Calendar';
 import GridVertical from '../Chart/GridVertical';
@@ -32,6 +32,7 @@ function Gantt() {
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
   const isContextMenuOpen = useSelector((state: RootState) => state.uiFlags.isContextMenuOpen);
+  const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
   const [isGridRefDragging, setIsGridRefDragging] = useState(false);
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [canGridRefDrag, setCanGridRefDrag] = useState(true);
@@ -160,7 +161,13 @@ function Gantt() {
       }
       updateVisibleRange();
     }
-  }, [isGridRefDragging, isMouseDown, resetDragTimeout, updateVisibleRange]);
+    if (sourceRef === gridRef && sourceRef.current) {
+      dispatch(setScrollPosition({
+        scrollLeft: sourceRef.current.scrollLeft,
+        scrollTop: sourceRef.current.scrollTop
+      }));
+    }
+  }, [dispatch, isGridRefDragging, isMouseDown, resetDragTimeout, updateVisibleRange]);
 
   const handleHorizontalScroll = useCallback((sourceRef: React.RefObject<HTMLDivElement>, targetRef: React.RefObject<HTMLDivElement>) => {
     if (!isGridRefDragging) {
@@ -172,7 +179,13 @@ function Gantt() {
         resetDragTimeout();
       }
     }
-  }, [isGridRefDragging, isMouseDown, resetDragTimeout]);
+    if (sourceRef === gridRef && sourceRef.current) {
+      dispatch(setScrollPosition({
+        scrollLeft: sourceRef.current.scrollLeft,
+        scrollTop: sourceRef.current.scrollTop
+      }));
+    }
+  }, [dispatch, isGridRefDragging, isMouseDown, resetDragTimeout]);
 
   useEffect(() => {
     const isChromiumBased = /Chrome/.test(navigator.userAgent) || /Chromium/.test(navigator.userAgent);
@@ -306,6 +319,23 @@ function Gantt() {
   useEffect(() => {
     updateVisibleRange();
   }, [gridHeight, updateVisibleRange]);
+
+  useEffect(() => {
+    if (gridRef.current && calendarRef.current && wbsRef.current) {
+      const timer = setTimeout(() => {
+        if (gridRef.current && calendarRef.current && wbsRef.current) {
+          const safeScrollLeft = Math.max(0, Math.min(scrollPosition.scrollLeft || 0, gridRef.current.scrollWidth - gridRef.current.clientWidth));
+          const safeScrollTop = Math.max(0, Math.min(scrollPosition.scrollTop || 0, gridRef.current.scrollHeight - gridRef.current.clientHeight));
+          
+          gridRef.current.scrollLeft = safeScrollLeft;
+          gridRef.current.scrollTop = safeScrollTop;
+          calendarRef.current.scrollLeft = safeScrollLeft;
+          wbsRef.current.scrollTop = safeScrollTop;
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [scrollPosition]);
 
   useEffect(() => {
     const gridElement = gridRef.current;

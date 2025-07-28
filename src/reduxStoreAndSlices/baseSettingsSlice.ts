@@ -20,6 +20,10 @@ interface BaseSettingsState {
   currentFileId: string;
   userEmail: string;
   isSavedChanges: boolean;
+  scrollPosition: {
+    scrollLeft: number;
+    scrollTop: number;
+  };
 }
 
 const now = new Date();
@@ -43,6 +47,10 @@ const initialState: BaseSettingsState = {
   currentFileId: "",
   userEmail: "",
   isSavedChanges: true,
+  scrollPosition: {
+    scrollLeft: 0,
+    scrollTop: 0,
+  },
 };
 
 const baseSettingsSlice = createSlice({
@@ -95,6 +103,15 @@ const baseSettingsSlice = createSlice({
         state.isSavedChanges = false;
       }
     },
+    setScrollPosition(state, action: PayloadAction<{ scrollLeft: number; scrollTop: number }>) {
+      const { scrollLeft, scrollTop } = action.payload;
+      if (typeof scrollLeft === 'number' && typeof scrollTop === 'number' && 
+          scrollLeft >= 0 && scrollTop >= 0) {
+        state.scrollPosition = action.payload;
+      } else {
+        state.scrollPosition = { scrollLeft: 0, scrollTop: 0 };
+      }
+    },
     resetBaseSettings(state) {
       state.wbsWidth = initialState.wbsWidth;
       state.maxWbsWidth = initialState.maxWbsWidth;
@@ -103,6 +120,7 @@ const baseSettingsSlice = createSlice({
       state.dateRange = initialState.dateRange;
       state.holidayInput = initialState.holidayInput;
       state.title = initialState.title;
+      state.scrollPosition = initialState.scrollPosition;
       state.isSavedChanges = true;
       document.title = "Gantty";
     },
@@ -122,6 +140,6 @@ const baseSettingsSlice = createSlice({
   },
 });
 
-export const { setWbsWidth, setMaxWbsWidth, setCalendarWidth, setCellWidth, setDateRange, setHolidayInput, setTitle, resetBaseSettings, setSavedFileList, setCurrentFileId, setUserEmail, setLanguage, setIsSavedChangesSettings } = baseSettingsSlice.actions;
+export const { setWbsWidth, setMaxWbsWidth, setCalendarWidth, setCellWidth, setDateRange, setHolidayInput, setTitle, setScrollPosition, resetBaseSettings, setSavedFileList, setCurrentFileId, setUserEmail, setLanguage, setIsSavedChangesSettings } = baseSettingsSlice.actions;
 
 export default baseSettingsSlice.reducer;

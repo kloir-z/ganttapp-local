@@ -17,9 +17,10 @@ import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, setMessageInfo } from '../../reduxStoreAndSlices/store';
 import { setIsLoading } from '../../reduxStoreAndSlices/uiFlagSlice';
-import { handleImport } from '../../utils/ExportImportHandler';
+import { handleImport, handleExport } from '../../utils/ExportImportHandler';
 import useResetReduxStates from '../../hooks/useResetReduxStates';
 import useResetIsSavedChangesFlags from '../../hooks/useResetIsSavedChangesFlags';
+import { v4 as uuidv4 } from 'uuid';
 
 interface JsonDataModalProps {
   open: boolean;
@@ -78,6 +79,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
   const treeData = useSelector((state: RootState) => state.notes.treeData);
   const noteData = useSelector((state: RootState) => state.notes.noteData);
   const currentLanguage = useSelector((state: RootState) => state.baseSettings.language);
+  const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
   const notesModalState = useSelector((state: RootState) => state.notes.modalState);
 
   const handleTabChange = useCallback((_event: React.SyntheticEvent, newValue: number) => {
@@ -90,7 +92,8 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
     setError('');
 
     try {
-      const projectData = {
+      const zipBlob = await handleExport(
+        uuidv4(),
         colors,
         dateRange,
         columns,
@@ -106,11 +109,19 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
         dateFormat,
         treeData,
         noteData,
-        language: currentLanguage,
-        notesModalState
-      };
+        currentLanguage,
+        scrollPosition,
+        notesModalState,
+      );
 
-      const jsonString = JSON.stringify(projectData, null, 2);
+      // Extract JSON from ZIP for display
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const loadedZip = await zip.loadAsync(zipBlob);
+      const jsonFileEntry = Object.values(loadedZip.files).find(file => file.name.endsWith('.json'));
+      if (!jsonFileEntry) throw new Error("No JSON file found in ZIP");
+      const jsonString = await jsonFileEntry.async("string");
+      
       setJsonOutput(jsonString);
 
       dispatch(setMessageInfo({
@@ -128,7 +139,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
   }, [
     colors, dateRange, columns, data, holidayInput, holidayColor,
     regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title,
-    showYear, dateFormat, treeData, noteData, currentLanguage, notesModalState, dispatch, t
+    showYear, dateFormat, treeData, noteData, currentLanguage, scrollPosition, notesModalState, dispatch, t
   ]);
 
   const handleImportJson = useCallback(async () => {

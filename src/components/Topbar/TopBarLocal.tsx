@@ -64,6 +64,7 @@ const TopBarLocal: React.FC = memo(() => {
   const treeData = useSelector((state: RootState) => state.notes.treeData);
   const noteData = useSelector((state: RootState) => state.notes.noteData);
   const notesModalState = useSelector((state: RootState) => state.notes.modalState);
+  const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
   const pastLength = useSelector((state: RootState) => state.wbsData.past.length);
   const futureLength = useSelector((state: RootState) => state.wbsData.future.length);
 
@@ -130,6 +131,7 @@ const TopBarLocal: React.FC = memo(() => {
         treeData,
         noteData,
         currentLanguage,
+        scrollPosition,
         notesModalState,
       );
 

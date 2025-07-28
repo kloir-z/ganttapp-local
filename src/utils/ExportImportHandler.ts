@@ -3,7 +3,7 @@ import { ColorInfo, setIsSavedChangesColor } from "../reduxStoreAndSlices/colorS
 import { WBSData, DateFormatType, RegularDaysOffSettingsType, HolidayColor } from "../types/DataTypes";
 import { updateEntireColorSettings } from "../reduxStoreAndSlices/colorSlice";
 import { setEntireData, setHolidays } from "../reduxStoreAndSlices/store";
-import { setWbsWidth, setDateRange, setHolidayInput, setTitle, setCalendarWidth, setCellWidth, setLanguage, setIsSavedChangesSettings } from "../reduxStoreAndSlices/baseSettingsSlice";
+import { setWbsWidth, setDateRange, setHolidayInput, setTitle, setCalendarWidth, setCellWidth, setLanguage, setIsSavedChangesSettings, setScrollPosition } from "../reduxStoreAndSlices/baseSettingsSlice";
 import JSZip from 'jszip';
 import { parseHolidaysFromInput } from '../components/Setting/utils/settingHelpers';
 import { createAsyncThunk } from "@reduxjs/toolkit";
@@ -28,6 +28,7 @@ export const handleExport = async (
   treeData: ExtendedTreeDataNode[],
   noteData: noteData,
   language: string,
+  scrollPosition: { scrollLeft: number; scrollTop: number },
   notesModalState?: NotesModalState,
 ) => {
   const settingsData = {
@@ -47,6 +48,7 @@ export const handleExport = async (
     treeData,
     noteData,
     language,
+    scrollPosition,
     ...(notesModalState && { notesModalState }),
   };
   const zip = new JSZip();
@@ -135,6 +137,20 @@ export const handleImport = createAsyncThunk<void, Blob, { state: RootState, dis
     if (parsedData.language) {
       i18n.changeLanguage(parsedData.language);
       dispatch(setLanguage(parsedData.language));
+    }
+    if (parsedData.scrollPosition) {
+      const scrollPosition = parsedData.scrollPosition;
+      if (typeof scrollPosition === 'object' && 
+          typeof scrollPosition.scrollLeft === 'number' && 
+          typeof scrollPosition.scrollTop === 'number' &&
+          scrollPosition.scrollLeft >= 0 && 
+          scrollPosition.scrollTop >= 0) {
+        dispatch(setScrollPosition(scrollPosition));
+      } else {
+        dispatch(setScrollPosition({ scrollLeft: 0, scrollTop: 0 }));
+      }
+    } else {
+      dispatch(setScrollPosition({ scrollLeft: 0, scrollTop: 0 }));
     }
     dispatch(setIsSavedChangesStore(true));
     dispatch(setIsSavedChangesColor(true));
