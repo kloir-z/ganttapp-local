@@ -12,6 +12,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run test:coverage` - Generate test coverage report
 - `npm run preview` - Preview production build locally
 
+## Development Environment Notes
+- **Windows Compatibility**: Commands may show bash path errors but function correctly
+- **Port Monitoring**: Use `netstat -an | findstr :5173` to verify dev server status
+- **Git Operations**: Standard git workflow supported with proper commit message formatting
+
 ## Architecture Overview
 
 This is an offline-first Gantt chart application built with React 18, TypeScript, and Redux Toolkit. The application manages project timelines with tasks, dependencies, and rich note-taking capabilities.
@@ -101,13 +106,25 @@ This is an offline-first Gantt chart application built with React 18, TypeScript
 - **TitleSetting.tsx**: Project title editing
 - **JsonDataModal.tsx**: Raw JSON data view/edit modal
 - **Notes System** (`src/components/Topbar/Notes/`):
-  - **NotesModal.tsx**: Rich text notes modal
-  - **QuillEditor.tsx**: Rich text editor component
-  - **NoteResizer.tsx**: Note pane resizing
-  - **ModalResizer.tsx**: Modal resizing functionality
-  - **TreePaneResizer.tsx**: Tree pane resize handler
-  - **NotesStyles.ts**: Notes styling definitions
-  - **NoteUtils.ts**: Notes utility functions
+  - **NotesModal.tsx**: Main notes modal container (90 lines, refactored)
+  - **QuillEditor.tsx**: Rich text editor with Quill.js integration
+  - **TreePaneResizer.tsx**: Tree pane width adjustment
+  - **ModalResizer.tsx**: Modal boundary resize handling
+  - **NotesStyles.ts**: Styled-components for notes UI
+  - **NoteUtils.ts**: Date formatting and tree traversal utilities
+  - **quill.css**: Custom Quill editor styling
+  - **Components** (`src/components/Topbar/Notes/components/`):
+    - **NotesModalWrapper.tsx**: Modal wrapper with drag functionality
+    - **NotesTree.tsx**: Tree view with CRUD operations
+    - **NotesEditor.tsx**: Editor container with toolbar management
+    - **NotesTitle.tsx**: Note title input with auto-save
+    - **DeleteConfirmDialog.tsx**: Confirmation dialog for deletion
+  - **Custom Hooks** (`src/components/Topbar/Notes/hooks/`):
+    - **useNotesTree.ts**: Tree operations and state management
+    - **useNotesModalPosition.ts**: Modal dragging and positioning
+  - **Utilities** (`src/components/Topbar/Notes/utils/`):
+    - **notesValidation.ts**: Modal state validation and sanitization
+    - **notesDataMigration.ts**: Legacy data migration for existing projects
 
 #### Context Menu System (`src/components/ContextMenu/`)
 - **ContextMenu.tsx**: Right-click context menu
@@ -132,12 +149,43 @@ This is an offline-first Gantt chart application built with React 18, TypeScript
 - Projects saved as ZIP files containing `project.json` and `notes.json`
 - Import/export handled in `src/utils/ExportImportHandler.ts`
 - Supports both ZIP and JSON formats
+- **Legacy Data Migration**: Automatic migration of notes data where `treeData` is empty but `noteData` exists
 
 ### Testing
 - Jest + React Testing Library setup
 - TDD methodology with comprehensive test coverage
 - Test files use `.test.ts` suffix
 - Setup in `setupTests.ts` and `jest.config.js`
+
+### Notes System Architecture
+The notes system follows a component-based architecture with clear separation of concerns:
+
+#### **Component Hierarchy**
+```
+NotesModal (90 lines)
+├── NotesModalWrapper (drag & positioning)
+├── NotesTree (tree operations)
+│   └── DeleteConfirmDialog
+├── TreePaneResizer
+└── NotesEditor
+    ├── NotesTitle
+    └── QuillEditor
+```
+
+#### **State Management Pattern**
+- **Redux Integration**: All state managed through `notesSlice.ts`
+- **Custom Hooks**: Business logic encapsulated in reusable hooks
+- **Component Isolation**: Each component manages only its specific concerns
+
+#### **Data Migration System**
+- **Backward Compatibility**: Automatic migration of legacy note data
+- **Smart Title Generation**: Extracts meaningful titles from note content
+- **Error Handling**: Graceful fallbacks for corrupted data
+
+#### **Styling Architecture**
+- **Styled Components**: Consistent theming with `NotesStyles.ts`
+- **Custom CSS**: Quill editor customization in `quill.css`
+- **Responsive Design**: Adaptive layouts for different screen sizes
 
 ### Internationalization
 - i18next configuration in `src/i18n/config.ts`
@@ -172,3 +220,6 @@ This is an offline-first Gantt chart application built with React 18, TypeScript
 - Undo/redo system maintains 30 states maximum
 - Holiday and weekend calculations affect dependency resolution
 - All data stored locally - no cloud dependencies
+- **Notes System**: Supports unlimited hierarchical notes with rich text editing
+- **Performance**: Optimized component rendering with React.memo and useCallback
+- **Data Integrity**: Automatic validation and migration for project data
