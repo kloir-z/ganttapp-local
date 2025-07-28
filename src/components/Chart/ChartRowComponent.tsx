@@ -24,13 +24,14 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
   const colors = useSelector((state: RootState) => state.color.colors);
+  const fallbackColor = useSelector((state: RootState) => state.color.fallbackColor);
   const plannedChartBarColor = useMemo(() => {
-    if (entry.color === '') { return '#76ff7051'; }
+    if (entry.color === '') { return fallbackColor; }
     const colorInfo = Object.values(colors).find(colorInfo =>
       colorInfo.alias.split(',').map(alias => alias.trim()).includes(entry.color)
     );
-    return colorInfo ? colorInfo.color : '#76ff7051';
-  }, [entry.color, colors]);
+    return colorInfo ? colorInfo.color : fallbackColor;
+  }, [entry.color, colors, fallbackColor]);
   const actualChartBarColor = useMemo(() => {
     const colorInfo = colors[999];
     return colorInfo ? colorInfo.color : '#0000003d';

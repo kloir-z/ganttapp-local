@@ -1,7 +1,7 @@
 import React, { ReactNode, memo } from 'react';
 
 interface SettingChildDivProps {
-  text: string;
+  text: ReactNode;
   children?: ReactNode;
 }
 

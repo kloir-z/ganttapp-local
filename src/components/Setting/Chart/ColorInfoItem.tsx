@@ -63,12 +63,12 @@ const ColorInfoItem: React.FC<ColorInfoItemProps> = memo(({
   }, [dispatch]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'row' }}>
+    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '3px' }}>
       <div
         style={{
           width: '55px',
-          height: '25px',
-          padding: '5px',
+          height: '20px',
+          padding: '3px',
           margin: '2px',
           background: 'white',
           borderRadius: '5px',
@@ -90,7 +90,7 @@ const ColorInfoItem: React.FC<ColorInfoItemProps> = memo(({
           onClick={() => handleColorClick(id)}
         />
         {displayColorPicker && (
-          <div style={{ position: 'absolute', top: '29px', left: '33px', zIndex: '9999' }}>
+          <div style={{ position: 'absolute', top: '24px', left: '33px', zIndex: '9999' }}>
             <div style={{ position: 'fixed', top: '0px', right: '0px', bottom: '0px', left: '0px' }} onClick={() => handleColorClose(id)} />
             <div onClick={(e) => e.stopPropagation()}>
               <ChromePicker
@@ -108,7 +108,29 @@ const ColorInfoItem: React.FC<ColorInfoItemProps> = memo(({
           type="text"
           value={localAlias}
           onChange={(e) => setLocalAlias(e.target.value)}
-          style={{ height: '20px', margin: '2px' }}
+          placeholder={t('Enter color alias...')}
+          style={{
+            height: '28px',
+            margin: '2px',
+            padding: '6px 12px',
+            border: '1px solid #e0e0e0',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontFamily: 'inherit',
+            background: '#ffffff',
+            transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+            outline: 'none',
+            minWidth: '200px',
+            boxSizing: 'border-box'
+          }}
+          onFocus={(e) => {
+            e.target.style.borderColor = '#1976d2';
+            e.target.style.boxShadow = '0 0 0 2px rgba(25, 118, 210, 0.2)';
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = '#e0e0e0';
+            e.target.style.boxShadow = 'none';
+          }}
         />
       )}
     </div>
