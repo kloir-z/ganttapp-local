@@ -394,6 +394,7 @@ const config = {
         "Reset to Default Colors": "Reset to Default Colors",
         "Enter color alias...": "",
         "Color label tooltip": "Enter a meaningful label for this color (e.g., Team A, High Priority, Department name)",
+        "Column name tooltip": "Customize the display name for each column in the table",
       },
     },
     ja: {
@@ -786,6 +787,7 @@ const config = {
         "Reset to Default Colors": "デフォルト色にリセット",
         "Enter color alias...": "",
         "Color label tooltip": "この色の意味を入力してください（例：担当者名、重要度、部署名など）",
+        "Column name tooltip": "テーブルの各列の表示名をカスタマイズできます",
       },
     },
   },

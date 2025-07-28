@@ -115,7 +115,6 @@ const ColorInfoItem: React.FC<ColorInfoItemProps> = memo(({
             padding: '6px 12px',
             border: '1px solid #e0e0e0',
             borderRadius: '6px',
-            fontSize: '14px',
             fontFamily: 'inherit',
             background: '#ffffff',
             transition: 'border-color 0.2s ease, box-shadow 0.2s ease',

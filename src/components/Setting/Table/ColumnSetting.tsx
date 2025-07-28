@@ -1,5 +1,6 @@
 import React, { memo, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import Tippy from '@tippyjs/react';
 import { RootState, setShowYear } from '../../../reduxStoreAndSlices/store';
 import { setColumns, toggleColumnVisibility } from '../../../reduxStoreAndSlices/store';
 import ColumnRow from './ColumnRow';
@@ -36,7 +37,29 @@ const ColumnSetting: React.FC = memo(() => {
 
   return (
     <>
-      <SettingChildDiv text={t('Column (Visiblity & Name)')}>
+      <SettingChildDiv text={
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>{t('Column (Visiblity & Name)')}</span>
+          <Tippy content={t('Column name tooltip')} placement="right">
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '16px',
+              height: '16px',
+              borderRadius: '50%',
+              backgroundColor: '#e3f2fd',
+              color: '#1976d2',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              cursor: 'help',
+              userSelect: 'none'
+            }}>
+              ?
+            </span>
+          </Tippy>
+        </div>
+      }>
         {filteredColumns.map(column => (
           <ColumnRow
             key={column.columnId}
