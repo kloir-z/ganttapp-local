@@ -63,24 +63,36 @@
 }
 
 /* サイズピッカーのオプション表示をカスタマイズ */
+.ql-snow .ql-picker.ql-size .ql-picker-item {
+  color: transparent !important;
+}
+
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="small"]::before {
   content: "S" !important;
+  color: black !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="large"]::before {
   content: "L" !important;
+  color: black !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="huge"]::before {
   content: "XL" !important;
+  color: black !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-size .ql-picker-item:not([data-value])::before {
   content: "N" !important;
+  color: black !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-size .ql-picker-item {
-  font-size: 0 !important;
+  font-size: 14px !important;
 }
 
 .ql-toolbar .ql-code-block {
@@ -179,24 +191,36 @@
 }
 
 /* ヘッダーピッカーのオプション表示をカスタマイズ */
+.ql-snow .ql-picker.ql-header .ql-picker-item {
+  color: transparent !important;
+}
+
 .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="1"]::before {
   content: "H1" !important;
+  color: black !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="2"]::before {
   content: "H2" !important;
+  color: black !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="3"]::before {
   content: "H3" !important;
+  color: black !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-header .ql-picker-item:not([data-value])::before {
   content: "N" !important;
+  color: black !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .ql-snow .ql-picker.ql-header .ql-picker-item {
-  font-size: 0 !important;
+  font-size: 14px !important;
 }
 
 .ql-editor h1 {

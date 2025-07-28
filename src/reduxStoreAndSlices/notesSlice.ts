@@ -145,6 +145,10 @@ const notesSlice = createSlice({
             } else {
               nodes[i].children = nodes[i].children || [];
               nodes[i].children?.unshift(newNode);
+              // 子ノードを追加する場合、親ノードを展開キーに追加
+              if (!sameLevel && !state.treeExpandedKeys.includes(selectedNodeKey)) {
+                state.treeExpandedKeys.push(selectedNodeKey);
+              }
             }
             return;
           }

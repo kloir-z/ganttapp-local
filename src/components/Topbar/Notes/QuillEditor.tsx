@@ -32,7 +32,7 @@ Quill.register(DividerBlot, true)
 const toolbarOptions = [
   [
     { header: [1, 2, 3, false] },
-    { size: [false, 'large', 'huge'] },
+    { size: ['small', false, 'large', 'huge'] },
     'bold', 'italic', 'underline', 'strike', 'blockquote', 'code', 'code-block',
     { indent: '-1' }, { indent: '+1' }, { list: 'bullet' }, { list: 'check' },
     'link',
