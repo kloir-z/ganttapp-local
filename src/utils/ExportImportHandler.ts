@@ -30,6 +30,10 @@ export const handleExport = async (
   language: string,
   scrollPosition: { scrollLeft: number; scrollTop: number },
   notesModalState?: NotesModalState,
+  treeExpandedKeys?: React.Key[],
+  treeScrollPosition?: number,
+  editorStates?: { [key: string]: any },
+  selectedNodeKey?: string,
 ) => {
   const settingsData = {
     colors,
@@ -50,6 +54,10 @@ export const handleExport = async (
     language,
     scrollPosition,
     ...(notesModalState && { notesModalState }),
+    ...(treeExpandedKeys && { treeExpandedKeys }),
+    ...(treeScrollPosition !== undefined && { treeScrollPosition }),
+    ...(editorStates && { editorStates }),
+    ...(selectedNodeKey && { selectedNodeKey }),
   };
   const zip = new JSZip();
   const jsonData = JSON.stringify(settingsData, null, 2);
@@ -131,7 +139,11 @@ export const handleImport = createAsyncThunk<void, Blob, { state: RootState, dis
       dispatch(setNotes({ 
         treeData: parsedData.treeData, 
         noteData: parsedData.noteData,
-        modalState: parsedData.notesModalState
+        modalState: parsedData.notesModalState,
+        treeExpandedKeys: parsedData.treeExpandedKeys,
+        treeScrollPosition: parsedData.treeScrollPosition,
+        editorStates: parsedData.editorStates,
+        selectedNodeKey: parsedData.selectedNodeKey
       }));
     }
     if (parsedData.language) {

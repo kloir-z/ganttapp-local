@@ -22,12 +22,21 @@ export interface NotesModalState {
   position: { x: number; y: number };
 }
 
+export interface EditorState {
+  cursorPosition?: number;
+  scrollPosition?: number;
+}
+
 interface NotesState {
   treeData: ExtendedTreeDataNode[];
   noteData: noteData;
   modalState: NotesModalState;
   isSavedChanges: boolean;
   zoomLevel: number;
+  treeExpandedKeys: React.Key[];
+  treeScrollPosition: number;
+  editorStates: { [key: string]: EditorState };
+  selectedNodeKey: string;
 }
 
 const initialState: NotesState = {
@@ -41,6 +50,10 @@ const initialState: NotesState = {
   },
   isSavedChanges: true,
   zoomLevel: 1,
+  treeExpandedKeys: [],
+  treeScrollPosition: 0,
+  editorStates: {},
+  selectedNodeKey: '',
 };
 
 const notesSlice = createSlice({
@@ -155,6 +168,7 @@ const notesSlice = createSlice({
           if (nodes[i].key === key) {
             const removeRelatedData = (node: ExtendedTreeDataNode) => {
               delete state.noteData[node.key.toString()];
+              delete state.editorStates[node.key.toString()];
               if (node.children) {
                 node.children.forEach(removeRelatedData);
               }
@@ -224,14 +238,38 @@ const notesSlice = createSlice({
       state.treeData = initialState.treeData;
       state.noteData = initialState.noteData;
       state.modalState = initialState.modalState;
+      state.treeExpandedKeys = initialState.treeExpandedKeys;
+      state.treeScrollPosition = initialState.treeScrollPosition;
+      state.editorStates = initialState.editorStates;
+      state.selectedNodeKey = initialState.selectedNodeKey;
       state.isSavedChanges = true;
     },
-    setNotes: (state, action: PayloadAction<{ treeData: ExtendedTreeDataNode[]; noteData: noteData; modalState?: NotesModalState }>) => {
-      const { treeData, noteData, modalState } = action.payload;
+    setNotes: (state, action: PayloadAction<{ 
+      treeData: ExtendedTreeDataNode[]; 
+      noteData: noteData; 
+      modalState?: NotesModalState;
+      treeExpandedKeys?: React.Key[];
+      treeScrollPosition?: number;
+      editorStates?: { [key: string]: EditorState };
+      selectedNodeKey?: string;
+    }>) => {
+      const { treeData, noteData, modalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey } = action.payload;
       state.treeData = treeData;
       state.noteData = noteData;
       if (modalState) {
         state.modalState = modalState;
+      }
+      if (treeExpandedKeys !== undefined) {
+        state.treeExpandedKeys = treeExpandedKeys;
+      }
+      if (treeScrollPosition !== undefined) {
+        state.treeScrollPosition = treeScrollPosition;
+      }
+      if (editorStates !== undefined) {
+        state.editorStates = editorStates;
+      }
+      if (selectedNodeKey !== undefined) {
+        state.selectedNodeKey = selectedNodeKey;
       }
     },
     setIsSavedChangesNotes(state, action: PayloadAction<boolean>) {
@@ -247,6 +285,28 @@ const notesSlice = createSlice({
     },
     updateZoomLevel: (state, action: PayloadAction<number>) => {
       state.zoomLevel = action.payload;
+      state.isSavedChanges = false;
+    },
+    updateTreeExpandedKeys: (state, action: PayloadAction<React.Key[]>) => {
+      state.treeExpandedKeys = action.payload;
+      state.isSavedChanges = false;
+    },
+    updateTreeScrollPosition: (state, action: PayloadAction<number>) => {
+      state.treeScrollPosition = action.payload;
+      state.isSavedChanges = false;
+    },
+    updateEditorState: (state, action: PayloadAction<{ key: string; editorState: EditorState }>) => {
+      const { key, editorState } = action.payload;
+      state.editorStates[key] = { ...state.editorStates[key], ...editorState };
+      state.isSavedChanges = false;
+    },
+    deleteEditorState: (state, action: PayloadAction<string>) => {
+      const key = action.payload;
+      delete state.editorStates[key];
+      state.isSavedChanges = false;
+    },
+    setSelectedNodeKey: (state, action: PayloadAction<string>) => {
+      state.selectedNodeKey = action.payload;
       state.isSavedChanges = false;
     },
   },
@@ -265,7 +325,12 @@ export const {
   setIsSavedChangesNotes,
   updateNotesModalState,
   setNotesModalState,
-  updateZoomLevel
+  updateZoomLevel,
+  updateTreeExpandedKeys,
+  updateTreeScrollPosition,
+  updateEditorState,
+  deleteEditorState,
+  setSelectedNodeKey
 } = notesSlice.actions;
 
 export default notesSlice.reducer;

@@ -4,7 +4,7 @@ import Toolbar from 'quill/modules/toolbar';
 import { BlockEmbed } from 'quill/blots/block';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../reduxStoreAndSlices/store';
-import { updateNoteData, updateZoomLevel } from '../../../reduxStoreAndSlices/notesSlice';
+import { updateNoteData, updateZoomLevel, updateEditorState, EditorState } from '../../../reduxStoreAndSlices/notesSlice';
 import { cdate } from 'cdate';
 import { StyledQuillContainer } from './NotesStyles';
 import { useTranslation } from 'react-i18next';
@@ -105,6 +105,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
   const dispatch = useDispatch();
   const noteData = useSelector((state: RootState) => state.notes.noteData);
   const zoomLevel = useSelector((state: RootState) => state.notes.zoomLevel);
+  const editorStates = useSelector((state: RootState) => state.notes.editorStates);
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Quill | null>(null);
@@ -201,10 +202,26 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     }, 10);
   }, [dispatch]);
 
+  const saveEditorState = useCallback(() => {
+    if (selectedNodeKey && editorRef.current) {
+      const selection = editorRef.current.getSelection();
+      const scrollContainer = editorContainerRef.current?.querySelector('.ql-editor') as HTMLElement;
+      const scrollPosition = scrollContainer?.scrollTop || 0;
+      
+      const editorState: EditorState = {
+        cursorPosition: selection?.index,
+        scrollPosition
+      };
+      
+      dispatch(updateEditorState({ key: selectedNodeKey, editorState }));
+    }
+  }, [selectedNodeKey, dispatch]);
+
   const handleContentChange = useCallback(() => {
     if (selectedNodeKey && editorRef.current) {
       const deltaContent = JSON.stringify(editorRef.current.getContents());
       dispatch(updateNoteData({ key: selectedNodeKey, content: deltaContent }));
+      saveEditorState();
     } else if (!selectedNodeKey && editorRef.current) {
       const deltaContent = editorRef.current.getContents();
       const isEmpty = deltaContent.ops?.length === 1 &&
@@ -218,7 +235,15 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       editorRef.current?.focus();
       editorRef.current?.setSelection(2000);
     }
-  }, [addNode, dispatch, selectedNodeKey]);
+  }, [addNode, dispatch, selectedNodeKey, saveEditorState]);
+
+  const handleSelectionChange = useCallback(() => {
+    saveEditorState();
+  }, [saveEditorState]);
+
+  const handleScrollChange = useCallback(() => {
+    saveEditorState();
+  }, [saveEditorState]);
 
   const addToolbarTooltips = useCallback(() => {
     setTimeout(() => {
@@ -276,6 +301,13 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     editorRef.current = editor;
     editor.enable(!readOnlyRef.current);
     editor.on('text-change', handleContentChange);
+    editor.on('selection-change', handleSelectionChange);
+
+    // Add scroll event listener
+    const editorElement = editorContainer.querySelector('.ql-editor');
+    if (editorElement) {
+      editorElement.addEventListener('scroll', handleScrollChange);
+    }
 
     const handleCopy = (e: Event) => {
       const clipboardEvent = e as ClipboardEvent;
@@ -311,7 +343,6 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       }
     };
 
-    const editorElement = editorContainer.querySelector('.ql-editor');
     if (editorElement) {
       editorElement.addEventListener('copy', handleCopy);
     }
@@ -424,10 +455,12 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     addToolbarTooltips();
     return () => {
       editor.off('text-change', handleContentChange);
+      editor.off('selection-change', handleSelectionChange);
 
       const editorElement = editorContainer.querySelector('.ql-editor');
       if (editorElement) {
         editorElement.removeEventListener('copy', handleCopy);
+        editorElement.removeEventListener('scroll', handleScrollChange);
       }
 
       if (editorContainer) {
@@ -438,7 +471,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       }
       editorRef.current = null;
     };
-  }, [handleContentChange, ref, addToolbarTooltips, getCurrentDate, getCurrentTime, getCurrentDateTime]);
+  }, [handleContentChange, handleSelectionChange, handleScrollChange, ref, addToolbarTooltips, getCurrentDate, getCurrentTime, getCurrentDateTime]);
 
   useEffect(() => {
     if (editorRef.current) {
@@ -462,6 +495,27 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
         editorRef.current.setContents([{ insert: '\n' }]);
       }
       editorRef.current.history.clear();
+
+      // Restore editor state
+      const editorState = editorStates[selectedNodeKey];
+      if (editorState) {
+        // Restore cursor position
+        if (editorState.cursorPosition !== undefined) {
+          setTimeout(() => {
+            editorRef.current?.setSelection(editorState.cursorPosition!, 0);
+          }, 10);
+        }
+        
+        // Restore scroll position
+        if (editorState.scrollPosition !== undefined) {
+          setTimeout(() => {
+            const scrollContainer = editorContainerRef.current?.querySelector('.ql-editor') as HTMLElement;
+            if (scrollContainer) {
+              scrollContainer.scrollTop = editorState.scrollPosition!;
+            }
+          }, 10);
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNodeKey]);

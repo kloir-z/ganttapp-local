@@ -78,6 +78,10 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
   const treeData = useSelector((state: RootState) => state.notes.treeData);
   const noteData = useSelector((state: RootState) => state.notes.noteData);
+  const treeExpandedKeys = useSelector((state: RootState) => state.notes.treeExpandedKeys);
+  const treeScrollPosition = useSelector((state: RootState) => state.notes.treeScrollPosition);
+  const editorStates = useSelector((state: RootState) => state.notes.editorStates);
+  const selectedNodeKey = useSelector((state: RootState) => state.notes.selectedNodeKey);
   const currentLanguage = useSelector((state: RootState) => state.baseSettings.language);
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
   const notesModalState = useSelector((state: RootState) => state.notes.modalState);
@@ -112,6 +116,10 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
         currentLanguage,
         scrollPosition,
         notesModalState,
+        treeExpandedKeys,
+        treeScrollPosition,
+        editorStates,
+        selectedNodeKey,
       );
 
       // Extract JSON from ZIP for display

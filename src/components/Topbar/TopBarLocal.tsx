@@ -64,6 +64,10 @@ const TopBarLocal: React.FC = memo(() => {
   const treeData = useSelector((state: RootState) => state.notes.treeData);
   const noteData = useSelector((state: RootState) => state.notes.noteData);
   const notesModalState = useSelector((state: RootState) => state.notes.modalState);
+  const treeExpandedKeys = useSelector((state: RootState) => state.notes.treeExpandedKeys);
+  const treeScrollPosition = useSelector((state: RootState) => state.notes.treeScrollPosition);
+  const editorStates = useSelector((state: RootState) => state.notes.editorStates);
+  const selectedNodeKey = useSelector((state: RootState) => state.notes.selectedNodeKey);
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
   const pastLength = useSelector((state: RootState) => state.wbsData.past.length);
   const futureLength = useSelector((state: RootState) => state.wbsData.future.length);
@@ -133,6 +137,10 @@ const TopBarLocal: React.FC = memo(() => {
         currentLanguage,
         scrollPosition,
         notesModalState,
+        treeExpandedKeys,
+        treeScrollPosition,
+        editorStates,
+        selectedNodeKey,
       );
 
       const blob = new Blob([zipData], { type: 'application/zip' });

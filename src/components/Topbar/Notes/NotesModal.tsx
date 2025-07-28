@@ -2,7 +2,7 @@
 import { Key, memo, useState, useCallback, useRef, useEffect } from "react";
 import { RootState } from "../../../reduxStoreAndSlices/store";
 import { useSelector, useDispatch } from 'react-redux';
-import { updateTreeNodeTitle, addTreeNode, removeTreeNode, updateTreeDataOnDrop, ExtendedTreeDataNode, updateNotesModalState, NotesModalState } from "../../../reduxStoreAndSlices/notesSlice";
+import { updateTreeNodeTitle, addTreeNode, removeTreeNode, updateTreeDataOnDrop, ExtendedTreeDataNode, updateNotesModalState, NotesModalState, updateTreeExpandedKeys, updateTreeScrollPosition, setSelectedNodeKey } from "../../../reduxStoreAndSlices/notesSlice";
 import { ModalCloseButton, ModalContainer, ModalDragBar } from "../../../styles/GanttStyles";
 import { MdClose } from "react-icons/md";
 import { setActiveModal } from "../../../reduxStoreAndSlices/uiFlagSlice";
@@ -143,6 +143,9 @@ const NotesModal: React.FC = memo(() => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const treeData = useSelector((state: RootState) => state.notes.treeData);
+  const treeExpandedKeys = useSelector((state: RootState) => state.notes.treeExpandedKeys);
+  const treeScrollPosition = useSelector((state: RootState) => state.notes.treeScrollPosition);
+  const selectedNodeKeyFromStore = useSelector((state: RootState) => state.notes.selectedNodeKey);
   
   // Get modal state from Redux
   const modalState = useSelector((state: RootState) => state.notes.modalState);
@@ -156,12 +159,13 @@ const NotesModal: React.FC = memo(() => {
   }, [modalState, dispatch]);
   
   const [selectedNodeTitle, setSelectedNodeTitle] = useState<string>('');
-  const [selectedNodeKey, setSelectedNodeKey] = useState<string>('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const selectedNodeKey = selectedNodeKeyFromStore;
   const selectedNode = findNodeByKey(treeData, selectedNodeKey);
   const [resizeAnimate, setResizeAnimate] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [toolbarHeight, setToolbarHeight] = useState(0);
+  const treeContainerRef = useRef<HTMLDivElement>(null);
   
   // Extract values from modal state
   const { treeWidth, noteWidth, noteHeight, position } = modalState;
@@ -221,14 +225,14 @@ const NotesModal: React.FC = memo(() => {
     const nodeTitle = typeof info.node.title === 'string' ? info.node.title : '';
     const nodeKey = info.node.key.toString();
     setSelectedNodeTitle(nodeTitle);
-    setSelectedNodeKey(nodeKey);
-  }, []);
+    dispatch(setSelectedNodeKey(nodeKey));
+  }, [dispatch]);
 
   const addNode = useCallback((sameLevel = false, title?: string, content?: string) => {
     const newKey = Math.random().toString(36).substring(2, 11);
     const newTitle = title || 'no title'
     dispatch(addTreeNode({ selectedNodeKey, sameLevel, newKey, newTitle, content }));
-    setSelectedNodeKey(newKey);
+    dispatch(setSelectedNodeKey(newKey));
     setSelectedNodeTitle(newTitle);
   }, [dispatch, selectedNodeKey]);
 
@@ -246,7 +250,7 @@ const NotesModal: React.FC = memo(() => {
       return;
     }
     dispatch(removeTreeNode(selectedNodeKey));
-    setSelectedNodeKey('');
+    dispatch(setSelectedNodeKey(''));
     setSelectedNodeTitle('');
     setDeleteDialogOpen(false);
   }, [dispatch, selectedNodeKey, t]);
@@ -263,15 +267,49 @@ const NotesModal: React.FC = memo(() => {
       dispatch(updateTreeNodeTitle({ key: selectedNodeKey, title: newTitle }));
     } else {
       addNode(false, newTitle, '');
-      // setIsNewNodeAddedByChange(true);
     }
   }, [addNode, dispatch, selectedNodeKey]);
+
+  const onExpand = useCallback((expandedKeys: Key[]) => {
+    dispatch(updateTreeExpandedKeys(expandedKeys));
+  }, [dispatch]);
+
+  const handleTreeScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const scrollTop = e.currentTarget.scrollTop;
+    dispatch(updateTreeScrollPosition(scrollTop));
+  }, [dispatch]);
+
+  // Restore tree scroll position
+  useEffect(() => {
+    if (treeContainerRef.current && treeScrollPosition > 0) {
+      const scrollContainer = treeContainerRef.current.querySelector('.ant-tree');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = treeScrollPosition;
+      }
+    }
+  }, [treeScrollPosition, activeModal]);
+
+  // Initialize selected node title when selectedNodeKey changes
+  useEffect(() => {
+    if (selectedNodeKey) {
+      const node = findNodeByKey(treeData, selectedNodeKey);
+      if (node && typeof node.title === 'string') {
+        setSelectedNodeTitle(node.title);
+      }
+    } else {
+      setSelectedNodeTitle('');
+    }
+  }, [selectedNodeKey, treeData]);
 
   return (
     (activeModal === 'notes') &&
     <NotesModalDiv position={position} onPositionChange={handlePositionChange}>
       <StyledContainer style={{ width: `${noteWidth}px`, height: `${noteHeight}px` }}>
-        <StyledTreeContainer style={{ width: `${treeWidth}px`, maxHeight: '80svh', transition: resizeAnimate ? 'width 0.2s ease-in-out' : 'none' }}>
+        <StyledTreeContainer 
+          ref={treeContainerRef}
+          style={{ width: `${treeWidth}px`, maxHeight: '80svh', transition: resizeAnimate ? 'width 0.2s ease-in-out' : 'none' }}
+          onScroll={handleTreeScroll}
+        >
           <div style={{ overflow: 'hidden', minWidth: '150px' }}>
             <Tooltip title={t('Add Sibling Node')}>
               <Button type="text" onClick={() => addNode(true)}>
@@ -316,8 +354,10 @@ const NotesModal: React.FC = memo(() => {
             blockNode
             onDrop={onDrop}
             onSelect={onSelect}
+            onExpand={onExpand}
             treeData={treeData}
             selectedKeys={[selectedNodeKey]}
+            expandedKeys={treeExpandedKeys}
           />
         </StyledTreeContainer>
         <TreePaneResizer 
