@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { RootState } from '../../../reduxStoreAndSlices/store';
 import { createSnapshot } from '../../../utils/HistoryUtils';
-import { startViewingPastWithBackup } from '../../../reduxStoreAndSlices/historyThunks';
+import { startViewingPastWithBackup, returnToPresentWithRestore } from '../../../reduxStoreAndSlices/historyThunks';
 import { selectSnapshots, selectCurrentSnapshotId, selectAllRequiredStateForSnapshot } from '../selectors/historySelectors';
 import { HistorySnapshot, deleteSnapshot } from '../../../reduxStoreAndSlices/historySlice';
 import { isCompressedData, getCompressionRatio } from '../../../utils/CompressionUtils';
@@ -93,6 +93,10 @@ export const useHistoryModal = () => {
       // Clear cache entry when snapshot is deleted
       snapshotSizeCache.delete(snapshotId);
     }
+  }, [dispatch, t]);
+
+  const handleReturnToPresent = useCallback(() => {
+    dispatch(returnToPresentWithRestore() as any);
   }, [dispatch]);
 
   // Optimized size calculation with caching
@@ -145,6 +149,7 @@ export const useHistoryModal = () => {
     handleCreateSnapshot,
     handleViewPast,
     handleDeleteSnapshot,
+    handleReturnToPresent,
     getSnapshotSize
   };
 };

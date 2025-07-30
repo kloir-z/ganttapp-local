@@ -1,6 +1,8 @@
 import React, { memo, useMemo } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../reduxStoreAndSlices/store';
 
 const HistoryItem = styled.div`
   padding: 12px;
@@ -53,18 +55,19 @@ const ButtonContainer = styled.div`
   margin-top: 8px;
 `;
 
-const RestoreButton = styled.button`
+const RestoreButton = styled.button<{ $isViewing?: boolean }>`
   padding: 4px 8px;
-  background: #17a2b8;
+  background: ${props => props.$isViewing ? '#ff9800' : '#17a2b8'};
   color: white;
   border: none;
   border-radius: 3px;
   font-size: 0.7rem;
   cursor: pointer;
   position: relative;
+  font-weight: ${props => props.$isViewing ? 'bold' : 'normal'};
   
   &:hover {
-    background: #138496;
+    background: ${props => props.$isViewing ? '#f57c00' : '#138496'};
   }
 `;
 
@@ -88,15 +91,19 @@ interface HistoryListItemProps {
   sizeInfo: { size: string };
   onViewPast: (snapshot: any) => void;
   onDelete: (snapshotId: string) => void;
+  onReturnToPresent: () => void;
 }
 
 const HistoryListItem: React.FC<HistoryListItemProps> = memo(({ 
   snapshot, 
   sizeInfo, 
   onViewPast,
-  onDelete
+  onDelete,
+  onReturnToPresent
 }) => {
   const { t } = useTranslation();
+  const viewingSnapshotId = useSelector((state: RootState) => state.history.viewingSnapshotId);
+  const isCurrentlyViewing = viewingSnapshotId === snapshot.id;
   // Memoize date formatting to prevent re-calculation on every render
   const formattedDate = useMemo(() => {
     return new Date(snapshot.timestamp).toLocaleString('ja-JP');
@@ -116,13 +123,18 @@ const HistoryListItem: React.FC<HistoryListItemProps> = memo(({
       </HistoryMetadata>
       <ButtonContainer>
         <RestoreButton
-          title={t('View this historical state (current work is preserved)')}
+          $isViewing={isCurrentlyViewing}
+          title={isCurrentlyViewing ? t('Return to Latest') : t('View this historical state (current work is preserved)')}
           onClick={(e) => {
             e.stopPropagation();
-            onViewPast(snapshot);
+            if (isCurrentlyViewing) {
+              onReturnToPresent();
+            } else {
+              onViewPast(snapshot);
+            }
           }}
         >
-          {t('View This State')}
+          {isCurrentlyViewing ? t('Return to Latest') : t('View This State')}
         </RestoreButton>
         <DeleteButton
           title={t('Delete this history entry permanently')}

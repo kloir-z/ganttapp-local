@@ -67,7 +67,8 @@ const HistoryModal: React.FC = memo(() => {
     isViewingPast,
     handleCreateSnapshot,
     handleViewPast,
-    handleDeleteSnapshot
+    handleDeleteSnapshot,
+    handleReturnToPresent
   } = useHistoryModal();
 
   return (
@@ -100,6 +101,7 @@ const HistoryModal: React.FC = memo(() => {
               sizeInfo={snapshot.sizeInfo}
               onViewPast={handleViewPast}
               onDelete={handleDeleteSnapshot}
+              onReturnToPresent={handleReturnToPresent}
             />
           ))
         )}
