@@ -7,6 +7,7 @@ import SettingsModalTable from '../Setting/Table/SettingsModalTable';
 import SettingsModalDaysOff from '../Setting/DaysOff/SettingsModalDaysOff';
 import NotesModal from '../Topbar/Notes/NotesModal';
 import WelcomeModal from '../Welcome/WelcomeModal';
+import HistoryModal from '../History/HistoryModal';
 
 const LocalComponents: React.FC = () => (
     <>
@@ -17,6 +18,7 @@ const LocalComponents: React.FC = () => (
         <SettingsModalDaysOff />
         <NotesModal />
         <WelcomeModal />
+        <HistoryModal />
     </>
 );
 

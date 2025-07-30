@@ -85,6 +85,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
   const currentLanguage = useSelector((state: RootState) => state.baseSettings.language);
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
   const notesModalState = useSelector((state: RootState) => state.notes.modalState);
+  const historySnapshots = useSelector((state: RootState) => state.history?.snapshots || []);
 
   const handleTabChange = useCallback((_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -120,6 +121,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
         treeScrollPosition,
         editorStates,
         selectedNodeKey,
+        historySnapshots,
       );
 
       // Extract JSON from ZIP for display
@@ -147,7 +149,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
   }, [
     colors, dateRange, columns, data, holidayInput, holidayColor,
     regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title,
-    showYear, dateFormat, treeData, noteData, currentLanguage, scrollPosition, notesModalState, dispatch, t
+    showYear, dateFormat, treeData, noteData, currentLanguage, scrollPosition, notesModalState, historySnapshots, dispatch, t
   ]);
 
   const handleImportJson = useCallback(async () => {
@@ -170,7 +172,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
 
       // Use the existing import handler
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await dispatch(handleImport(jsonBlob) as any);
+      await dispatch(handleImport({ file: jsonBlob }) as any);
 
       resetIsSavedChangesFlags();
 

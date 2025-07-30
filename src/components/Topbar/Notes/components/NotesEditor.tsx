@@ -1,5 +1,7 @@
 // NotesEditor.tsx
 import React, { memo, useRef, useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../../reduxStoreAndSlices/store';
 import QuillEditor from '../QuillEditor';
 import NotesTitle from './NotesTitle';
 import { useNotesTree } from '../hooks/useNotesTree';
@@ -10,6 +12,9 @@ interface NotesEditorProps {
   treeWidth: number;
   resizeAnimate: boolean;
   activeModal: string | null;
+  selectedNodeKey?: string;
+  noteData?: any;
+  isViewingPast?: boolean;
 }
 
 const NotesEditor: React.FC<NotesEditorProps> = memo(({ 
@@ -17,11 +22,18 @@ const NotesEditor: React.FC<NotesEditorProps> = memo(({
   noteHeight, 
   treeWidth, 
   resizeAnimate,
-  activeModal
+  activeModal,
+  selectedNodeKey: propsSelectedNodeKey,
+  noteData: propsNoteData,
+  isViewingPast: propsIsViewingPast
 }) => {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [toolbarHeight, setToolbarHeight] = useState(0);
-  const { selectedNodeKey, addNode } = useNotesTree();
+  const { selectedNodeKey: hookSelectedNodeKey, addNode } = useNotesTree();
+  
+  // Use props if provided (for historical data), otherwise use hook data
+  const selectedNodeKey = propsSelectedNodeKey ?? hookSelectedNodeKey;
+  const isViewingPast = propsIsViewingPast ?? useSelector((state: RootState) => state.history?.isViewingPast || false);
 
   useEffect(() => {
     if (toolbarRef.current) {
@@ -45,7 +57,7 @@ const NotesEditor: React.FC<NotesEditorProps> = memo(({
 
   return (
     <div>
-      <NotesTitle selectedNodeKey={selectedNodeKey} addNode={addNode} />
+      <NotesTitle selectedNodeKey={selectedNodeKey} addNode={addNode} isViewingPast={isViewingPast} />
       <div 
         ref={toolbarRef} 
         style={{ 
@@ -55,9 +67,10 @@ const NotesEditor: React.FC<NotesEditorProps> = memo(({
         }}
       >
         <QuillEditor
-          readOnly={false}
+          readOnly={isViewingPast}
           selectedNodeKey={selectedNodeKey}
           addNode={addNode}
+          noteData={propsNoteData}
         />
       </div>
     </div>

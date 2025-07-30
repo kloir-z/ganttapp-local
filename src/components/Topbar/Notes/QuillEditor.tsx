@@ -99,11 +99,13 @@ interface QuillEditorProps {
   readOnly: boolean;
   selectedNodeKey: string;
   addNode: (sameLevel?: boolean, title?: string, content?: string) => void;
+  noteData?: any;
 }
 
-const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNodeKey, addNode }, ref) => {
+const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNodeKey, addNode, noteData: propsNoteData }, ref) => {
   const dispatch = useDispatch();
-  const noteData = useSelector((state: RootState) => state.notes.noteData);
+  const currentNoteData = useSelector((state: RootState) => state.notes.noteData);
+  const noteData = propsNoteData ?? currentNoteData;
   const zoomLevel = useSelector((state: RootState) => state.notes.zoomLevel);
   const editorStates = useSelector((state: RootState) => state.notes.editorStates);
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
@@ -286,9 +288,10 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     if (!editorContainer) return;
     const editor = new Quill(editorContainer, {
       theme: 'snow',
+      readOnly: readOnly,
       modules: {
-        toolbar: toolbarOptions,
-        keyboard: {
+        toolbar: readOnly ? false : toolbarOptions,
+        keyboard: readOnly ? {} : {
           bindings: keyboardBindings
         }
       },
@@ -356,7 +359,8 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
           editor.setSelection(range.index + 2);
         }
       });
-    } else {
+    } else if (!readOnly) {
+      // Only log error when not in readOnly mode (toolbar is disabled in readOnly mode)
       console.error('Toolbar module is not available');
     }
     const keyboard = editor.getModule('keyboard') as QuillKeyboardModule;
@@ -471,7 +475,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       }
       editorRef.current = null;
     };
-  }, [handleContentChange, handleSelectionChange, handleScrollChange, ref, addToolbarTooltips, getCurrentDate, getCurrentTime, getCurrentDateTime]);
+  }, [readOnly, handleContentChange, handleSelectionChange, handleScrollChange, ref, addToolbarTooltips, getCurrentDate, getCurrentTime, getCurrentDateTime]);
 
   useEffect(() => {
     if (editorRef.current) {

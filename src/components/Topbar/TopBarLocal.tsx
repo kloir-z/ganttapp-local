@@ -21,6 +21,7 @@ import useResetIsSavedChangesFlags from '../../hooks/useResetIsSavedChangesFlags
 import useResetReduxStates from '../../hooks/useResetReduxStates';
 import { useNavigate } from 'react-router-dom';
 import { WelcomeUtils } from '../../utils/WelcomeUtils';
+import { returnToPresentWithRestore } from '../../reduxStoreAndSlices/historyThunks';
 
 const MenuButton = styled.button`
   border: none;
@@ -29,8 +30,26 @@ const MenuButton = styled.button`
   padding: 0px 15px;
   background-color: transparent;
   transition: background-color 0.3s ease;
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: #d6d6d6;
+  }
+  &:disabled {
+    color: #999;
+    cursor: not-allowed;
+  }
+`;
+
+const ReturnButton = styled.button`
+  border: none;
+  border-radius: 3px;
+  height: 100%;
+  padding: 0px 15px;
+  background-color: #ff9800;
+  color: white;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+  &:hover {
+    background-color: #f57c00;
   }
 `;
 
@@ -59,7 +78,11 @@ const TopBarLocal: React.FC = memo(() => {
   const showYear = useSelector((state: RootState) => state.wbsData.showYear);
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
   const data = useSelector((state: RootState) => state.wbsData.data);
-  const title = useSelector((state: RootState) => state.baseSettings.title);
+  // Historical data for preview functionality
+  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
+  const previewData = useSelector((state: RootState) => state.history?.previewData);
+  const currentTitle = useSelector((state: RootState) => state.baseSettings.title);
+  const title = isViewingPast && previewData?.title ? previewData.title : currentTitle;
   const columns = useSelector((state: RootState) => state.wbsData.columns);
   const treeData = useSelector((state: RootState) => state.notes.treeData);
   const noteData = useSelector((state: RootState) => state.notes.noteData);
@@ -69,6 +92,7 @@ const TopBarLocal: React.FC = memo(() => {
   const editorStates = useSelector((state: RootState) => state.notes.editorStates);
   const selectedNodeKey = useSelector((state: RootState) => state.notes.selectedNodeKey);
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
+  const historySnapshots = useSelector((state: RootState) => state.history?.snapshots || []);
   const pastLength = useSelector((state: RootState) => state.wbsData.past.length);
   const futureLength = useSelector((state: RootState) => state.wbsData.future.length);
 
@@ -141,6 +165,7 @@ const TopBarLocal: React.FC = memo(() => {
         treeScrollPosition,
         editorStates,
         selectedNodeKey,
+        historySnapshots,
       );
 
       const blob = new Blob([zipData], { type: 'application/zip' });
@@ -162,7 +187,7 @@ const TopBarLocal: React.FC = memo(() => {
         : t('Download failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
     }
-  }, [colors, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title, showYear, dateFormat, treeData, noteData, currentLanguage, notesModalState, resetIsSavedChangesFlags, handleClose, dispatch, t]);
+  }, [colors, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title, showYear, dateFormat, treeData, noteData, currentLanguage, notesModalState, historySnapshots, resetIsSavedChangesFlags, handleClose, dispatch, t]);
 
   const handleSaveAsSubmit = useCallback(async () => {
     if (!newTitle) return;
@@ -182,7 +207,7 @@ const TopBarLocal: React.FC = memo(() => {
           const fileBlob = new Blob([file], { type: file.type });
           await resetReduxStates();
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await dispatch(handleImport(fileBlob) as any);
+          await dispatch(handleImport({ file: fileBlob }) as any);
           dispatch(removePastState(1));
           resetIsSavedChangesFlags();
           dispatch(setMessageInfo({
@@ -292,6 +317,14 @@ const TopBarLocal: React.FC = memo(() => {
     navigate('/');
   }, [navigate]);
 
+  const handleReturnToPresent = useCallback(() => {
+    dispatch(returnToPresentWithRestore() as any);
+    dispatch(setMessageInfo({ 
+      message: t('Returned to the latest state'), 
+      severity: 'success' 
+    }));
+  }, [dispatch]);
+
   const userMenuOptions = useMemo(() => {
     const options = [
       {
@@ -317,39 +350,53 @@ const TopBarLocal: React.FC = memo(() => {
   return (
     <div className="Topbar" style={{ display: 'flex', height: '100%', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
       <div className="TopMenus" style={{ height: '100%', marginLeft: '2px', flex: '0 0 auto' }}>
-        <MenuButton ref={fileButtonRef}>
+        <MenuButton ref={fileButtonRef} disabled={isViewingPast}>
           {t('File')}
         </MenuButton>
-        <TopMenu
-          menuType='file'
-          targetRef={fileButtonRef}
-          items={fileMenuOptions}
-          visibleMenu={visibleMenu}
-          setVisibleMenu={setVisibleMenu}
-        />
-        <MenuButton ref={editButtonRef}>
+        {!isViewingPast && (
+          <TopMenu
+            menuType='file'
+            targetRef={fileButtonRef}
+            items={fileMenuOptions}
+            visibleMenu={visibleMenu}
+            setVisibleMenu={setVisibleMenu}
+          />
+        )}
+        <MenuButton ref={editButtonRef} disabled={isViewingPast}>
           {t('Edit')}
         </MenuButton>
-        <TopMenu
-          menuType='edit'
-          targetRef={editButtonRef}
-          items={editMenuOptions}
-          visibleMenu={visibleMenu}
-          setVisibleMenu={setVisibleMenu}
-        />
-        <MenuButton ref={settingButtonRef}>
+        {!isViewingPast && (
+          <TopMenu
+            menuType='edit'
+            targetRef={editButtonRef}
+            items={editMenuOptions}
+            visibleMenu={visibleMenu}
+            setVisibleMenu={setVisibleMenu}
+          />
+        )}
+        <MenuButton ref={settingButtonRef} disabled={isViewingPast}>
           {t('Setting')}
         </MenuButton>
-        <TopMenu
-          menuType='setting'
-          targetRef={settingButtonRef}
-          items={settingMenuOptions}
-          visibleMenu={visibleMenu}
-          setVisibleMenu={setVisibleMenu}
-        />
+        {!isViewingPast && (
+          <TopMenu
+            menuType='setting'
+            targetRef={settingButtonRef}
+            items={settingMenuOptions}
+            visibleMenu={visibleMenu}
+            setVisibleMenu={setVisibleMenu}
+          />
+        )}
         <MenuButton onClick={handleNotesClick}>
           {t('Notes')}
         </MenuButton>
+        <MenuButton onClick={() => dispatch(setActiveModal('history'))}>
+          {t('History')}
+        </MenuButton>
+        {isViewingPast && (
+          <ReturnButton onClick={handleReturnToPresent}>
+            {t('Return to Latest')}
+          </ReturnButton>
+        )}
         <Dialog open={saveAsDialogOpen} onClose={handleClose} maxWidth='lg'>
           <DialogContent>
             <TextField

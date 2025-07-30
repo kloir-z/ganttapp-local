@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { resetBaseSettings, setCurrentFileId, setHolidayInput } from '../reduxStoreAndSlices/baseSettingsSlice';
 import { resetColor } from '../reduxStoreAndSlices/colorSlice';
 import { resetNotes } from '../reduxStoreAndSlices/notesSlice';
+import { clearHistory } from '../reduxStoreAndSlices/historySlice';
 import { resetStore, setColumns, setDateFormat, setHolidays } from '../reduxStoreAndSlices/store';
 import { t } from 'i18next';
 import { initialColumns } from '../reduxStoreAndSlices/initialColumns';
@@ -27,6 +28,7 @@ const useResetReduxStates = (): (options?: ResetOptions) => Promise<void> => {
         dispatch(resetNotes());
         dispatch(resetBaseSettings());
         dispatch(resetColor());
+        dispatch(clearHistory());
         dispatch(setCurrentFileId(''));
         dispatch(setDateFormat(dateFormat));
 

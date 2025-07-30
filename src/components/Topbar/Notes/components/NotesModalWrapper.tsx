@@ -9,13 +9,15 @@ import { useNotesModalPosition } from '../hooks/useNotesModalPosition';
 interface NotesModalWrapperProps {
   children: React.ReactNode;
   position: { x: number; y: number };
+  isViewingPast?: boolean;
+  onPositionChange?: (position: { x: number; y: number }) => void;
 }
 
-const NotesModalWrapper: React.FC<NotesModalWrapperProps> = memo(({ children, position }) => {
+const NotesModalWrapper: React.FC<NotesModalWrapperProps> = memo(({ children, position, onPositionChange }) => {
   const dispatch = useDispatch();
   const [fadeStatus, setFadeStatus] = useState<'in' | 'out'>('in');
   
-  const { startDrag } = useNotesModalPosition({ position });
+  const { startDrag } = useNotesModalPosition({ position, onPositionChange });
 
   const handleClose = () => {
     setFadeStatus('out');

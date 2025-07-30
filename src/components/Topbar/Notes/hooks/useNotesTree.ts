@@ -46,6 +46,7 @@ export const useNotesTree = () => {
     nativeEvent: MouseEvent;
   }) => {
     const nodeKey = info.node.key.toString();
+    // Always allow node selection, even during history viewing
     dispatch(setSelectedNodeKey(nodeKey));
   }, [dispatch]);
 
@@ -79,6 +80,7 @@ export const useNotesTree = () => {
   }, []);
 
   const onExpand = useCallback((expandedKeys: Key[]) => {
+    // Always allow tree expansion/collapse, even during history viewing
     dispatch(updateTreeExpandedKeys(expandedKeys));
   }, [dispatch]);
 

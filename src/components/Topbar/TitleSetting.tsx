@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import styled from 'styled-components';
-import { useSelector, useDispatch } from 'react-redux';
-import { clearMessageInfo, RootState, setMessageInfo } from '../../reduxStoreAndSlices/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { clearMessageInfo, setMessageInfo, RootState } from '../../reduxStoreAndSlices/store';
 import { setTitle } from '../../reduxStoreAndSlices/baseSettingsSlice';
 import { useTranslation } from 'react-i18next';
 
@@ -50,7 +50,12 @@ const StyledInput = styled.input`
 const TitleSetting: React.FC = memo(() => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
-  const globalTitle = useSelector((state: RootState) => state.baseSettings.title);
+  
+  // Historical data for preview functionality
+  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
+  const previewData = useSelector((state: RootState) => state.history?.previewData);
+  const currentTitle = useSelector((state: RootState) => state.baseSettings.title);
+  const globalTitle = isViewingPast && previewData?.title ? previewData.title : currentTitle;
   const [title, setTitleLocal] = useState(globalTitle);
   const [isEditing, setIsEditing] = useState(false);
   const dummyRef = useRef<HTMLDivElement>(null);
@@ -114,10 +119,12 @@ const TitleSetting: React.FC = memo(() => {
         type="text"
         placeholder={placeholder}
         value={title}
-        onChange={handleChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
+        onChange={isViewingPast ? undefined : handleChange}
+        onFocus={isViewingPast ? undefined : handleFocus}
+        onBlur={isViewingPast ? undefined : handleBlur}
         onDoubleClick={handleDoubleClick}
+        disabled={isViewingPast}
+        readOnly={isViewingPast}
       />
     </TitleWrapper>
   );

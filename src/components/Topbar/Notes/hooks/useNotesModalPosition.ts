@@ -1,20 +1,36 @@
 // useNotesModalPosition.ts
 import { useState, useCallback, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { updateNotesModalState } from '../../../../reduxStoreAndSlices/notesSlice';
+import { updateTempModalState } from '../../../../reduxStoreAndSlices/historySlice';
+import { RootState } from '../../../../reduxStoreAndSlices/store';
 
 interface UseNotesModalPositionProps {
   position: { x: number; y: number };
+  onPositionChange?: (position: { x: number; y: number }) => void;
 }
 
-export const useNotesModalPosition = ({ position }: UseNotesModalPositionProps) => {
+export const useNotesModalPosition = ({ position, onPositionChange }: UseNotesModalPositionProps) => {
   const dispatch = useDispatch();
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number, y: number }>({ x: 0, y: 0 });
+  
+  // Check if we're in history viewing mode
+  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
 
   const handlePositionChange = useCallback((newPosition: { x: number; y: number }) => {
-    dispatch(updateNotesModalState({ position: newPosition }));
-  }, [dispatch]);
+    if (onPositionChange) {
+      // Use external position change handler if provided
+      onPositionChange(newPosition);
+    } else {
+      // Fallback to internal logic
+      if (isViewingPast) {
+        dispatch(updateTempModalState({ position: newPosition }));
+      } else {
+        dispatch(updateNotesModalState({ position: newPosition }));
+      }
+    }
+  }, [dispatch, isViewingPast, onPositionChange]);
 
   const startDrag = useCallback((e: React.MouseEvent) => {
     setIsDragging(true);

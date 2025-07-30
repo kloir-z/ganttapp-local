@@ -8,6 +8,7 @@ import JSZip from 'jszip';
 import { parseHolidaysFromInput } from '../components/Setting/utils/settingHelpers';
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { ExtendedTreeDataNode, noteData, setIsSavedChangesNotes, setNotes, NotesModalState } from "../reduxStoreAndSlices/notesSlice";
+import { importHistory, clearHistory } from "../reduxStoreAndSlices/historySlice";
 import i18n from "i18next";
 
 export const handleExport = async (
@@ -34,6 +35,7 @@ export const handleExport = async (
   treeScrollPosition?: number,
   editorStates?: { [key: string]: any },
   selectedNodeKey?: string,
+  historySnapshots?: any[],
 ) => {
   const settingsData = {
     colors,
@@ -58,6 +60,7 @@ export const handleExport = async (
     ...(treeScrollPosition !== undefined && { treeScrollPosition }),
     ...(editorStates && { editorStates }),
     ...(selectedNodeKey && { selectedNodeKey }),
+    ...(historySnapshots && { historySnapshots }),
   };
   const zip = new JSZip();
   const jsonData = JSON.stringify(settingsData, null, 2);
@@ -66,9 +69,9 @@ export const handleExport = async (
   return zipBlob;
 };
 
-export const handleImport = createAsyncThunk<void, Blob, { state: RootState, dispatch: AppDispatch }>(
+export const handleImport = createAsyncThunk<void, { file: Blob; skipHistoryImport?: boolean }, { state: RootState, dispatch: AppDispatch }>(
   'project/import',
-  async (file: Blob, { dispatch }) => {
+  async ({ file, skipHistoryImport = false }, { dispatch }) => {
     if (!file) throw new Error("File is not provided");
     
     let parsedData: any;
@@ -164,6 +167,17 @@ export const handleImport = createAsyncThunk<void, Blob, { state: RootState, dis
     } else {
       dispatch(setScrollPosition({ scrollLeft: 0, scrollTop: 0 }));
     }
+    
+    // Import history snapshots if they exist and not skipping history import
+    if (!skipHistoryImport) {
+      if (parsedData.historySnapshots && Array.isArray(parsedData.historySnapshots)) {
+        dispatch(importHistory(parsedData.historySnapshots));
+      } else {
+        // Clear history if no history data exists in imported file
+        dispatch(clearHistory());
+      }
+    }
+    
     dispatch(setIsSavedChangesStore(true));
     dispatch(setIsSavedChangesColor(true));
     dispatch(setIsSavedChangesNotes(true));

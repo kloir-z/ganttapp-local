@@ -22,14 +22,29 @@ const WBSInfo: React.FC = memo(() => {
   const dispatch = useDispatch();
   const [allSelectedColumnsVisible, areAllSelectedColumnsVisible] = useState(false);
   const insertCopiedRow = useInsertCopiedRow();
-  const data = useSelector((state: RootState) => state.wbsData.data);
+  
+  // Historical data for preview functionality
+  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
+  const previewData = useSelector((state: RootState) => state.history?.previewData);
+  
+  // Always get current data
+  const currentData = useSelector((state: RootState) => state.wbsData.data);
+  const currentColumns = useSelector((state: RootState) => state.wbsData.columns);
+  const currentShowYear = useSelector((state: RootState) => state.wbsData.showYear);
+  const currentDateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
+  const currentWbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
+  
+  // Get data based on viewing mode
+  const data = isViewingPast && previewData?.data ? previewData.data : currentData;
+  const columns = isViewingPast && previewData?.columns ? previewData.columns : currentColumns;
+  const showYear = isViewingPast && previewData?.showYear !== undefined ? previewData.showYear : currentShowYear;
+  const dateFormat = isViewingPast && previewData?.dateFormat ? (previewData.dateFormat as any) : currentDateFormat;
+  const wbsWidth = isViewingPast && previewData?.wbsWidth ? previewData.wbsWidth : currentWbsWidth;
+  
+  // These still come from current state as they don't affect data display
   const holidays = useSelector((state: RootState) => state.wbsData.holidays);
-  const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
   const copiedRows = useSelector((state: RootState) => state.copiedRows.rows);
-  const showYear = useSelector((state: RootState) => state.wbsData.showYear);
-  const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
-  const columns = useSelector((state: RootState) => state.wbsData.columns);
   const [selectedRanges, setSelectedRanges] = useState<{ selectedRowIds: string[], selectedColumnIds: string[] }>({
     selectedRowIds: [],
     selectedColumnIds: []
@@ -229,15 +244,15 @@ const WBSInfo: React.FC = memo(() => {
       <ReactGrid
         rows={rows}
         columns={visibleColumns}
-        onCellsChanged={(changes) => handleGridChanges(dispatch, data, changes, columns, holidays, regularDaysOff)}
-        onColumnResized={onColumnResize}
+        onCellsChanged={isViewingPast ? undefined : (changes) => handleGridChanges(dispatch, data, changes, columns, holidays, regularDaysOff)}
+        onColumnResized={isViewingPast ? undefined : onColumnResize}
         stickyTopRows={1}
         stickyLeftColumns={1}
         enableRangeSelection
         enableColumnSelection
         enableRowSelection
-        onRowsReordered={handleRowsReorder}
-        onColumnsReordered={handleColumnsReorder}
+        onRowsReordered={isViewingPast ? undefined : handleRowsReorder}
+        onColumnsReordered={isViewingPast ? undefined : handleColumnsReorder}
         onContextMenu={handleContextMenu}
         onSelectionChanged={handleSelectionChanged}
         canReorderRows={handleCanReorderRows}
