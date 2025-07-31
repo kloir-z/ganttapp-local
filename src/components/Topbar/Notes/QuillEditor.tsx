@@ -147,7 +147,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     const resetBtn = document.querySelector('.editor-zoom-reset') as HTMLButtonElement;
     
     if (zoomInBtn) zoomInBtn.disabled = zoomLevel >= 3.0;
-    if (zoomOutBtn) zoomOutBtn.disabled = zoomLevel <= 0.3;
+    if (zoomOutBtn) zoomOutBtn.disabled = zoomLevel <= 0.5;
     if (resetBtn) {
       resetBtn.disabled = zoomLevel === 1;
       resetBtn.innerHTML = `<span style="font-size: 11px; font-weight: 500;">${Math.round(zoomLevel * 100)}%</span>`;
@@ -159,7 +159,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     const scrollContainer = editorContainerRef.current?.querySelector('.ql-editor') as HTMLElement;
     const scrollTop = scrollContainer?.scrollTop || 0;
 
-    const newZoomLevel = Math.min(zoomLevel + 0.1, 3.0);
+    const newZoomLevel = Math.min(zoomLevel + 0.25, 3.0);
     dispatch(updateZoomLevel(newZoomLevel));
 
     setTimeout(() => {
@@ -177,7 +177,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     const scrollContainer = editorContainerRef.current?.querySelector('.ql-editor') as HTMLElement;
     const scrollTop = scrollContainer?.scrollTop || 0;
 
-    const newZoomLevel = Math.max(zoomLevel - 0.1, 0.3);
+    const newZoomLevel = Math.max(zoomLevel - 0.25, 0.5);
     dispatch(updateZoomLevel(newZoomLevel));
 
     setTimeout(() => {
@@ -383,39 +383,40 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       });
     }
 
-    // エディター右上に拡大縮小コントロールを追加
+    // エディター内部の右下に拡大縮小コントロールを追加
     const createZoomControls = () => {
       const zoomContainer = document.createElement('div');
       zoomContainer.className = 'editor-zoom-controls';
       zoomContainer.style.cssText = `
         position: absolute;
-        top: 8px;
+        bottom: 12px;
         right: 12px;
         display: flex;
         align-items: center;
-        background: rgba(255, 255, 255, 0.95);
+        background: rgba(255, 255, 255, 0.9);
         border: 1px solid #ddd;
         border-radius: 6px;
         padding: 4px;
         gap: 2px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        z-index: 10;
-        opacity: 0.7;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        z-index: 100;
+        opacity: 0.6;
         transition: opacity 0.2s ease;
+        pointer-events: auto;
       `;
       
       zoomContainer.addEventListener('mouseenter', () => {
         zoomContainer.style.opacity = '1';
       });
       zoomContainer.addEventListener('mouseleave', () => {
-        zoomContainer.style.opacity = '0.7';
+        zoomContainer.style.opacity = '0.6';
       });
       
       // Zoom Out ボタン
       const zoomOutBtn = document.createElement('button');
       zoomOutBtn.type = 'button';
       zoomOutBtn.className = 'editor-zoom-out';
-      zoomOutBtn.title = t('Zoom Out') + ' (30%-300%)';
+      zoomOutBtn.title = t('Zoom Out') + ' (50%-300%)';
       zoomOutBtn.innerHTML = '<span style="font-size: 14px;">−</span>';
       zoomOutBtn.style.cssText = `
         padding: 4px 6px;
@@ -459,7 +460,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       const zoomInBtn = document.createElement('button');
       zoomInBtn.type = 'button';
       zoomInBtn.className = 'editor-zoom-in';
-      zoomInBtn.title = t('Zoom In') + ' (30%-300%)';
+      zoomInBtn.title = t('Zoom In') + ' (50%-300%)';
       zoomInBtn.innerHTML = '<span style="font-size: 14px;">+</span>';
       zoomInBtn.style.cssText = `
         padding: 4px 6px;
@@ -485,7 +486,8 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     };
     
     const zoomControls = createZoomControls();
-    editorContainer.parentElement?.appendChild(zoomControls);
+    // エディターコンテナー内に直接追加
+    editorContainer.appendChild(zoomControls);
 
     addToolbarTooltips();
     return () => {
@@ -505,9 +507,9 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
         }
         
         // Zoom controlsを削除
-        const zoomControls = document.querySelector('.editor-zoom-controls');
-        if (zoomControls && zoomControls.parentNode) {
-          zoomControls.parentNode.removeChild(zoomControls);
+        const zoomControls = editorContainer.querySelector('.editor-zoom-controls');
+        if (zoomControls) {
+          editorContainer.removeChild(zoomControls);
         }
       }
       editorRef.current = null;
@@ -566,11 +568,14 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
   }, [zoomLevel, updateZoomButtonStates]);
 
   return (
-    <div style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', height: '100%' }}>
       <style>
         {`
           .ql-editor {
             font-size: ${zoomLevel}rem !important;
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 60px !important;
           }
           .ql-editor h1 {
             font-size: ${zoomLevel * 1.5}rem !important;
@@ -580,6 +585,17 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
           }
           .ql-editor h3 {
             font-size: ${zoomLevel * 0.9}rem !important;
+          }
+          
+          .ql-toolbar {
+            border-bottom: 1px solid #ccc;
+            flex-shrink: 0;
+          }
+          
+          .ql-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
           }
           
           /* チェックボックスのスタイル改善 */
@@ -663,9 +679,10 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       <StyledQuillContainer
         ref={editorContainerRef}
         style={{
-          overflow: 'auto',
           height: '100%',
-          position: 'relative'
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column'
         }}
       />
     </div>
