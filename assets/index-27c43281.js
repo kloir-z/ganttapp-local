@@ -895,7 +895,7 @@ ${oS(this.code(t,n))}
           .ql-editor li[data-list="unchecked"] {
             position: relative;
             padding-left: 2em;
-            line-height: 1.6;
+            line-height: 1.5;
             margin-top: 0.2em;
             margin-bottom: 0.2em;
           }
