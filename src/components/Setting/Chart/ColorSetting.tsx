@@ -7,7 +7,7 @@ import SettingChildDiv from "../SettingChildDiv";
 import ColorInfoItem from "./ColorInfoItem";
 import { useTranslation } from "react-i18next";
 import { RootState } from "../../../reduxStoreAndSlices/store";
-import { resetToDefaultColors, updateFallbackColor } from "../../../reduxStoreAndSlices/colorSlice";
+import { resetToDefaultColors, updateFallbackColor, ColorInfo } from "../../../reduxStoreAndSlices/colorSlice";
 
 const ColorSetting: React.FC = memo(() => {
   const { t } = useTranslation();
@@ -17,7 +17,7 @@ const ColorSetting: React.FC = memo(() => {
   const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
   const previewData = useSelector((state: RootState) => state.history?.previewData);
   
-  const colors = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
+  const colors: { [id: number]: ColorInfo } = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
   const fallbackColor = isViewingPast && previewData?.fallbackColor ? previewData.fallbackColor : currentFallbackColor;
 
 

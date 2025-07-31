@@ -8,6 +8,7 @@ import { GanttRow } from '../../styles/GanttStyles';
 import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
+import { ColorInfo } from '../../reduxStoreAndSlices/colorSlice';
 
 interface ChartRowProps {
   entry: ChartRow;
@@ -26,7 +27,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   const currentColors = useSelector((state: RootState) => state.color.colors);
   const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
   const previewData = useSelector((state: RootState) => state.history?.previewData);
-  const colors = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
+  const colors: { [id: number]: ColorInfo } = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
   const currentFallbackColor = useSelector((state: RootState) => state.color.fallbackColor);
   const fallbackColor = isViewingPast && previewData?.fallbackColor ? previewData.fallbackColor : currentFallbackColor;
 

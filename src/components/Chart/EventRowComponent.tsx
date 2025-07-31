@@ -8,6 +8,7 @@ import { GanttRow } from '../../styles/GanttStyles';
 import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
+import { ColorInfo } from '../../reduxStoreAndSlices/colorSlice';
 
 type Action =
   | { type: 'INIT'; payload: EventType[] }
@@ -76,7 +77,7 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
   const currentColors = useSelector((state: RootState) => state.color.colors);
   const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
   const previewData = useSelector((state: RootState) => state.history?.previewData);
-  const colors = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
+  const colors: { [id: number]: ColorInfo } = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
   const plannedChartBarColor = useMemo(() => {
     if (entry.color === '') { return '#76ff7051'; }
     const colorInfo = Object.values(colors).find(colorInfo =>
