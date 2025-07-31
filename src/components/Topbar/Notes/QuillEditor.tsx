@@ -108,6 +108,8 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
   const noteData = propsNoteData ?? currentNoteData;
   const zoomLevel = useSelector((state: RootState) => state.notes.zoomLevel);
   const editorStates = useSelector((state: RootState) => state.notes.editorStates);
+  
+  console.log('QuillEditor render - zoomLevel:', zoomLevel);
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Quill | null>(null);
@@ -149,6 +151,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     const resetBtn = document.querySelector('.editor-zoom-reset') as HTMLButtonElement;
     
     const currentIndex = zoomLevels.findIndex(level => Math.abs(level - zoomLevel) < 0.01);
+    console.log('updateZoomButtonStates - zoomLevel:', zoomLevel, 'currentIndex:', currentIndex, 'zoomLevels:', zoomLevels);
     
     if (zoomInBtn) zoomInBtn.disabled = currentIndex >= zoomLevels.length - 1;
     if (zoomOutBtn) zoomOutBtn.disabled = currentIndex <= 0;
@@ -396,6 +399,12 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     }
 
     // エディター内部の右下に拡大縮小コントロールを追加
+    // 既存のズームコントロールを削除
+    const existingZoomControls = editorContainer.querySelector('.editor-zoom-controls');
+    if (existingZoomControls) {
+      existingZoomControls.remove();
+    }
+    
     const createZoomControls = () => {
       const zoomContainer = document.createElement('div');
       zoomContainer.className = 'editor-zoom-controls';
