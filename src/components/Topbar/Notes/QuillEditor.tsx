@@ -108,8 +108,6 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
   const noteData = propsNoteData ?? currentNoteData;
   const zoomLevel = useSelector((state: RootState) => state.notes.zoomLevel);
   const editorStates = useSelector((state: RootState) => state.notes.editorStates);
-  
-  console.log('QuillEditor render - zoomLevel:', zoomLevel);
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Quill | null>(null);
@@ -151,7 +149,6 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     const resetBtn = document.querySelector('.editor-zoom-reset') as HTMLButtonElement;
     
     const currentIndex = zoomLevels.findIndex(level => Math.abs(level - zoomLevel) < 0.01);
-    console.log('updateZoomButtonStates - zoomLevel:', zoomLevel, 'currentIndex:', currentIndex, 'zoomLevels:', zoomLevels);
     
     if (zoomInBtn) zoomInBtn.disabled = currentIndex >= zoomLevels.length - 1;
     if (zoomOutBtn) zoomOutBtn.disabled = currentIndex <= 0;
@@ -170,7 +167,6 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     const nextIndex = Math.min(currentIndex + 1, zoomLevels.length - 1);
     const newZoomLevel = zoomLevels[nextIndex];
     
-    console.log('Zoom In:', zoomLevel, '->', newZoomLevel, 'index:', currentIndex, '->', nextIndex);
     dispatch(updateZoomLevel(newZoomLevel));
 
     setTimeout(() => {
@@ -192,7 +188,6 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     const prevIndex = Math.max(currentIndex - 1, 0);
     const newZoomLevel = zoomLevels[prevIndex];
     
-    console.log('Zoom Out:', zoomLevel, '->', newZoomLevel, 'index:', currentIndex, '->', prevIndex);
     dispatch(updateZoomLevel(newZoomLevel));
 
     setTimeout(() => {
