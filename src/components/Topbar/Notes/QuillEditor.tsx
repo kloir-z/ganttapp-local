@@ -141,25 +141,33 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     return `${date} ${time}`;
   }, [getCurrentDate, getCurrentTime]);
 
+  const zoomLevels = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
+
   const updateZoomButtonStates = useCallback(() => {
     const zoomInBtn = document.querySelector('.editor-zoom-in') as HTMLButtonElement;
     const zoomOutBtn = document.querySelector('.editor-zoom-out') as HTMLButtonElement;
     const resetBtn = document.querySelector('.editor-zoom-reset') as HTMLButtonElement;
     
-    if (zoomInBtn) zoomInBtn.disabled = zoomLevel >= 3.0;
-    if (zoomOutBtn) zoomOutBtn.disabled = zoomLevel <= 0.5;
+    const currentIndex = zoomLevels.findIndex(level => Math.abs(level - zoomLevel) < 0.01);
+    
+    if (zoomInBtn) zoomInBtn.disabled = currentIndex >= zoomLevels.length - 1;
+    if (zoomOutBtn) zoomOutBtn.disabled = currentIndex <= 0;
     if (resetBtn) {
-      resetBtn.disabled = zoomLevel === 1;
+      resetBtn.disabled = Math.abs(zoomLevel - 1.0) < 0.01;
       resetBtn.innerHTML = `<span style="font-size: 11px; font-weight: 500;">${Math.round(zoomLevel * 100)}%</span>`;
     }
-  }, [zoomLevel]);
+  }, [zoomLevel, zoomLevels]);
 
   const handleZoomIn = useCallback(() => {
     const currentSelection = editorRef.current?.getSelection();
     const scrollContainer = editorContainerRef.current?.querySelector('.ql-editor') as HTMLElement;
     const scrollTop = scrollContainer?.scrollTop || 0;
 
-    const newZoomLevel = Math.min(zoomLevel + 0.25, 3.0);
+    const currentIndex = zoomLevels.findIndex(level => Math.abs(level - zoomLevel) < 0.01);
+    const nextIndex = Math.min(currentIndex + 1, zoomLevels.length - 1);
+    const newZoomLevel = zoomLevels[nextIndex];
+    
+    console.log('Zoom In:', zoomLevel, '->', newZoomLevel, 'index:', currentIndex, '->', nextIndex);
     dispatch(updateZoomLevel(newZoomLevel));
 
     setTimeout(() => {
@@ -170,14 +178,18 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
         editorRef.current.setSelection(currentSelection);
       }
     }, 10);
-  }, [dispatch, zoomLevel]);
+  }, [dispatch, zoomLevel, zoomLevels]);
 
   const handleZoomOut = useCallback(() => {
     const currentSelection = editorRef.current?.getSelection();
     const scrollContainer = editorContainerRef.current?.querySelector('.ql-editor') as HTMLElement;
     const scrollTop = scrollContainer?.scrollTop || 0;
 
-    const newZoomLevel = Math.max(zoomLevel - 0.25, 0.5);
+    const currentIndex = zoomLevels.findIndex(level => Math.abs(level - zoomLevel) < 0.01);
+    const prevIndex = Math.max(currentIndex - 1, 0);
+    const newZoomLevel = zoomLevels[prevIndex];
+    
+    console.log('Zoom Out:', zoomLevel, '->', newZoomLevel, 'index:', currentIndex, '->', prevIndex);
     dispatch(updateZoomLevel(newZoomLevel));
 
     setTimeout(() => {
@@ -188,7 +200,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
         editorRef.current.setSelection(currentSelection);
       }
     }, 10);
-  }, [dispatch, zoomLevel]);
+  }, [dispatch, zoomLevel, zoomLevels]);
 
   const handleZoomReset = useCallback(() => {
     const currentSelection = editorRef.current?.getSelection();
@@ -416,7 +428,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       const zoomOutBtn = document.createElement('button');
       zoomOutBtn.type = 'button';
       zoomOutBtn.className = 'editor-zoom-out';
-      zoomOutBtn.title = t('Zoom Out') + ' (50%-300%)';
+      zoomOutBtn.title = t('Zoom Out') + ' (50%, 75%, 100%, 125%, 150%, 175%, 200%, 250%, 300%)';
       zoomOutBtn.innerHTML = '<span style="font-size: 14px;">−</span>';
       zoomOutBtn.style.cssText = `
         padding: 4px 6px;
@@ -460,7 +472,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       const zoomInBtn = document.createElement('button');
       zoomInBtn.type = 'button';
       zoomInBtn.className = 'editor-zoom-in';
-      zoomInBtn.title = t('Zoom In') + ' (50%-300%)';
+      zoomInBtn.title = t('Zoom In') + ' (50%, 75%, 100%, 125%, 150%, 175%, 200%, 250%, 300%)';
       zoomInBtn.innerHTML = '<span style="font-size: 14px;">+</span>';
       zoomInBtn.style.cssText = `
         padding: 4px 6px;
