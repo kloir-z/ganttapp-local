@@ -3,7 +3,7 @@ import Quill from 'quill';
 import Toolbar from 'quill/modules/toolbar';
 import { BlockEmbed } from 'quill/blots/block';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../../reduxStoreAndSlices/store';
+import { RootState, store } from '../../../reduxStoreAndSlices/store';
 import { updateNoteData, updateZoomLevel, updateEditorState, EditorState } from '../../../reduxStoreAndSlices/notesSlice';
 import { cdate } from 'cdate';
 import { StyledQuillContainer } from './NotesStyles';
@@ -141,7 +141,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     return `${date} ${time}`;
   }, [getCurrentDate, getCurrentTime]);
 
-  const zoomLevels = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
+  const zoomLevels = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0];
 
   const updateZoomButtonStates = useCallback(() => {
     const zoomInBtn = document.querySelector('.editor-zoom-in') as HTMLButtonElement;
@@ -149,21 +149,26 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     const resetBtn = document.querySelector('.editor-zoom-reset') as HTMLButtonElement;
     
     const currentIndex = zoomLevels.findIndex(level => Math.abs(level - zoomLevel) < 0.01);
-    
-    if (zoomInBtn) zoomInBtn.disabled = currentIndex >= zoomLevels.length - 1;
-    if (zoomOutBtn) zoomOutBtn.disabled = currentIndex <= 0;
+    if (zoomInBtn) {
+      zoomInBtn.disabled = currentIndex >= zoomLevels.length - 1 || currentIndex === -1;
+    }
+    if (zoomOutBtn) {
+      zoomOutBtn.disabled = currentIndex <= 0 || currentIndex === -1;
+    }
     if (resetBtn) {
       resetBtn.disabled = Math.abs(zoomLevel - 1.0) < 0.01;
       resetBtn.innerHTML = `<span style="font-size: 11px; font-weight: 500;">${Math.round(zoomLevel * 100)}%</span>`;
     }
   }, [zoomLevel, zoomLevels]);
 
-  const handleZoomIn = useCallback(() => {
+  const handleZoomIn = () => {
     const currentSelection = editorRef.current?.getSelection();
     const scrollContainer = editorContainerRef.current?.querySelector('.ql-editor') as HTMLElement;
     const scrollTop = scrollContainer?.scrollTop || 0;
 
-    const currentIndex = zoomLevels.findIndex(level => Math.abs(level - zoomLevel) < 0.01);
+    // Reduxから最新の値を取得
+    const currentZoomLevel = store.getState().notes.zoomLevel;
+    const currentIndex = zoomLevels.findIndex(level => Math.abs(level - currentZoomLevel) < 0.01);
     const nextIndex = Math.min(currentIndex + 1, zoomLevels.length - 1);
     const newZoomLevel = zoomLevels[nextIndex];
     
@@ -177,14 +182,16 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
         editorRef.current.setSelection(currentSelection);
       }
     }, 10);
-  }, [dispatch, zoomLevel, zoomLevels]);
+  };
 
-  const handleZoomOut = useCallback(() => {
+  const handleZoomOut = () => {
     const currentSelection = editorRef.current?.getSelection();
     const scrollContainer = editorContainerRef.current?.querySelector('.ql-editor') as HTMLElement;
     const scrollTop = scrollContainer?.scrollTop || 0;
 
-    const currentIndex = zoomLevels.findIndex(level => Math.abs(level - zoomLevel) < 0.01);
+    // Reduxから最新の値を取得
+    const currentZoomLevel = store.getState().notes.zoomLevel;
+    const currentIndex = zoomLevels.findIndex(level => Math.abs(level - currentZoomLevel) < 0.01);
     const prevIndex = Math.max(currentIndex - 1, 0);
     const newZoomLevel = zoomLevels[prevIndex];
     
@@ -198,9 +205,9 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
         editorRef.current.setSelection(currentSelection);
       }
     }, 10);
-  }, [dispatch, zoomLevel, zoomLevels]);
+  };
 
-  const handleZoomReset = useCallback(() => {
+  const handleZoomReset = () => {
     const currentSelection = editorRef.current?.getSelection();
     const scrollContainer = editorContainerRef.current?.querySelector('.ql-editor') as HTMLElement;
     const scrollTop = scrollContainer?.scrollTop || 0;
@@ -215,7 +222,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
         editorRef.current.setSelection(currentSelection);
       }
     }, 10);
-  }, [dispatch]);
+  };
 
   const saveEditorState = useCallback(() => {
     if (selectedNodeKey && editorRef.current) {
@@ -432,7 +439,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       const zoomOutBtn = document.createElement('button');
       zoomOutBtn.type = 'button';
       zoomOutBtn.className = 'editor-zoom-out';
-      zoomOutBtn.title = t('Zoom Out') + ' (50%, 75%, 100%, 125%, 150%, 175%, 200%, 250%, 300%)';
+      zoomOutBtn.title = t('Zoom Out') + ' (50%-300%, 10%\u5358\u4f4d)';
       zoomOutBtn.innerHTML = '<span style="font-size: 14px;">−</span>';
       zoomOutBtn.style.cssText = `
         padding: 4px 6px;
@@ -476,7 +483,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       const zoomInBtn = document.createElement('button');
       zoomInBtn.type = 'button';
       zoomInBtn.className = 'editor-zoom-in';
-      zoomInBtn.title = t('Zoom In') + ' (50%, 75%, 100%, 125%, 150%, 175%, 200%, 250%, 300%)';
+      zoomInBtn.title = t('Zoom In') + ' (50%-300%, 10%\u5358\u4f4d)';
       zoomInBtn.innerHTML = '<span style="font-size: 14px;">+</span>';
       zoomInBtn.style.cssText = `
         padding: 4px 6px;
