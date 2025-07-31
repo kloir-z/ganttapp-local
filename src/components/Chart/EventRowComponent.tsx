@@ -73,7 +73,10 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
   const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
-  const colors = useSelector((state: RootState) => state.color.colors);
+  const currentColors = useSelector((state: RootState) => state.color.colors);
+  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
+  const previewData = useSelector((state: RootState) => state.history?.previewData);
+  const colors = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
   const plannedChartBarColor = useMemo(() => {
     if (entry.color === '') { return '#76ff7051'; }
     const colorInfo = Object.values(colors).find(colorInfo =>

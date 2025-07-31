@@ -39,7 +39,10 @@ export const useHistoryModal = () => {
 
     setIsCreatingSnapshot(true);
     const rootState = {
-      color: { colors: allRequiredState.colors },
+      color: { 
+        colors: allRequiredState.colors,
+        fallbackColor: allRequiredState.fallbackColor
+      },
       baseSettings: { 
         dateRange: allRequiredState.dateRange, 
         holidayInput: allRequiredState.holidayInput, 

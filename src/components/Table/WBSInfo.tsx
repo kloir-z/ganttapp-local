@@ -41,8 +41,9 @@ const WBSInfo: React.FC = memo(() => {
   const dateFormat = isViewingPast && previewData?.dateFormat ? (previewData.dateFormat as any) : currentDateFormat;
   const wbsWidth = isViewingPast && previewData?.wbsWidth ? previewData.wbsWidth : currentWbsWidth;
   
-  // These still come from current state as they don't affect data display
-  const holidays = useSelector((state: RootState) => state.wbsData.holidays);
+  // Holiday data with preview support
+  const currentHolidays = useSelector((state: RootState) => state.wbsData.holidays);
+  const holidays = isViewingPast && previewData?.holidays ? previewData.holidays : currentHolidays;
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
   const copiedRows = useSelector((state: RootState) => state.copiedRows.rows);
   const [selectedRanges, setSelectedRanges] = useState<{ selectedRowIds: string[], selectedColumnIds: string[] }>({

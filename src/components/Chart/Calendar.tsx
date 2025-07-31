@@ -21,9 +21,13 @@ const Calendar: React.FC<CalendarProps> = memo(({ dateArray }) => {
   const calendarWidth = useSelector((state: RootState) => state.baseSettings.calendarWidth);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
-  const holidays = useSelector((state: RootState) => state.wbsData.holidays);
+  const currentHolidays = useSelector((state: RootState) => state.wbsData.holidays);
   const holidayColor = useSelector((state: RootState) => state.wbsData.holidayColor);
-  const regularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
+  const currentRegularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
+  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
+  const previewData = useSelector((state: RootState) => state.history?.previewData);
+  const holidays = isViewingPast && previewData?.holidays ? previewData.holidays : currentHolidays;
+  const regularDaysOffSetting = isViewingPast && previewData?.regularDaysOffSetting ? previewData.regularDaysOffSetting : currentRegularDaysOffSetting;
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
   const calendarRef = useRef<HTMLDivElement>(null);
 

@@ -24,6 +24,7 @@ export const selectAllRequiredStateForSnapshot = createSelector(
   [selectColorState, selectBaseSettingsState, selectWbsDataState, selectNotesState],
   (colorState, baseSettingsState, wbsDataState, notesState) => ({
     colors: colorState.colors,
+    fallbackColor: colorState.fallbackColor,
     dateRange: baseSettingsState.dateRange,
     columns: wbsDataState.columns,
     data: wbsDataState.data,

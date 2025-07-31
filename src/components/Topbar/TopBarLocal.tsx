@@ -62,15 +62,15 @@ const TopBarLocal: React.FC = memo(() => {
   const [jsonModalOpen, setJsonModalOpen] = useState(false);
 
   // Redux state
-  const regularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
-  const colors = useSelector((state: RootState) => state.color.colors);
+  const currentRegularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
+  const currentColors = useSelector((state: RootState) => state.color.colors);
   const isSavedStore = useSelector((state: RootState) => state.wbsData.isSavedChanges);
   const isSavedColor = useSelector((state: RootState) => state.color.isSavedChanges);
   const isSavedSettings = useSelector((state: RootState) => state.baseSettings.isSavedChanges);
   const isSavedNotes = useSelector((state: RootState) => state.notes.isSavedChanges);
   const currentLanguage = useSelector((state: RootState) => state.baseSettings.language);
   const dateRange = useSelector((state: RootState) => state.baseSettings.dateRange);
-  const holidayInput = useSelector((state: RootState) => state.baseSettings.holidayInput);
+  const currentHolidayInput = useSelector((state: RootState) => state.baseSettings.holidayInput);
   const holidayColor = useSelector((state: RootState) => state.wbsData.holidayColor);
   const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
@@ -83,6 +83,9 @@ const TopBarLocal: React.FC = memo(() => {
   const previewData = useSelector((state: RootState) => state.history?.previewData);
   const currentTitle = useSelector((state: RootState) => state.baseSettings.title);
   const title = isViewingPast && previewData?.title ? previewData.title : currentTitle;
+  const regularDaysOffSetting = isViewingPast && previewData?.regularDaysOffSetting ? previewData.regularDaysOffSetting : currentRegularDaysOffSetting;
+  const colors = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
+  const holidayInput = isViewingPast && previewData?.holidayInput ? previewData.holidayInput : currentHolidayInput;
   const columns = useSelector((state: RootState) => state.wbsData.columns);
   const treeData = useSelector((state: RootState) => state.notes.treeData);
   const noteData = useSelector((state: RootState) => state.notes.noteData);
@@ -374,18 +377,16 @@ const TopBarLocal: React.FC = memo(() => {
             setVisibleMenu={setVisibleMenu}
           />
         )}
-        <MenuButton ref={settingButtonRef} disabled={isViewingPast}>
+        <MenuButton ref={settingButtonRef} disabled={false}>
           {t('Setting')}
         </MenuButton>
-        {!isViewingPast && (
-          <TopMenu
+        <TopMenu
             menuType='setting'
             targetRef={settingButtonRef}
             items={settingMenuOptions}
             visibleMenu={visibleMenu}
             setVisibleMenu={setVisibleMenu}
           />
-        )}
         <MenuButton onClick={handleNotesClick}>
           {t('Notes')}
         </MenuButton>

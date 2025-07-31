@@ -12,28 +12,18 @@ export const createSnapshot = async (
     // Create project data directly as JSON (not ZIP)
     const projectData = {
       colors: state.color.colors,
-      dateRange: state.baseSettings.dateRange,
+      fallbackColor: state.color.fallbackColor,
       columns: state.wbsData.columns,
       data: state.wbsData.data,
       holidayInput: state.baseSettings.holidayInput,
-      holidayColor: state.wbsData.holidayColor,
       regularDaysOffSetting: state.wbsData.regularDaysOffSetting,
-      wbsWidth: state.baseSettings.wbsWidth,
-      calendarWidth: state.baseSettings.calendarWidth,
-      cellWidth: state.baseSettings.cellWidth,
       title: state.baseSettings.title,
-      showYear: state.wbsData.showYear,
       dateFormat: state.wbsData.dateFormat,
       treeData: state.notes.treeData,
       noteData: state.notes.noteData,
-      language: state.baseSettings.language,
-      scrollPosition: state.baseSettings.scrollPosition,
-      ...(state.notes.modalState && { notesModalState: state.notes.modalState }),
-      ...(state.notes.treeExpandedKeys && { treeExpandedKeys: state.notes.treeExpandedKeys }),
-      ...(state.notes.treeScrollPosition !== undefined && { treeScrollPosition: state.notes.treeScrollPosition }),
-      ...(state.notes.editorStates && { editorStates: state.notes.editorStates }),
-      ...(state.notes.selectedNodeKey && { selectedNodeKey: state.notes.selectedNodeKey }),
     };
+
+
 
     const jsonString = JSON.stringify(projectData, null, 2);
     
@@ -55,27 +45,15 @@ export const createSnapshot = async (
 export const getCurrentProjectDataAsJson = (state: RootState): string => {
   const projectData = {
     colors: state.color.colors,
-    dateRange: state.baseSettings.dateRange,
+    fallbackColor: state.color.fallbackColor,
     columns: state.wbsData.columns,
     data: state.wbsData.data,
     holidayInput: state.baseSettings.holidayInput,
-    holidayColor: state.wbsData.holidayColor,
     regularDaysOffSetting: state.wbsData.regularDaysOffSetting,
-    wbsWidth: state.baseSettings.wbsWidth,
-    calendarWidth: state.baseSettings.calendarWidth,
-    cellWidth: state.baseSettings.cellWidth,
     title: state.baseSettings.title,
-    showYear: state.wbsData.showYear,
     dateFormat: state.wbsData.dateFormat,
     treeData: state.notes.treeData,
     noteData: state.notes.noteData,
-    language: state.baseSettings.language,
-    scrollPosition: state.baseSettings.scrollPosition,
-    notesModalState: state.notes.modalState,
-    treeExpandedKeys: state.notes.treeExpandedKeys,
-    treeScrollPosition: state.notes.treeScrollPosition,
-    editorStates: state.notes.editorStates,
-    selectedNodeKey: state.notes.selectedNodeKey,
   };
 
   return JSON.stringify(projectData, null, 2);

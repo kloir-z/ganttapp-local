@@ -23,8 +23,14 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
-  const colors = useSelector((state: RootState) => state.color.colors);
-  const fallbackColor = useSelector((state: RootState) => state.color.fallbackColor);
+  const currentColors = useSelector((state: RootState) => state.color.colors);
+  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
+  const previewData = useSelector((state: RootState) => state.history?.previewData);
+  const colors = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
+  const currentFallbackColor = useSelector((state: RootState) => state.color.fallbackColor);
+  const fallbackColor = isViewingPast && previewData?.fallbackColor ? previewData.fallbackColor : currentFallbackColor;
+
+
   const plannedChartBarColor = useMemo(() => {
     if (entry.color === '') { return fallbackColor; }
     const colorInfo = Object.values(colors).find(colorInfo =>
@@ -38,7 +44,8 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   }, [colors]);
   const plannedDays = useMemo(() => { return entry.plannedDays }, [entry.plannedDays]);
   const isIncludeHolidays = useMemo(() => { return entry.isIncludeHolidays }, [entry.isIncludeHolidays]);
-  const holidays = useSelector((state: RootState) => state.wbsData.holidays);
+  const currentHolidays = useSelector((state: RootState) => state.wbsData.holidays);
+  const holidays = isViewingPast && previewData?.holidays ? previewData.holidays : currentHolidays;
   const regularDaysOff = useSelector((state: RootState) => state.wbsData.regularDaysOff);
   const [localPlannedStartDate, setLocalPlannedStartDate] = useState(entry.plannedStartDate ? entry.plannedStartDate : null);
   const [localPlannedEndDate, setLocalPlannedEndDate] = useState(entry.plannedEndDate ? entry.plannedEndDate : null);

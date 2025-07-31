@@ -12,8 +12,15 @@ import { resetToDefaultColors, updateFallbackColor } from "../../../reduxStoreAn
 const ColorSetting: React.FC = memo(() => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
-  const colors = useSelector((state: RootState) => state.color.colors);
-  const fallbackColor = useSelector((state: RootState) => state.color.fallbackColor);
+  const currentColors = useSelector((state: RootState) => state.color.colors);
+  const currentFallbackColor = useSelector((state: RootState) => state.color.fallbackColor);
+  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
+  const previewData = useSelector((state: RootState) => state.history?.previewData);
+  
+  const colors = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
+  const fallbackColor = isViewingPast && previewData?.fallbackColor ? previewData.fallbackColor : currentFallbackColor;
+
+
 
   type DisplayColorPickerType = { [key: number]: boolean };
   const [displayColorPicker, setDisplayColorPicker] = useState<DisplayColorPickerType>({});

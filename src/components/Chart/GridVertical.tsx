@@ -12,9 +12,13 @@ interface CalendarProps {
 }
 
 const GridVertical: React.FC<CalendarProps> = memo(({ dateArray, gridHeight }) => {
-  const holidays = useSelector((state: RootState) => state.wbsData.holidays);
+  const currentHolidays = useSelector((state: RootState) => state.wbsData.holidays);
   const holidayColor = useSelector((state: RootState) => state.wbsData.holidayColor);
-  const regularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
+  const currentRegularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
+  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
+  const previewData = useSelector((state: RootState) => state.history?.previewData);
+  const holidays = isViewingPast && previewData?.holidays ? previewData.holidays : currentHolidays;
+  const regularDaysOffSetting = isViewingPast && previewData?.regularDaysOffSetting ? previewData.regularDaysOffSetting : currentRegularDaysOffSetting;
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
 
   return (

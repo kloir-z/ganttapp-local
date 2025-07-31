@@ -12,9 +12,14 @@ const HolidaySetting: React.FC = memo(() => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
-  const holidayInput = useSelector((state: RootState) => state.baseSettings.holidayInput);
+  const currentHolidayInput = useSelector((state: RootState) => state.baseSettings.holidayInput);
   const holidayColor = useSelector((state: RootState) => state.wbsData.holidayColor);
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
+  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
+  const previewData = useSelector((state: RootState) => state.history?.previewData);
+  
+  const holidayInput = isViewingPast && previewData?.holidayInput ? previewData.holidayInput : currentHolidayInput;
+  
   const maxLength = 5000;
 
   const validateTextLength = useCallback((text: string, maxLength: number) => {
@@ -73,8 +78,10 @@ const HolidaySetting: React.FC = memo(() => {
       )}
       <textarea
         value={holidayInput}
-        onChange={(e) => dispatch(setHolidayInput(e.target.value))}
-        onBlur={handleBlur}
+        onChange={isViewingPast ? undefined : (e) => dispatch(setHolidayInput(e.target.value))}
+        onBlur={isViewingPast ? undefined : handleBlur}
+        disabled={isViewingPast}
+        readOnly={isViewingPast}
         style={{ position: 'absolute', padding: '10px', top: '55px', minWidth: '280px', minHeight: '300px', overflow: 'auto', whiteSpace: 'nowrap', backgroundColor: '#FFF', zIndex: '15', fontSize: '0.73rem' }}
       />
       <div style={{ height: '340px' }}></div>

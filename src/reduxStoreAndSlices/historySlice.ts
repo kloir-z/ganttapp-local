@@ -18,12 +18,14 @@ interface HistoryState {
     data?: Record<string, any>;
     columns?: any[];
     colors?: any;
+    fallbackColor?: string;
     dateRange?: any;
     title?: string;
     cellWidth?: number;
     wbsWidth?: number;
     calendarWidth?: number;
     holidayInput?: any;
+    holidays?: any;
     holidayColor?: any;
     regularDaysOffSetting?: any;
     showYear?: boolean;

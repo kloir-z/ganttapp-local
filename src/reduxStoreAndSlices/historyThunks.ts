@@ -1,12 +1,13 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from './store';
 import { startViewingPast, returnToPresent } from './historySlice';
-import { setEntireData, setColumns, updateHolidayColor, updateEntireRegularDaysOffSetting, setShowYear, setDateFormat } from './store';
-import { updateEntireColorSettings } from './colorSlice';
-import { setDateRange, setTitle, setCellWidth, setWbsWidth, setCalendarWidth, setHolidayInput, setLanguage, setScrollPosition } from './baseSettingsSlice';
+import { setEntireData, setColumns, updateEntireRegularDaysOffSetting, setDateFormat } from './store';
+import { updateEntireColorSettings, updateFallbackColor } from './colorSlice';
+import { setTitle, setHolidayInput } from './baseSettingsSlice';
 import { setNotes } from './notesSlice';
 import { createStateBackup, parseBackupData } from '../utils/StateBackupUtils';
 import { isCompressedData, decompressData } from '../utils/CompressionUtils';
+import { parseHolidaysFromInput } from '../components/Setting/utils/settingHelpers';
 
 // 履歴表示開始（バックアップ付き）
 export const startViewingPastWithBackup = createAsyncThunk(
@@ -37,6 +38,11 @@ export const startViewingPastWithBackup = createAsyncThunk(
         previewData = JSON.parse(snapshot.projectDataSnapshot as string);
       }
       
+      // holidayInputからholidaysをパースして追加
+      if (previewData.holidayInput && previewData.dateFormat) {
+        previewData.holidays = parseHolidaysFromInput(previewData.holidayInput, previewData.dateFormat);
+      }
+      
       dispatch(startViewingPast({ 
         snapshotId, 
         currentStateBackup, 
@@ -64,27 +70,17 @@ export const returnToPresentWithRestore = createAsyncThunk(
         dispatch(setEntireData(backupData.data));
         dispatch(setColumns(backupData.columns));
         dispatch(updateEntireColorSettings(backupData.colors));
-        dispatch(setDateRange(backupData.dateRange));
+        if (backupData.fallbackColor) {
+          dispatch(updateFallbackColor(backupData.fallbackColor));
+        }
         dispatch(setTitle(backupData.title));
-        dispatch(setCellWidth(backupData.cellWidth));
-        dispatch(setWbsWidth(backupData.wbsWidth));
-        dispatch(setCalendarWidth(backupData.calendarWidth));
         dispatch(setHolidayInput(backupData.holidayInput));
-        dispatch(updateHolidayColor(backupData.holidayColor?.color || '#000000'));
         dispatch(updateEntireRegularDaysOffSetting(backupData.regularDaysOffSetting));
-        dispatch(setShowYear(backupData.showYear));
         dispatch(setDateFormat(backupData.dateFormat as any));
         dispatch(setNotes({
           treeData: backupData.treeData,
           noteData: backupData.noteData,
-          modalState: backupData.modalState,
-          selectedNodeKey: backupData.selectedNodeKey,
-          treeExpandedKeys: backupData.treeExpandedKeys,
-          treeScrollPosition: backupData.treeScrollPosition,
-          editorStates: backupData.editorStates
         }));
-        dispatch(setLanguage(backupData.language));
-        dispatch(setScrollPosition(backupData.scrollPosition));
       } else {
         // TODO: Implement proper error reporting system
         console.error('Failed to restore from backup: Invalid backup data');
@@ -95,3 +91,4 @@ export const returnToPresentWithRestore = createAsyncThunk(
     dispatch(returnToPresent());
   }
 );
+
