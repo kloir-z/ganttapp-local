@@ -142,13 +142,16 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
   }, [getCurrentDate, getCurrentTime]);
 
   const updateZoomButtonStates = useCallback(() => {
-    const zoomInBtn = document.querySelector('.ql-zoom-in') as HTMLButtonElement;
-    const zoomOutBtn = document.querySelector('.ql-zoom-out') as HTMLButtonElement;
-    const resetBtn = document.querySelector('.ql-zoom-reset') as HTMLButtonElement;
+    const zoomInBtn = document.querySelector('.editor-zoom-in') as HTMLButtonElement;
+    const zoomOutBtn = document.querySelector('.editor-zoom-out') as HTMLButtonElement;
+    const resetBtn = document.querySelector('.editor-zoom-reset') as HTMLButtonElement;
     
-    if (zoomInBtn) zoomInBtn.disabled = zoomLevel >= 2;
-    if (zoomOutBtn) zoomOutBtn.disabled = zoomLevel <= 0.5;
-    if (resetBtn) resetBtn.disabled = zoomLevel === 1;
+    if (zoomInBtn) zoomInBtn.disabled = zoomLevel >= 3.0;
+    if (zoomOutBtn) zoomOutBtn.disabled = zoomLevel <= 0.3;
+    if (resetBtn) {
+      resetBtn.disabled = zoomLevel === 1;
+      resetBtn.innerHTML = `<span style="font-size: 11px; font-weight: 500;">${Math.round(zoomLevel * 100)}%</span>`;
+    }
   }, [zoomLevel]);
 
   const handleZoomIn = useCallback(() => {
@@ -156,7 +159,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     const scrollContainer = editorContainerRef.current?.querySelector('.ql-editor') as HTMLElement;
     const scrollTop = scrollContainer?.scrollTop || 0;
 
-    const newZoomLevel = Math.min(zoomLevel + 0.1, 2);
+    const newZoomLevel = Math.min(zoomLevel + 0.1, 3.0);
     dispatch(updateZoomLevel(newZoomLevel));
 
     setTimeout(() => {
@@ -174,7 +177,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     const scrollContainer = editorContainerRef.current?.querySelector('.ql-editor') as HTMLElement;
     const scrollTop = scrollContainer?.scrollTop || 0;
 
-    const newZoomLevel = Math.max(zoomLevel - 0.1, 0.5);
+    const newZoomLevel = Math.max(zoomLevel - 0.1, 0.3);
     dispatch(updateZoomLevel(newZoomLevel));
 
     setTimeout(() => {
@@ -380,52 +383,51 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       });
     }
 
-    const toolbarElement = editorContainer.previousSibling as HTMLElement;
-    if (toolbarElement && toolbarElement.classList.contains('ql-toolbar')) {
+    // エディター右上に拡大縮小コントロールを追加
+    const createZoomControls = () => {
       const zoomContainer = document.createElement('div');
-      zoomContainer.className = 'ql-zoom-controls';
+      zoomContainer.className = 'editor-zoom-controls';
       zoomContainer.style.cssText = `
-        display: inline-flex;
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        display: flex;
         align-items: center;
-        margin-left: 8px;
-        border-left: 1px solid #ccc;
-        padding-left: 8px;
-        gap: 4px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 4px;
+        gap: 2px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        z-index: 10;
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
       `;
       
-      // Zoom In ボタン
-      const zoomInBtn = document.createElement('button');
-      zoomInBtn.type = 'button';
-      zoomInBtn.className = 'ql-zoom-in';
-      zoomInBtn.title = t('Zoom In');
-      zoomInBtn.innerHTML = '<span style="font-size: 16px;">+</span>';
-      zoomInBtn.style.cssText = `
-        padding: 2px 4px;
-        min-width: 24px;
-        height: 24px;
-        border: none;
-        background: none;
-        cursor: pointer;
-        border-radius: 3px;
-      `;
-      zoomInBtn.addEventListener('mouseover', () => zoomInBtn.style.background = '#f0f0f0');
-      zoomInBtn.addEventListener('mouseout', () => zoomInBtn.style.background = 'none');
-      zoomInBtn.addEventListener('click', handleZoomIn);
-
+      zoomContainer.addEventListener('mouseenter', () => {
+        zoomContainer.style.opacity = '1';
+      });
+      zoomContainer.addEventListener('mouseleave', () => {
+        zoomContainer.style.opacity = '0.7';
+      });
+      
       // Zoom Out ボタン
       const zoomOutBtn = document.createElement('button');
       zoomOutBtn.type = 'button';
-      zoomOutBtn.className = 'ql-zoom-out';
-      zoomOutBtn.title = t('Zoom Out');
-      zoomOutBtn.innerHTML = '<span style="font-size: 16px;">-</span>';
+      zoomOutBtn.className = 'editor-zoom-out';
+      zoomOutBtn.title = t('Zoom Out') + ' (30%-300%)';
+      zoomOutBtn.innerHTML = '<span style="font-size: 14px;">−</span>';
       zoomOutBtn.style.cssText = `
-        padding: 2px 4px;
+        padding: 4px 6px;
         min-width: 24px;
         height: 24px;
         border: none;
         background: none;
         cursor: pointer;
         border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       `;
       zoomOutBtn.addEventListener('mouseover', () => zoomOutBtn.style.background = '#f0f0f0');
       zoomOutBtn.addEventListener('mouseout', () => zoomOutBtn.style.background = 'none');
@@ -434,27 +436,56 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       // Reset ボタン
       const resetBtn = document.createElement('button');
       resetBtn.type = 'button';
-      resetBtn.className = 'ql-zoom-reset';
-      resetBtn.title = t('Reset Zoom');
-      resetBtn.innerHTML = '<span style="font-size: 12px;">100%</span>';
+      resetBtn.className = 'editor-zoom-reset';
+      resetBtn.title = t('Reset Zoom') + ' (100%)';
+      resetBtn.innerHTML = `<span style="font-size: 11px; font-weight: 500;">${Math.round(zoomLevel * 100)}%</span>`;
       resetBtn.style.cssText = `
-        padding: 2px 4px;
-        min-width: 36px;
+        padding: 4px 6px;
+        min-width: 42px;
         height: 24px;
         border: none;
         background: none;
         cursor: pointer;
         border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       `;
       resetBtn.addEventListener('mouseover', () => resetBtn.style.background = '#f0f0f0');
       resetBtn.addEventListener('mouseout', () => resetBtn.style.background = 'none');
       resetBtn.addEventListener('click', handleZoomReset);
 
-      zoomContainer.appendChild(zoomInBtn);
+      // Zoom In ボタン
+      const zoomInBtn = document.createElement('button');
+      zoomInBtn.type = 'button';
+      zoomInBtn.className = 'editor-zoom-in';
+      zoomInBtn.title = t('Zoom In') + ' (30%-300%)';
+      zoomInBtn.innerHTML = '<span style="font-size: 14px;">+</span>';
+      zoomInBtn.style.cssText = `
+        padding: 4px 6px;
+        min-width: 24px;
+        height: 24px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+      zoomInBtn.addEventListener('mouseover', () => zoomInBtn.style.background = '#f0f0f0');
+      zoomInBtn.addEventListener('mouseout', () => zoomInBtn.style.background = 'none');
+      zoomInBtn.addEventListener('click', handleZoomIn);
+
       zoomContainer.appendChild(zoomOutBtn);
       zoomContainer.appendChild(resetBtn);
-      toolbarElement.appendChild(zoomContainer);
-    }
+      zoomContainer.appendChild(zoomInBtn);
+      
+      return zoomContainer;
+    };
+    
+    const zoomControls = createZoomControls();
+    editorContainer.parentElement?.appendChild(zoomControls);
 
     addToolbarTooltips();
     return () => {
@@ -471,6 +502,12 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
         const toolbarElement = document.querySelector('.ql-toolbar');
         if (toolbarElement && editorContainer.parentNode) {
           editorContainer.parentNode.removeChild(toolbarElement);
+        }
+        
+        // Zoom controlsを削除
+        const zoomControls = document.querySelector('.editor-zoom-controls');
+        if (zoomControls && zoomControls.parentNode) {
+          zoomControls.parentNode.removeChild(zoomControls);
         }
       }
       editorRef.current = null;
@@ -529,7 +566,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
   }, [zoomLevel, updateZoomButtonStates]);
 
   return (
-    <div style={{ position: 'relative', height: '100%' }}>
+    <div style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
       <style>
         {`
           .ql-editor {
@@ -627,7 +664,8 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
         ref={editorContainerRef}
         style={{
           overflow: 'auto',
-          height: '100%'
+          height: '100%',
+          position: 'relative'
         }}
       />
     </div>
