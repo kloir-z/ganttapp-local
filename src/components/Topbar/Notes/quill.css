@@ -263,10 +263,18 @@
 }
 
 .ql-editor ol {
-  padding-left: 0;
+  padding-left: 0 !important;
 }
 
 .ql-editor li > .ql-ui:before {
   padding-left: 0em;
   margin-left: -1.7em;
+}
+
+.ql-editor li[data-list="bullet"] {
+  margin-top: 2px;
+}
+
+.ql-editor li[data-list=bullet] > .ql-ui:before {
+  margin-left: -1.8em;
 }

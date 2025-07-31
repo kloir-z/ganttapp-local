@@ -312,7 +312,24 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       modules: {
         toolbar: readOnly ? false : toolbarOptions,
         keyboard: readOnly ? {} : {
-          bindings: keyboardBindings
+          bindings: {
+            ...keyboardBindings,
+            tab: {
+              key: 9, // Tab keyCode
+              handler: function (this: QuillKeyboardContext, range: any) {
+                this.quill.formatLine(range.index, 0, 'indent', '+1');
+                return false;
+              }
+            },
+            'shift+tab': {
+              key: 9, // Tab keyCode
+              shiftKey: true,
+              handler: function (this: QuillKeyboardContext, range: any) {
+                this.quill.formatLine(range.index, 0, 'indent', '-1');
+                return false;
+              }
+            }
+          }
         }
       },
     });
@@ -626,7 +643,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
           .ql-editor li[data-list="unchecked"] {
             position: relative;
             padding-left: 2em;
-            line-height: 1.6;
+            line-height: 1.5;
             margin-top: 0.2em;
             margin-bottom: 0.2em;
           }
