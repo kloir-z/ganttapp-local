@@ -605,3 +605,8 @@ export const store = configureStore({
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+// Dev-only: expose the store so headless/E2E tooling can inject data and inspect state.
+if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+  (window as unknown as { __store?: typeof store }).__store = store;
+}

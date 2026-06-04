@@ -86,6 +86,9 @@ dist
 tmp/
 temp/
 
+# Headless capture harness output
+scripts/out/
+
 # Editor directories and files
 .vscode/
 .idea/

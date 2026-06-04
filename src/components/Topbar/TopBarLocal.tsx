@@ -16,6 +16,7 @@ import TopMenu from './TopMenu';
 import JsonDataModal from './JsonDataModal';
 import styled from 'styled-components';
 import { v4 as uuidv4 } from 'uuid';
+import { useGanttPdfExport } from '../../hooks/useGanttPdfExport';
 import useWarnIfUnsavedChanges from '../../hooks/useWarnIfUnsavedChanges';
 import useResetIsSavedChangesFlags from '../../hooks/useResetIsSavedChangesFlags';
 import useResetReduxStates from '../../hooks/useResetReduxStates';
@@ -106,6 +107,7 @@ const TopBarLocal: React.FC = memo(() => {
   const userButtonRef = useRef<HTMLButtonElement>(null);
   const resetIsSavedChangesFlags = useResetIsSavedChangesFlags();
   const resetReduxStates = useResetReduxStates();
+  const { exportPdf } = useGanttPdfExport();
 
   useWarnIfUnsavedChanges(!isSavedColor)
   useWarnIfUnsavedChanges(!isSavedNotes)
@@ -144,8 +146,8 @@ const TopBarLocal: React.FC = memo(() => {
   const handleLocalSave = useCallback(async (newTitle?: string) => {
     const effectiveTitle = newTitle || title;
     try {
-      const zipData = await handleExport(
-        uuidv4(),
+      const zipData = await handleExport({
+        fileId: uuidv4(),
         colors,
         dateRange,
         columns,
@@ -156,12 +158,12 @@ const TopBarLocal: React.FC = memo(() => {
         wbsWidth,
         calendarWidth,
         cellWidth,
-        effectiveTitle,
+        title: effectiveTitle,
         showYear,
         dateFormat,
         treeData,
         noteData,
-        currentLanguage,
+        language: currentLanguage,
         scrollPosition,
         notesModalState,
         treeExpandedKeys,
@@ -169,7 +171,7 @@ const TopBarLocal: React.FC = memo(() => {
         editorStates,
         selectedNodeKey,
         historySnapshots,
-      );
+      });
 
       const blob = new Blob([zipData], { type: 'application/zip' });
       const url = URL.createObjectURL(blob);
@@ -263,10 +265,15 @@ const TopBarLocal: React.FC = memo(() => {
         children: t('JSON Data'),
         onClick: handleJsonModalOpen,
         path: '4'
+      },
+      {
+        children: t('Export PDF'),
+        onClick: () => exportPdf(),
+        path: '5'
       }
     ];
     return options;
-  }, [t, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen]);
+  }, [t, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf]);
 
   const editMenuOptions = useMemo(() => {
     const options = [

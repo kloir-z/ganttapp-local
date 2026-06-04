@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // @ts-nocheck
-import { handleExport, handleImport } from './ExportImportHandler';
+import { handleExport, handleImport, buildProjectData, EXPORT_SCHEMA_VERSION } from './ExportImportHandler';
 import { configureStore } from '@reduxjs/toolkit';
 import { ColorInfo } from '../reduxStoreAndSlices/colorSlice';
 import { WBSData } from '../types/DataTypes';
@@ -84,25 +84,26 @@ describe('ExportImportHandler', () => {
 
   describe('handleExport', () => {
     it('should create a ZIP file with project data', async () => {
-      const result = await handleExport(
-        testFileId,
-        testColors,
-        testDateRange,
-        testColumns,
-        testData,
-        '2024/01/01 New Year',
-        { color: '#ff0000', subColor: '#ff000080' },
-        { 0: { color: '#ff0000', subColor: '#ff000080', days: [0, 6] } },
-        690,
-        1000,
-        21,
-        'Test Project',
-        true,
-        'yyyy/M/d',
-        [],
-        {},
-        'ja'
-      );
+      const result = await handleExport({
+        fileId: testFileId,
+        colors: testColors,
+        dateRange: testDateRange,
+        columns: testColumns,
+        data: testData,
+        holidayInput: '2024/01/01 New Year',
+        holidayColor: { color: '#ff0000', subColor: '#ff000080' },
+        regularDaysOffSetting: { 0: { color: '#ff0000', subColor: '#ff000080', days: [0, 6] } },
+        wbsWidth: 690,
+        calendarWidth: 1000,
+        cellWidth: 21,
+        title: 'Test Project',
+        showYear: true,
+        dateFormat: 'yyyy/M/d',
+        treeData: [],
+        noteData: {},
+        language: 'ja',
+        scrollPosition: { scrollLeft: 0, scrollTop: 0 },
+      });
 
       expect(result).toBeInstanceOf(Blob);
     });
@@ -115,28 +116,84 @@ describe('ExportImportHandler', () => {
         position: { x: 100, y: 100 }
       };
 
-      const result = await handleExport(
-        testFileId,
-        testColors,
-        testDateRange,
-        testColumns,
-        testData,
-        '2024/01/01 New Year',
-        { color: '#ff0000', subColor: '#ff000080' },
-        { 0: { color: '#ff0000', subColor: '#ff000080', days: [0, 6] } },
-        690,
-        1000,
-        21,
-        'Test Project',
-        true,
-        'yyyy/M/d',
-        [],
-        {},
-        'ja',
-        notesModalState
-      );
+      const result = await handleExport({
+        fileId: testFileId,
+        colors: testColors,
+        dateRange: testDateRange,
+        columns: testColumns,
+        data: testData,
+        holidayInput: '2024/01/01 New Year',
+        holidayColor: { color: '#ff0000', subColor: '#ff000080' },
+        regularDaysOffSetting: { 0: { color: '#ff0000', subColor: '#ff000080', days: [0, 6] } },
+        wbsWidth: 690,
+        calendarWidth: 1000,
+        cellWidth: 21,
+        title: 'Test Project',
+        showYear: true,
+        dateFormat: 'yyyy/M/d',
+        treeData: [],
+        noteData: {},
+        language: 'ja',
+        scrollPosition: { scrollLeft: 0, scrollTop: 0 },
+        notesModalState,
+      });
 
       expect(result).toBeInstanceOf(Blob);
+    });
+  });
+
+  describe('buildProjectData', () => {
+    it('should stamp the current schema version', () => {
+      const projectData = buildProjectData({
+        fileId: testFileId,
+        colors: testColors,
+        dateRange: testDateRange,
+        columns: testColumns,
+        data: testData,
+        holidayInput: '',
+        holidayColor: { color: '#ff0000', subColor: '#ff000080' },
+        regularDaysOffSetting: {},
+        wbsWidth: 690,
+        calendarWidth: 1000,
+        cellWidth: 21,
+        title: 'Test Project',
+        showYear: true,
+        dateFormat: 'yyyy/M/d',
+        treeData: [],
+        noteData: {},
+        language: 'ja',
+        scrollPosition: { scrollLeft: 0, scrollTop: 0 },
+      });
+
+      expect(projectData.version).toBe(EXPORT_SCHEMA_VERSION);
+    });
+
+    it('should pass through core fields and omit absent optional fields', () => {
+      const projectData = buildProjectData({
+        fileId: testFileId,
+        colors: testColors,
+        dateRange: testDateRange,
+        columns: testColumns,
+        data: testData,
+        holidayInput: '',
+        holidayColor: { color: '#ff0000', subColor: '#ff000080' },
+        regularDaysOffSetting: {},
+        wbsWidth: 690,
+        calendarWidth: 1000,
+        cellWidth: 21,
+        title: 'Test Project',
+        showYear: true,
+        dateFormat: 'yyyy/M/d',
+        treeData: [],
+        noteData: {},
+        language: 'ja',
+        scrollPosition: { scrollLeft: 0, scrollTop: 0 },
+      });
+
+      expect(projectData.title).toBe('Test Project');
+      expect(projectData.colors).toEqual(testColors);
+      expect('notesModalState' in projectData).toBe(false);
+      expect('historySnapshots' in projectData).toBe(false);
     });
   });
 
@@ -160,7 +217,7 @@ describe('ExportImportHandler', () => {
         text: jest.fn().mockResolvedValue(JSON.stringify(testDataForJson))
       } as unknown as File;
 
-      const thunkAction = handleImport(jsonFile);
+      const thunkAction = handleImport({ file: jsonFile });
       await thunkAction(mockDispatchFn, () => ({} as any), {});
 
       expect(mockDispatchFn).toHaveBeenCalled();
@@ -172,14 +229,14 @@ describe('ExportImportHandler', () => {
         arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8))
       } as unknown as File;
 
-      const thunkAction = handleImport(zipFile);
+      const thunkAction = handleImport({ file: zipFile });
       await thunkAction(mockDispatchFn, () => ({} as any), {});
 
       expect(mockDispatchFn).toHaveBeenCalled();
     });
 
     it('should handle error when file is not provided', async () => {
-      const thunkAction = handleImport(null as any);
+      const thunkAction = handleImport({ file: null as any });
       const result = await thunkAction(mockDispatchFn, () => ({} as any), {});
       
       // createAsyncThunk wraps errors, so check the result structure
@@ -194,7 +251,7 @@ describe('ExportImportHandler', () => {
         text: jest.fn().mockResolvedValue('invalid json content')
       } as unknown as File;
 
-      const thunkAction = handleImport(malformedJsonFile);
+      const thunkAction = handleImport({ file: malformedJsonFile });
       const result = await thunkAction(mockDispatchFn, () => ({} as any), {});
       
       // Should handle JSON parse error gracefully
@@ -212,7 +269,7 @@ describe('ExportImportHandler', () => {
         text: jest.fn().mockResolvedValue(JSON.stringify(partialData))
       } as unknown as File;
 
-      const thunkAction = handleImport(jsonFile);
+      const thunkAction = handleImport({ file: jsonFile });
       await thunkAction(mockDispatchFn, () => ({} as any), {});
 
       expect(mockDispatchFn).toHaveBeenCalled();
@@ -227,12 +284,12 @@ describe('ExportImportHandler', () => {
     });
 
     it('should handle export with all required fields', async () => {
-      const result = await handleExport(
-        'business-test',
-        { 1: { alias: 'Blue', color: '#blue' } },
-        { startDate: '2024-01-01', endDate: '2024-12-31' },
-        [{ columnId: 'test', columnName: 'Test', width: 100, resizable: false, visible: true, reorderable: false }],
-        {
+      const result = await handleExport({
+        fileId: 'business-test',
+        colors: { 1: { alias: 'Blue', color: '#blue' } },
+        dateRange: { startDate: '2024-01-01', endDate: '2024-12-31' },
+        columns: [{ columnId: 'test', columnName: 'Test', width: 100, resizable: false, visible: true, reorderable: false }],
+        data: {
           'task1': {
             id: 'task1',
             no: 1,
@@ -253,19 +310,20 @@ describe('ExportImportHandler', () => {
             isIncludeHolidays: true
           }
         },
-        '2024/01/01 New Year\n2024/12/25 Christmas',
-        { color: '#holiday', subColor: '#holiday80' },
-        { 0: { color: '#ff0000', subColor: '#ff000080', days: [0, 6] } },
-        800,
-        2000,
-        25,
-        'Business Project 2024',
-        true,
-        'M/d/yyyy',
-        [],
-        { note1: 'Important note' },
-        'en'
-      );
+        holidayInput: '2024/01/01 New Year\n2024/12/25 Christmas',
+        holidayColor: { color: '#holiday', subColor: '#holiday80' },
+        regularDaysOffSetting: { 0: { color: '#ff0000', subColor: '#ff000080', days: [0, 6] } },
+        wbsWidth: 800,
+        calendarWidth: 2000,
+        cellWidth: 25,
+        title: 'Business Project 2024',
+        showYear: true,
+        dateFormat: 'M/d/yyyy',
+        treeData: [],
+        noteData: { note1: 'Important note' },
+        language: 'en',
+        scrollPosition: { scrollLeft: 0, scrollTop: 0 },
+      });
 
       expect(result).toBeInstanceOf(Blob);
       expect(result.type).toBe('application/zip');
@@ -314,7 +372,7 @@ describe('ExportImportHandler', () => {
         text: jest.fn().mockResolvedValue(JSON.stringify(completeData))
       } as unknown as File;
 
-      const thunkAction = handleImport(jsonFile);
+      const thunkAction = handleImport({ file: jsonFile });
       await thunkAction(mockDispatchFn, () => ({} as any), {});
 
       // Verify that multiple dispatch calls were made
@@ -332,25 +390,26 @@ describe('ExportImportHandler', () => {
 
     it('should handle undefined optional parameters gracefully', async () => {
       // Test with minimal required parameters
-      const result = await handleExport(
-        'minimal-test',
-        {},
-        { startDate: '2024-01-01', endDate: '2024-01-01' },
-        [],
-        {},
-        '',
-        { color: '#ffffff', subColor: '#ffffff80' },
-        {},
-        0,
-        0,
-        0,
-        '',
-        false,
-        'yyyy/M/d',
-        [],
-        {},
-        'ja'
-      );
+      const result = await handleExport({
+        fileId: 'minimal-test',
+        colors: {},
+        dateRange: { startDate: '2024-01-01', endDate: '2024-01-01' },
+        columns: [],
+        data: {},
+        holidayInput: '',
+        holidayColor: { color: '#ffffff', subColor: '#ffffff80' },
+        regularDaysOffSetting: {},
+        wbsWidth: 0,
+        calendarWidth: 0,
+        cellWidth: 0,
+        title: '',
+        showYear: false,
+        dateFormat: 'yyyy/M/d',
+        treeData: [],
+        noteData: {},
+        language: 'ja',
+        scrollPosition: { scrollLeft: 0, scrollTop: 0 },
+      });
 
       expect(result).toBeInstanceOf(Blob);
     });
@@ -365,7 +424,7 @@ describe('ExportImportHandler', () => {
         text: jest.fn().mockResolvedValue(JSON.stringify(minimalData))
       } as unknown as File;
 
-      const thunkAction = handleImport(jsonFile);
+      const thunkAction = handleImport({ file: jsonFile });
       
       // Should not throw error even with minimal data
       await expect(

@@ -104,8 +104,8 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
     setError('');
 
     try {
-      const zipBlob = await handleExport(
-        uuidv4(),
+      const zipBlob = await handleExport({
+        fileId: uuidv4(),
         colors,
         dateRange,
         columns,
@@ -121,7 +121,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
         dateFormat,
         treeData,
         noteData,
-        currentLanguage,
+        language: currentLanguage,
         scrollPosition,
         notesModalState,
         treeExpandedKeys,
@@ -129,7 +129,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
         editorStates,
         selectedNodeKey,
         historySnapshots,
-      );
+      });
 
       // Extract JSON from ZIP for display
       const JSZip = (await import('jszip')).default;

@@ -42,8 +42,8 @@ export const useJsonExport = () => {
 
     const exportAndCopyJson = useCallback(async () => {
         try {
-            const zipBlob = await handleExport(
-                uuidv4(),
+            const zipBlob = await handleExport({
+                fileId: uuidv4(),
                 colors,
                 dateRange,
                 columns,
@@ -59,7 +59,7 @@ export const useJsonExport = () => {
                 dateFormat,
                 treeData,
                 noteData,
-                currentLanguage,
+                language: currentLanguage,
                 scrollPosition,
                 notesModalState,
                 treeExpandedKeys,
@@ -67,7 +67,7 @@ export const useJsonExport = () => {
                 editorStates,
                 selectedNodeKey,
                 historySnapshots,
-            );
+            });
 
             const JSZip = (await import('jszip')).default;
             const zip = new JSZip();

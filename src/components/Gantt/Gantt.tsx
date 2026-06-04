@@ -13,6 +13,8 @@ import ResizeBar from '../WbsWidthResizer';
 import WBSInfo from '../Table/WBSInfo';
 import SeparatorRowLabelComponent from '../Table/SeparatorRowLabel';
 import { generateDates } from '../../utils/CommonUtils';
+import { cdate } from 'cdate';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useTranslation } from 'react-i18next';
 import ErrorMessage from '../MessageInfo';
 import { setActiveModal } from '../../reduxStoreAndSlices/uiFlagSlice';
@@ -47,6 +49,7 @@ function Gantt() {
   const maxWbsWidth = useSelector((state: RootState) => state.baseSettings.maxWbsWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
   const isContextMenuOpen = useSelector((state: RootState) => state.uiFlags.isContextMenuOpen);
+  const isExporting = useSelector((state: RootState) => state.uiFlags.isExporting);
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
   const [isGridRefDragging, setIsGridRefDragging] = useState(false);
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -94,6 +97,49 @@ function Gantt() {
     });
     return result;
   }, [data]);
+
+  // When exporting, render every row (bypass virtualization) and size the panes to
+  // the full chart so html2canvas can capture the whole thing in one shot.
+  const effectiveRange = isExporting
+    ? { startIndex: 0, endIndex: filteredData.length - 1 }
+    : visibleRange;
+
+  // For export, crop the date axis to one month after the last day that actually
+  // has content (a bar/event end), so empty trailing columns don't become a huge
+  // right margin while still leaving a month of look-ahead.
+  const exportDateColumns = useMemo(() => {
+    if (!isExporting) return dateArray.length;
+    const toKey = (s: string) => {
+      if (!s) return '';
+      try { return cdate(s).format('YYYY/MM/DD'); } catch { return ''; }
+    };
+    let maxKey = '';
+    Object.values(data).forEach((row) => {
+      if (isChartRow(row) || isEventRow(row)) {
+        [row.plannedEndDate, row.actualEndDate].forEach((d) => {
+          const k = toKey(d);
+          if (k > maxKey) maxKey = k;
+        });
+        if (isEventRow(row)) {
+          row.eventData?.forEach((e) => {
+            const k = toKey(e.endDate);
+            if (k > maxKey) maxKey = k;
+          });
+        }
+      }
+    });
+    if (!maxKey) return dateArray.length;
+    // Crop to one month after the last content date.
+    const cropKey = cdate(maxKey).add(1, 'month').format('YYYY/MM/DD');
+    const cropIdx = dateArray.findIndex((d) => d.format('YYYY/MM/DD') === cropKey);
+    if (cropIdx >= 0) return cropIdx + 1;
+    // The one-month look-ahead extends beyond the saved range: show all of it.
+    return dateArray.length;
+  }, [isExporting, data, dateArray]);
+
+  const exportDateWidth = exportDateColumns * cellWidth;
+  const fullContentWidth = wbsWidth + exportDateWidth;
+  const fullContentHeight = topbarHeight + rowHeight * 2 + filteredData.length * rowHeight;
 
   const calculateAndSetIndicatorPosition = useCallback((event: MouseEvent) => {
     if (isContextMenuOpen) return;
@@ -397,17 +443,24 @@ function Gantt() {
 
   return (
     <div style={{ position: 'fixed' }}>
-      <div style={{ position: 'relative' }}>
-        <div style={{ position: 'absolute', top: '0px', left: '0px', width: '100svw', height: `${topbarHeight}px`, overflow: 'hidden', backgroundColor: '#ececec' }}>
+      <div
+        id="gantt-export-root"
+        style={
+          isExporting
+            ? { position: 'relative', width: `${fullContentWidth}px`, height: `${fullContentHeight}px`, overflow: 'hidden', backgroundColor: '#ffffff' }
+            : { position: 'relative' }
+        }
+      >
+        <div style={{ position: 'absolute', top: '0px', left: '0px', width: '100svw', height: `${topbarHeight}px`, overflow: 'hidden', backgroundColor: '#ececec', visibility: isExporting ? 'hidden' : 'visible' }}>
           {isLocalMode ? <TopBarLocal /> : <TopBarLocal />}
         </div>
-        <div style={{ position: 'absolute', top: `${topbarHeight}px`, left: `${wbsWidth}px`, width: `calc(100vw - ${wbsWidth}px)`, height: `calc(100vh - ${topbarHeight}px`, overflow: 'hidden', borderLeft: '1px solid #00000066', scrollBehavior: 'auto' }} ref={calendarRef}>
+        <div style={{ position: 'absolute', top: `${topbarHeight}px`, left: `${wbsWidth}px`, width: isExporting ? `${exportDateWidth}px` : `calc(100vw - ${wbsWidth}px)`, height: isExporting ? `${fullContentHeight - topbarHeight}px` : `calc(100vh - ${topbarHeight}px`, overflow: isExporting ? 'visible' : 'hidden', borderLeft: '1px solid #00000066', scrollBehavior: 'auto' }} ref={calendarRef}>
           <Calendar dateArray={dateArray} />
-          <GridVertical dateArray={dateArray} gridHeight={gridHeight} />
+          <GridVertical dateArray={dateArray} gridHeight={isExporting ? fullContentHeight : gridHeight} />
         </div>
-        <div style={{ position: 'absolute', top: `${topbarHeight + rowHeight}px`, width: `${wbsWidth + 5}px`, height: `calc(100vh - ${rowHeight + topbarHeight}px)`, overflowX: 'scroll', overflowY: 'hidden', scrollBehavior: 'auto' }} ref={wbsRef}>
+        <div id="gantt-wbs-pane" style={{ position: 'absolute', top: `${topbarHeight + rowHeight}px`, width: `${wbsWidth + 5}px`, height: isExporting ? `${fullContentHeight - (rowHeight + topbarHeight)}px` : `calc(100vh - ${rowHeight + topbarHeight}px)`, overflowX: isExporting ? 'hidden' : 'scroll', overflowY: 'hidden', scrollBehavior: 'auto' }} ref={wbsRef}>
           {filteredData.map(([key, entry], filteredIndex) => {
-            if (gridRef.current && isSeparatorRow(entry) && filteredIndex >= visibleRange.startIndex && filteredIndex <= visibleRange.endIndex) {
+            if (gridRef.current && isSeparatorRow(entry) && filteredIndex >= effectiveRange.startIndex && filteredIndex <= effectiveRange.endIndex) {
               const topPosition = (filteredIndex * rowHeight) + rowHeight;
               return (
                 <SeparatorRowLabelComponent
@@ -425,11 +478,11 @@ function Gantt() {
 
         <ResizeBar setIsGridRefDragging={setIsGridRefDragging} />
 
-        <div style={{ position: 'absolute', top: `${topbarHeight + (rowHeight * 2)}px`, left: `${wbsWidth}px`, width: `calc(100vw - ${wbsWidth}px)`, height: `calc(100vh - ${topbarHeight + rowHeight * 2}px)`, overflow: 'scroll', borderLeft: '1px solid transparent', scrollBehavior: 'auto' }} ref={gridRef}>
+        <div style={{ position: 'absolute', top: `${topbarHeight + (rowHeight * 2)}px`, left: `${wbsWidth}px`, width: isExporting ? `${exportDateWidth}px` : `calc(100vw - ${wbsWidth}px)`, height: isExporting ? `${fullContentHeight - (topbarHeight + rowHeight * 2)}px` : `calc(100vh - ${topbarHeight + rowHeight * 2}px)`, overflow: isExporting ? 'visible' : 'scroll', borderLeft: '1px solid transparent', scrollBehavior: 'auto' }} ref={gridRef} id="gantt-grid-scroll">
           <div style={{ height: `${(filteredData.length * rowHeight) - topbarHeight}px`, width: `${(dateArray.length * cellWidth)}px` }}>
             {filteredData.map(([key, entry], filteredIndex) => {
               if (gridRef.current) {
-                if (filteredIndex >= visibleRange.startIndex && filteredIndex <= visibleRange.endIndex) {
+                if (filteredIndex >= effectiveRange.startIndex && filteredIndex <= effectiveRange.endIndex) {
                   const topPosition = filteredIndex * rowHeight;
                   if (isChartRow(entry)) {
                     return (
@@ -506,6 +559,29 @@ function Gantt() {
         </>
       )}
       <CustomRowCountDialogContainer />
+      {/* Export progress overlay. Rendered OUTSIDE #gantt-export-root so it is not
+          captured into the PDF, but covers the screen while the chart is rendered. */}
+      {isExporting && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.78)',
+            zIndex: 100000,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '14px',
+          }}
+        >
+          <CircularProgress />
+          <div style={{ fontSize: '15px', color: '#333' }}>{t('Generating PDF...')}</div>
+        </div>
+      )}
       <ErrorMessage />
     </div>
   );

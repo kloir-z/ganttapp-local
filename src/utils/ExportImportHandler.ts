@@ -11,33 +11,68 @@ import { ExtendedTreeDataNode, noteData, setIsSavedChangesNotes, setNotes, Notes
 import { importHistory, clearHistory } from "../reduxStoreAndSlices/historySlice";
 import i18n from "i18next";
 
-export const handleExport = async (
-  fileId: string,
-  colors: { [id: number]: ColorInfo },
-  dateRange: { startDate: string, endDate: string },
-  columns: ExtendedColumn[],
-  data: { [id: string]: WBSData },
-  holidayInput: string,
-  holidayColor: HolidayColor,
-  regularDaysOffSetting: RegularDaysOffSettingsType,
-  wbsWidth: number,
-  calendarWidth: number,
-  cellWidth: number,
-  title: string,
-  showYear: boolean,
-  dateFormat: DateFormatType,
-  treeData: ExtendedTreeDataNode[],
-  noteData: noteData,
-  language: string,
-  scrollPosition: { scrollLeft: number; scrollTop: number },
-  notesModalState?: NotesModalState,
-  treeExpandedKeys?: React.Key[],
-  treeScrollPosition?: number,
-  editorStates?: { [key: string]: any },
-  selectedNodeKey?: string,
-  historySnapshots?: any[],
-) => {
-  const settingsData = {
+// Schema version of the exported project data. Bump this whenever the shape of
+// the exported JSON changes in a way that import logic must account for.
+// Files exported before versioning existed have no `version` field; treat those as 1.
+export const EXPORT_SCHEMA_VERSION = 1;
+
+export interface ExportData {
+  fileId: string;
+  colors: { [id: number]: ColorInfo };
+  dateRange: { startDate: string, endDate: string };
+  columns: ExtendedColumn[];
+  data: { [id: string]: WBSData };
+  holidayInput: string;
+  holidayColor: HolidayColor;
+  regularDaysOffSetting: RegularDaysOffSettingsType;
+  wbsWidth: number;
+  calendarWidth: number;
+  cellWidth: number;
+  title: string;
+  showYear: boolean;
+  dateFormat: DateFormatType;
+  treeData: ExtendedTreeDataNode[];
+  noteData: noteData;
+  language: string;
+  scrollPosition: { scrollLeft: number; scrollTop: number };
+  notesModalState?: NotesModalState;
+  treeExpandedKeys?: React.Key[];
+  treeScrollPosition?: number;
+  editorStates?: { [key: string]: any };
+  selectedNodeKey?: string;
+  historySnapshots?: any[];
+}
+
+// Collect the canonical, format-agnostic project model from the export options.
+// This is the single source of truth that every export format serializes from.
+export const buildProjectData = (options: ExportData) => {
+  const {
+    colors,
+    dateRange,
+    columns,
+    data,
+    holidayInput,
+    holidayColor,
+    regularDaysOffSetting,
+    wbsWidth,
+    calendarWidth,
+    cellWidth,
+    title,
+    showYear,
+    dateFormat,
+    treeData,
+    noteData,
+    language,
+    scrollPosition,
+    notesModalState,
+    treeExpandedKeys,
+    treeScrollPosition,
+    editorStates,
+    selectedNodeKey,
+    historySnapshots,
+  } = options;
+  return {
+    version: EXPORT_SCHEMA_VERSION,
     colors,
     dateRange,
     columns,
@@ -62,11 +97,21 @@ export const handleExport = async (
     ...(selectedNodeKey && { selectedNodeKey }),
     ...(historySnapshots && { historySnapshots }),
   };
+};
+
+export type ProjectData = ReturnType<typeof buildProjectData>;
+
+// Serialize the project model to the native ZIP format (a deflated JSON entry).
+export const serializeToZip = async (fileId: string, projectData: ProjectData): Promise<Blob> => {
   const zip = new JSZip();
-  const jsonData = JSON.stringify(settingsData, null, 2);
+  const jsonData = JSON.stringify(projectData, null, 2);
   zip.file(`${fileId}.json`, jsonData, { compression: 'DEFLATE', compressionOptions: { level: 9 } });
-  const zipBlob = await zip.generateAsync({ type: 'blob' });
-  return zipBlob;
+  return zip.generateAsync({ type: 'blob' });
+};
+
+export const handleExport = async (options: ExportData): Promise<Blob> => {
+  const projectData = buildProjectData(options);
+  return serializeToZip(options.fileId, projectData);
 };
 
 export const handleImport = createAsyncThunk<void, { file: Blob; skipHistoryImport?: boolean }, { state: RootState, dispatch: AppDispatch }>(
@@ -89,6 +134,15 @@ export const handleImport = createAsyncThunk<void, { file: Blob; skipHistoryImpo
       if (!jsonFileEntry) throw new Error("No JSON file found in ZIP");
       const jsonData = await jsonFileEntry.async("string");
       parsedData = JSON.parse(jsonData);
+    }
+    // Schema version of the imported file. Legacy files predate versioning and
+    // have no `version` field, so they are treated as version 1. Branch on
+    // `schemaVersion` here when a future schema change needs migration on import.
+    const schemaVersion: number = parsedData.version ?? 1;
+    if (schemaVersion > EXPORT_SCHEMA_VERSION) {
+      console.warn(
+        `Importing a project saved with a newer format (v${schemaVersion}) than this app supports (v${EXPORT_SCHEMA_VERSION}). Some data may not load correctly.`
+      );
     }
     if (parsedData.colors) {
       dispatch(updateEntireColorSettings(parsedData.colors));
