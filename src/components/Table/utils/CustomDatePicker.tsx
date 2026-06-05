@@ -48,6 +48,19 @@ const CustomDatePicker = memo(({ cell, onCellChanged }: CustomDatePickerProps) =
       onPointerDown={e => e.stopPropagation()}
       onKeyDown={e => {
         if (isAlphaNumericKey(e.keyCode) || (isNavigationKey(e.keyCode))) e.stopPropagation();
+        // MUI consumes Enter before it reaches ReactGrid, so only Tab was committing.
+        // Commit explicitly here (skip while the calendar popup is open; let MUI handle Enter there).
+        if (e.key === 'Enter' && !open) {
+          const newDateString = selectedDate ? selectedDate.format("YYYY/MM/DD") : "";
+          onCellChanged({ ...cell, text: newDateString }, true);
+        }
+      }}
+      onBlur={e => {
+        // Commit the typed value when focus truly leaves the cell. Skip while focus
+        // moves within the editor (calendar icon) or while the popup is open.
+        if (e.currentTarget.contains(e.relatedTarget as Node) || open) return;
+        const newDateString = selectedDate ? selectedDate.format("YYYY/MM/DD") : "";
+        onCellChanged({ ...cell, text: newDateString }, true);
       }}
       className="customdatepicker"
       style={{ position: 'absolute', top: '-2px', left: '-2px' }}
@@ -62,6 +75,7 @@ const CustomDatePicker = memo(({ cell, onCellChanged }: CustomDatePickerProps) =
           open={open}
           onOpen={handleOpen}
           onClose={handleClose}
+          closeOnSelect={false}
           minDate={dayjs(1970 / 1 / 1)}
           value={selectedDate}
           onChange={onChange}

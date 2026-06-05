@@ -100,9 +100,13 @@ interface QuillEditorProps {
   selectedNodeKey: string;
   addNode: (sameLevel?: boolean, title?: string, content?: string) => void;
   noteData?: any;
+  // When provided, the editor persists content through this callback instead of
+  // the default tree-note store (updateNoteData). Used for row notes, which save
+  // to rowNoteData keyed by row id.
+  onSave?: (key: string, content: string) => void;
 }
 
-const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNodeKey, addNode, noteData: propsNoteData }, ref) => {
+const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNodeKey, addNode, noteData: propsNoteData, onSave }, ref) => {
   const dispatch = useDispatch();
   const currentNoteData = useSelector((state: RootState) => state.notes.noteData);
   const noteData = propsNoteData ?? currentNoteData;
@@ -112,7 +116,14 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Quill | null>(null);
   const readOnlyRef = useRef(readOnly);
+  // Keep onSave in a ref so handleContentChange stays stable and the editor is
+  // not re-initialized when the parent passes a fresh callback identity.
+  const onSaveRef = useRef(onSave);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
 
   const formatDate = useCallback((date: Date, format: string): string => {
     const cd = cdate(date);
@@ -225,6 +236,10 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
   };
 
   const saveEditorState = useCallback(() => {
+    // Row-note mode (onSave provided) does not persist per-node cursor/scroll
+    // state: it would pollute editorStates with row ids and mark the project
+    // dirty merely on opening the popover.
+    if (onSaveRef.current) return;
     if (selectedNodeKey && editorRef.current) {
       const selection = editorRef.current.getSelection();
       const scrollContainer = editorContainerRef.current?.querySelector('.ql-editor') as HTMLElement;
@@ -242,7 +257,11 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
   const handleContentChange = useCallback(() => {
     if (selectedNodeKey && editorRef.current) {
       const deltaContent = JSON.stringify(editorRef.current.getContents());
-      dispatch(updateNoteData({ key: selectedNodeKey, content: deltaContent }));
+      if (onSaveRef.current) {
+        onSaveRef.current(selectedNodeKey, deltaContent);
+      } else {
+        dispatch(updateNoteData({ key: selectedNodeKey, content: deltaContent }));
+      }
       saveEditorState();
     } else if (!selectedNodeKey && editorRef.current) {
       const deltaContent = editorRef.current.getContents();
@@ -269,7 +288,9 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
 
   const addToolbarTooltips = useCallback(() => {
     setTimeout(() => {
-      const toolbar = document.querySelector('.ql-toolbar');
+      // Scope to this editor's own toolbar so tooltips are not applied to a
+      // sibling editor's toolbar when several editors are mounted at once.
+      const toolbar = editorContainerRef.current?.parentNode?.querySelector('.ql-toolbar');
       if (!toolbar) return;
 
       const tooltipMap: { [key: string]: string } = {
@@ -541,7 +562,11 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       }
 
       if (editorContainer) {
-        const toolbarElement = document.querySelector('.ql-toolbar');
+        // Scope the toolbar lookup to this editor's own parent. With multiple
+        // QuillEditor instances mounted at once (e.g. the notes modal editor and
+        // a row-note popover), a document-wide querySelector could grab another
+        // editor's toolbar and removeChild would throw.
+        const toolbarElement = editorContainer.parentNode?.querySelector('.ql-toolbar');
         if (toolbarElement && editorContainer.parentNode) {
           editorContainer.parentNode.removeChild(toolbarElement);
         }
@@ -608,7 +633,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
   }, [zoomLevel, updateZoomButtonStates]);
 
   return (
-    <div style={{ position: 'relative', height: '100%' }}>
+    <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <style>
         {`
           .ql-editor {
@@ -719,7 +744,8 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       <StyledQuillContainer
         ref={editorContainerRef}
         style={{
-          height: '100%',
+          flex: 1,
+          minHeight: 0,
           position: 'relative',
           display: 'flex',
           flexDirection: 'column'

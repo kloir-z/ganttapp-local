@@ -291,6 +291,13 @@ const config = {
         "Background Color": "Background Color",
         "Remove Formatting": "Remove Formatting",
         "Insert Divider": "Insert Divider",
+        // Row note (per-row memo) translations
+        "Add note": "Add note",
+        "Edit note": "Edit note",
+        "Task Notes": "Task Notes",
+        "No task notes yet": "No task notes yet",
+        "(Untitled row)": "(Untitled row)",
+        "Drag to resize": "Drag to resize",
         // New manual homepage translations
         "You will see the difference…": "You will see the difference…",
         "Home": "Home",
@@ -706,6 +713,13 @@ const config = {
         "Background Color": "背景色",
         "Remove Formatting": "書式クリア",
         "Insert Divider": "区切り線挿入",
+        // Row note (per-row memo) translations
+        "Add note": "メモを追加",
+        "Edit note": "メモを編集",
+        "Task Notes": "タスクメモ",
+        "No task notes yet": "タスクメモはまだありません",
+        "(Untitled row)": "(無題の行)",
+        "Drag to resize": "ドラッグでサイズ変更",
         // New manual homepage translations
         "You will see the difference…": "違いを実感できます…",
         "Home": "ホーム",

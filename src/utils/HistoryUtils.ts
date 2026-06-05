@@ -21,6 +21,7 @@ export const createSnapshot = async (
       dateFormat: state.wbsData.dateFormat,
       treeData: state.notes.treeData,
       noteData: state.notes.noteData,
+      rowNoteData: state.notes.rowNoteData,
     };
 
 
@@ -54,6 +55,7 @@ export const getCurrentProjectDataAsJson = (state: RootState): string => {
     dateFormat: state.wbsData.dateFormat,
     treeData: state.notes.treeData,
     noteData: state.notes.noteData,
+    rowNoteData: state.notes.rowNoteData,
   };
 
   return JSON.stringify(projectData, null, 2);

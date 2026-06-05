@@ -61,10 +61,11 @@ export const useHistoryModal = () => {
         showYear: allRequiredState.showYear, 
         dateFormat: allRequiredState.dateFormat 
       },
-      notes: { 
-        treeData: allRequiredState.treeData, 
-        noteData: allRequiredState.noteData, 
-        modalState: allRequiredState.modalState, 
+      notes: {
+        treeData: allRequiredState.treeData,
+        noteData: allRequiredState.noteData,
+        rowNoteData: allRequiredState.rowNoteData,
+        modalState: allRequiredState.modalState,
         treeExpandedKeys: allRequiredState.treeExpandedKeys, 
         treeScrollPosition: allRequiredState.treeScrollPosition, 
         editorStates: allRequiredState.editorStates, 

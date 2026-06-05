@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, setPlannedDate, setActualDate, pushPastState, removePastState, updateSeparatorDates } from '../../reduxStoreAndSlices/store';
 import { addPlannedDays } from '../../utils/CommonUtils';
 import { ChartBar } from './ChartBar';
+import RowNoteButton from './RowNoteButton';
 import { GanttRow } from '../../styles/GanttStyles';
 import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
@@ -276,8 +277,8 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   }, [localPlannedStartDate, localPlannedEndDate, localActualStartDate, localActualEndDate, syncToStore]);
 
   const handleMouseUp = useCallback(() => {
-    const isPlannedDrag = isBarDragging === 'planned' || isBarStartDragging === 'planned' || isBarEndDragging === 'planned';
-    const isActualDrag = isBarDragging === 'actual' || isBarStartDragging === 'actual' || isBarEndDragging === 'actual';
+    const isPlannedDrag = isBarDragging === 'planned' || isBarStartDragging === 'planned' || isBarEndDragging === 'planned' || isEditing === 'planned';
+    const isActualDrag = isBarDragging === 'actual' || isBarStartDragging === 'actual' || isBarEndDragging === 'actual' || isEditing === 'actual';
     let shouldremovePastState = false;
     if (isPlannedDrag) {
       const originalPlannedStartDate = originalDateRef.current.start ? originalDateRef.current.start : null;
@@ -295,7 +296,21 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
     if (shouldremovePastState) {
       dispatch(removePastState(1));
     }
-    syncToStore();
+    // Flush the final dates to the store synchronously (cancel the pending
+    // debounced sync). Otherwise, when the click is released before the 50ms
+    // debounce fires, clearing the drag flags lets the reset effect restore the
+    // bar from the not-yet-updated entry.* and it snaps back to its original
+    // position.
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = null;
+    }
+    if (isPlannedDrag && localPlannedStartDate && localPlannedEndDate) {
+      dispatch(setPlannedDate({ id: entry.id, startDate: localPlannedStartDate, endDate: localPlannedEndDate }));
+    }
+    if (isActualDrag && localActualStartDate && localActualEndDate) {
+      dispatch(setActualDate({ id: entry.id, startDate: localActualStartDate, endDate: localActualEndDate }));
+    }
     setIsEditing(null);
     setIsBarDragging(null);
     setIsPlannedBarDragged(false);
@@ -304,7 +319,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
     setInitialMouseX(null);
     setCanGridRefDrag(true);
     dispatch(updateSeparatorDates());
-  }, [dispatch, isBarDragging, isBarEndDragging, isBarStartDragging, localActualEndDate, localActualStartDate, localPlannedEndDate, localPlannedStartDate, setCanGridRefDrag, syncToStore]);
+  }, [dispatch, entry.id, isEditing, isBarDragging, isBarEndDragging, isBarStartDragging, localActualEndDate, localActualStartDate, localPlannedEndDate, localPlannedStartDate, setCanGridRefDrag]);
 
   const handleBarRightClick = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual' | null) => {
     event.stopPropagation();
@@ -334,8 +349,21 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
     contextMenu
   });
 
+  // Anchor the note icon just left of the row's earliest bar (planned/actual).
+  // Falls back to the sticky left edge when the row has no bar yet.
+  const noteAnchorLeft = useMemo(() => {
+    const starts = [localPlannedStartDate, localActualStartDate].filter(Boolean) as string[];
+    if (starts.length === 0) return undefined;
+    const earliest = starts.reduce((a, b) => (cdate(a) <= cdate(b) ? a : b));
+    const startCDate = cdate(earliest);
+    let startIndex = dateArray.findIndex(date => date >= startCDate);
+    if (startIndex === -1) startIndex = 0;
+    return Math.max(2, startIndex * cellWidth - 26);
+  }, [localPlannedStartDate, localActualStartDate, dateArray, cellWidth]);
+
   return (
     <GanttRow style={{ position: 'absolute', top: `${topPosition}px`, width: `${calendarWidth}px`, height: `${rowHeight}px` }} onDoubleClick={handleDoubleClick} onContextMenu={(e) => handleBarRightClick(e, null)} ref={ganttRowRef}>
+      <RowNoteButton rowId={entry.id} displayName={entry.displayName} anchorLeftPx={noteAnchorLeft} />
       {(isEditing || isBarDragging || isBarEndDragging || isBarStartDragging) && (
         <div
           style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: 'calc(100vh - 12px)', zIndex: 9999, cursor: 'pointer' }}

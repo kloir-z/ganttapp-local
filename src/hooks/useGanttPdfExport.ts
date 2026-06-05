@@ -43,6 +43,11 @@ export const useGanttPdfExport = () => {
       const scale = Math.min(2, MAX_CANVAS_SIDE / Math.max(width, height));
       const renderScale = scale > 0 ? scale : 1;
 
+      // The blank (hidden) top bar sits above the calendar; crop it so the title
+      // band sits right against the chart instead of leaving a big gap.
+      const calendarPane = document.getElementById('gantt-calendar-pane');
+      const topOffset = calendarPane ? calendarPane.offsetTop : 0;
+
       const canvas = await html2canvas(root, {
         backgroundColor: '#ffffff',
         scale: renderScale,
@@ -51,25 +56,40 @@ export const useGanttPdfExport = () => {
         windowWidth: width,
         windowHeight: height,
         useCORS: true,
+        onclone: (clonedDoc) => {
+          // Hide things that shouldn't appear in the PDF: per-row note icons and
+          // the left table's blue selection/focus frame.
+          clonedDoc.querySelectorAll('.row-note-icon').forEach((el) => {
+            (el as HTMLElement).style.display = 'none';
+          });
+          clonedDoc
+            .querySelectorAll('.rg-cell-focus, .rg-partial-area, .rg-fill-handle, .rg-touch-fill-handle')
+            .forEach((el) => {
+              (el as HTMLElement).style.display = 'none';
+            });
+        },
       });
 
       dispatch(setIsExporting(false));
 
-      // Compose a title band above the captured chart so the PDF is labeled.
+      // Compose a title band above the captured chart so the PDF is labeled,
+      // cropping the blank top-bar area for a tighter layout.
       const titleText = title || 'Gantt Chart';
-      const bandHeight = Math.round(56 * renderScale);
+      const bandHeight = Math.round(38 * renderScale);
+      const cropTop = Math.round(topOffset * renderScale);
+      const visibleHeight = Math.max(0, canvas.height - cropTop);
       const composed = document.createElement('canvas');
       composed.width = canvas.width;
-      composed.height = canvas.height + bandHeight;
+      composed.height = visibleHeight + bandHeight;
       const ctx = composed.getContext('2d');
       if (ctx) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, composed.width, composed.height);
         ctx.fillStyle = '#222222';
         ctx.textBaseline = 'middle';
-        ctx.font = `bold ${Math.round(26 * renderScale)}px "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif`;
+        ctx.font = `bold ${Math.round(24 * renderScale)}px "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif`;
         ctx.fillText(titleText, Math.round(16 * renderScale), Math.round(bandHeight / 2));
-        ctx.drawImage(canvas, 0, bandHeight);
+        ctx.drawImage(canvas, 0, cropTop, canvas.width, visibleHeight, 0, bandHeight, canvas.width, visibleHeight);
       }
 
       const base = ctx ? composed : canvas;

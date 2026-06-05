@@ -2,10 +2,10 @@
 import i18next from 'i18next';
 import { CellChange, TextCell, NumberCell, CheckboxCell, EmailCell, DropdownCell, ChevronCell, HeaderCell, TimeCell, DateCell } from "@silevis/reactgrid";
 import { WBSData, ChartRow, isChartRow, isEventRow, isSeparatorRow } from '../../../types/DataTypes';
-import { setEntireData, ExtendedColumn, setMessageInfo, clearMessageInfo, AppDispatch } from '../../../reduxStoreAndSlices/store';
+import { setEntireData, setPlannedDate, updateSeparatorDates, pushPastState, ExtendedColumn, setMessageInfo, clearMessageInfo, AppDispatch } from '../../../reduxStoreAndSlices/store';
 import { CustomDateCell } from './CustomDateCell';
 import { CustomTextCell } from "./CustomTextCell";
-import { calculatePlannedDays, addPlannedDays, validateDateString } from "../../../utils/CommonUtils";
+import { addPlannedDays, validateDateString } from "../../../utils/CommonUtils";
 import { SeparatorCell } from "./SeparatorCell";
 import { CustomNumberCell } from './CustomNumberCell';
 
@@ -22,7 +22,37 @@ export const handleGridChanges = (dispatch: AppDispatch, data: { [id: string]: W
   const secondVisibleColumnId = visibleColumns.length > 1 ? visibleColumns[1].columnId : null;
   const maxLength = 150;
 
-  changes.forEach((change) => {
+  // Planned start/end edits from the table mirror the chart bar drag: set the date
+  // directly and cascade to dependent (successor) rows via setPlannedDate, instead of
+  // going through setEntireData -> resolveDependencies, which would re-derive (snap
+  // back) a dependent row's own start from its predecessor.
+  const isPlannedDateChange = (change: CellChange<AllCellTypes>) => {
+    const rowData = data[change.rowId.toString()];
+    return isChartRow(rowData)
+      && (change.columnId === 'plannedStartDate' || change.columnId === 'plannedEndDate')
+      && change.newCell.type === 'customDate';
+  };
+  const plannedDateChanges = changes.filter(isPlannedDateChange);
+  const otherChanges = changes.filter(change => !isPlannedDateChange(change));
+
+  if (plannedDateChanges.length > 0) {
+    dispatch(pushPastState());
+    plannedDateChanges.forEach((change) => {
+      const rowId = change.rowId.toString();
+      const chartRow = data[rowId] as ChartRow;
+      const newDate = validateDateString((change.newCell as CustomDateCell).text);
+      const startDate = change.columnId === 'plannedStartDate' ? newDate : validateDateString(chartRow.plannedStartDate);
+      const endDate = change.columnId === 'plannedEndDate' ? newDate : validateDateString(chartRow.plannedEndDate);
+      dispatch(setPlannedDate({ id: rowId, startDate, endDate }));
+    });
+    dispatch(updateSeparatorDates());
+  }
+
+  if (otherChanges.length === 0) {
+    return;
+  }
+
+  otherChanges.forEach((change) => {
     const rowId = change.rowId.toString();
     const rowData = updatedData[rowId];
 
@@ -81,24 +111,8 @@ export const handleGridChanges = (dispatch: AppDispatch, data: { [id: string]: W
           ...rowData,
           [fieldName]: validatedDate
         };
-      } else if (fieldName === "plannedStartDate") {
-        const customDateCell = newCell as CustomDateCell;
-        const startDate = validateDateString(customDateCell.text);
-        const endDate = validateDateString(chartRow.plannedEndDate);
-        updatedData[rowId] = {
-          ...rowData,
-          plannedStartDate: startDate,
-          plannedDays: calculatePlannedDays(startDate, endDate, holidays, chartRow.isIncludeHolidays, regularDaysOff)
-        };
-      } else if (fieldName === "plannedEndDate") {
-        const customDateCell = newCell as CustomDateCell;
-        const startDate = validateDateString(chartRow.plannedStartDate);
-        const endDate = validateDateString(customDateCell.text);
-        updatedData[rowId] = {
-          ...rowData,
-          plannedEndDate: endDate,
-          plannedDays: calculatePlannedDays(startDate, endDate, holidays, chartRow.isIncludeHolidays, regularDaysOff)
-        };
+      // plannedStartDate / plannedEndDate are handled above via setPlannedDate
+      // (chart-drag-equivalent) and excluded from otherChanges.
       } else if (fieldName === "progress") {
         const customTextCell = newCell as CustomNumberCell;
         let updatedText: string = "";

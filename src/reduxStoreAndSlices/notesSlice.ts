@@ -30,6 +30,7 @@ export interface EditorState {
 interface NotesState {
   treeData: ExtendedTreeDataNode[];
   noteData: noteData;
+  rowNoteData: noteData;
   modalState: NotesModalState;
   isSavedChanges: boolean;
   zoomLevel: number;
@@ -37,11 +38,15 @@ interface NotesState {
   treeScrollPosition: number;
   editorStates: { [key: string]: EditorState };
   selectedNodeKey: string;
+  // Id of the WBS row whose note is shown in the modal's main editor. Mutually
+  // exclusive with selectedNodeKey (tree node). Transient UI state, not exported.
+  selectedRowNoteId: string;
 }
 
 const initialState: NotesState = {
   treeData: [],
   noteData: {},
+  rowNoteData: {},
   modalState: {
     treeWidth: 300,
     noteWidth: 1050,
@@ -54,6 +59,7 @@ const initialState: NotesState = {
   treeScrollPosition: 0,
   editorStates: {},
   selectedNodeKey: '',
+  selectedRowNoteId: '',
 };
 
 const notesSlice = createSlice({
@@ -88,6 +94,20 @@ const notesSlice = createSlice({
       const key = action.payload;
       delete state.noteData[key];
       state.isSavedChanges = false;
+    },
+    updateRowNoteData: (state, action: PayloadAction<{ rowId: string; content: string }>) => {
+      const { rowId, content } = action.payload;
+      if (state.rowNoteData[rowId] !== content) {
+        state.rowNoteData[rowId] = content;
+        state.isSavedChanges = false;
+      }
+    },
+    deleteRowNoteData: (state, action: PayloadAction<string>) => {
+      const rowId = action.payload;
+      if (rowId in state.rowNoteData) {
+        delete state.rowNoteData[rowId];
+        state.isSavedChanges = false;
+      }
     },
     updateTreeNodeTitle: (state, action: PayloadAction<{ key: string; title: string }>) => {
       const { key, title } = action.payload;
@@ -241,25 +261,29 @@ const notesSlice = createSlice({
     resetNotes: (state) => {
       state.treeData = initialState.treeData;
       state.noteData = initialState.noteData;
+      state.rowNoteData = initialState.rowNoteData;
       state.modalState = initialState.modalState;
       state.treeExpandedKeys = initialState.treeExpandedKeys;
       state.treeScrollPosition = initialState.treeScrollPosition;
       state.editorStates = initialState.editorStates;
       state.selectedNodeKey = initialState.selectedNodeKey;
+      state.selectedRowNoteId = initialState.selectedRowNoteId;
       state.isSavedChanges = true;
     },
-    setNotes: (state, action: PayloadAction<{ 
-      treeData: ExtendedTreeDataNode[]; 
-      noteData: noteData; 
+    setNotes: (state, action: PayloadAction<{
+      treeData: ExtendedTreeDataNode[];
+      noteData: noteData;
+      rowNoteData?: noteData;
       modalState?: NotesModalState;
       treeExpandedKeys?: React.Key[];
       treeScrollPosition?: number;
       editorStates?: { [key: string]: EditorState };
       selectedNodeKey?: string;
     }>) => {
-      const { treeData, noteData, modalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey } = action.payload;
+      const { treeData, noteData, rowNoteData, modalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey } = action.payload;
       state.treeData = treeData;
       state.noteData = noteData;
+      state.rowNoteData = rowNoteData ?? {};
       if (modalState) {
         state.modalState = modalState;
       }
@@ -311,7 +335,18 @@ const notesSlice = createSlice({
     },
     setSelectedNodeKey: (state, action: PayloadAction<string>) => {
       state.selectedNodeKey = action.payload;
+      // Selecting a tree node deselects any row note (mutually exclusive).
+      if (action.payload) {
+        state.selectedRowNoteId = '';
+      }
       state.isSavedChanges = false;
+    },
+    setSelectedRowNoteId: (state, action: PayloadAction<string>) => {
+      state.selectedRowNoteId = action.payload;
+      // Selecting a row note deselects the tree node (mutually exclusive).
+      if (action.payload) {
+        state.selectedNodeKey = '';
+      }
     },
     updateTreeData: (state, action: PayloadAction<ExtendedTreeDataNode[]>) => {
       state.treeData = action.payload;
@@ -324,6 +359,8 @@ export const {
   updateNoteData,
   addNoteData,
   deleteNoteData,
+  updateRowNoteData,
+  deleteRowNoteData,
   updateTreeNodeTitle,
   addTreeNode,
   removeTreeNode,
@@ -339,7 +376,8 @@ export const {
   updateTreeScrollPosition,
   updateEditorState,
   deleteEditorState,
-  setSelectedNodeKey
+  setSelectedNodeKey,
+  setSelectedRowNoteId
 } = notesSlice.actions;
 
 export default notesSlice.reducer;

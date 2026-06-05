@@ -138,7 +138,12 @@ function Gantt() {
   }, [isExporting, data, dateArray]);
 
   const exportDateWidth = exportDateColumns * cellWidth;
-  const fullContentWidth = wbsWidth + exportDateWidth;
+  // Bar labels (task names) can overflow to the right of their bar. The grid
+  // pane renders with overflow:visible during export, but #gantt-export-root is
+  // overflow:hidden, so without this margin a label on a right-edge bar gets
+  // clipped. Add a little breathing room on the right when exporting.
+  const EXPORT_RIGHT_MARGIN = 160;
+  const fullContentWidth = wbsWidth + exportDateWidth + (isExporting ? EXPORT_RIGHT_MARGIN : 0);
   const fullContentHeight = topbarHeight + rowHeight * 2 + filteredData.length * rowHeight;
 
   const calculateAndSetIndicatorPosition = useCallback((event: MouseEvent) => {
@@ -420,6 +425,12 @@ function Gantt() {
         dispatch(setActiveModal(null));
       } else if (!activeModal && !isViewingPast) {
         if ((event.ctrlKey || event.metaKey)) {
+          // When typing in a rich-text editor (e.g. a row-note popover), let the
+          // editor handle Ctrl+Z/Y itself; don't also undo/redo the chart state.
+          const target = event.target as HTMLElement | null;
+          if (target && (target.isContentEditable || target.closest?.('.ql-editor'))) {
+            return;
+          }
           switch (event.key) {
             case 'z':
               event.preventDefault();
@@ -454,11 +465,11 @@ function Gantt() {
         <div style={{ position: 'absolute', top: '0px', left: '0px', width: '100svw', height: `${topbarHeight}px`, overflow: 'hidden', backgroundColor: '#ececec', visibility: isExporting ? 'hidden' : 'visible' }}>
           {isLocalMode ? <TopBarLocal /> : <TopBarLocal />}
         </div>
-        <div style={{ position: 'absolute', top: `${topbarHeight}px`, left: `${wbsWidth}px`, width: isExporting ? `${exportDateWidth}px` : `calc(100vw - ${wbsWidth}px)`, height: isExporting ? `${fullContentHeight - topbarHeight}px` : `calc(100vh - ${topbarHeight}px`, overflow: isExporting ? 'visible' : 'hidden', borderLeft: '1px solid #00000066', scrollBehavior: 'auto' }} ref={calendarRef}>
+        <div id="gantt-calendar-pane" style={{ position: 'absolute', top: `${topbarHeight}px`, left: `${wbsWidth}px`, width: isExporting ? `${exportDateWidth}px` : `calc(100vw - ${wbsWidth}px)`, height: isExporting ? `${fullContentHeight - topbarHeight}px` : `calc(100vh - ${topbarHeight}px`, overflow: isExporting ? 'visible' : 'hidden', borderLeft: '1px solid #00000066', scrollBehavior: 'auto' }} ref={calendarRef}>
           <Calendar dateArray={dateArray} />
           <GridVertical dateArray={dateArray} gridHeight={isExporting ? fullContentHeight : gridHeight} />
         </div>
-        <div id="gantt-wbs-pane" style={{ position: 'absolute', top: `${topbarHeight + rowHeight}px`, width: `${wbsWidth + 5}px`, height: isExporting ? `${fullContentHeight - (rowHeight + topbarHeight)}px` : `calc(100vh - ${rowHeight + topbarHeight}px)`, overflowX: isExporting ? 'hidden' : 'scroll', overflowY: 'hidden', scrollBehavior: 'auto' }} ref={wbsRef}>
+        <div id="gantt-wbs-pane" style={{ position: 'absolute', top: `${topbarHeight + rowHeight}px`, width: `${wbsWidth}px`, height: isExporting ? `${fullContentHeight - (rowHeight + topbarHeight)}px` : `calc(100vh - ${rowHeight + topbarHeight}px)`, overflowX: isExporting ? 'hidden' : 'scroll', overflowY: 'hidden', scrollBehavior: 'auto' }} ref={wbsRef}>
           {filteredData.map(([key, entry], filteredIndex) => {
             if (gridRef.current && isSeparatorRow(entry) && filteredIndex >= effectiveRange.startIndex && filteredIndex <= effectiveRange.endIndex) {
               const topPosition = (filteredIndex * rowHeight) + rowHeight;

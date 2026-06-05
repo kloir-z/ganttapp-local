@@ -8,6 +8,7 @@ import { RootState } from '../../../../reduxStoreAndSlices/store';
 import { StyledTreeContainer } from '../NotesStyles';
 import { useNotesTree } from '../hooks/useNotesTree';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
+import RowNotesList from './RowNotesList';
 
 interface NotesTreeProps {
   treeWidth: number;
@@ -107,6 +108,8 @@ const NotesTree: React.FC<NotesTreeProps> = memo(({
         selectedKeys={[selectedNodeKey]}
         expandedKeys={treeExpandedKeys}
       />
+
+      <RowNotesList />
     </StyledTreeContainer>
   );
 });

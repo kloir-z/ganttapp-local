@@ -39,6 +39,7 @@ export const selectAllRequiredStateForSnapshot = createSelector(
     dateFormat: wbsDataState.dateFormat,
     treeData: notesState.treeData,
     noteData: notesState.noteData,
+    rowNoteData: notesState.rowNoteData,
     language: baseSettingsState.language,
     scrollPosition: baseSettingsState.scrollPosition,
     modalState: notesState.modalState,

@@ -5,6 +5,7 @@ import { RootState, toggleSeparatorCollapsed } from '../../reduxStoreAndSlices/s
 import { useDispatch, useSelector } from 'react-redux';
 import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
+import RowNoteButton from './RowNoteButton';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { MdExpandMore, MdChevronRight } from 'react-icons/md';
 
@@ -57,10 +58,12 @@ const SeparatorRowComponent: React.FC<SeparatorRowProps> = memo(({ entry, topPos
           <div style={{ position: 'absolute', top: '0px', left: `${lineStart}px`, width: `${lineWidth}px`, height: `${rowHeight}px`, backgroundColor: '#bfbfbf5d' }}></div>
         }
 
+        <RowNoteButton rowId={entry.id} displayName={entry.displayName} leftPx={4} />
+
         <span
           style={{
             position: 'sticky',
-            left: `${9 + indentWidth}px`,
+            left: `${24 + indentWidth}px`,
             height: '21px',
             width: '21px',
             display: 'flex',
@@ -73,7 +76,7 @@ const SeparatorRowComponent: React.FC<SeparatorRowProps> = memo(({ entry, topPos
         >
           {isCollapsed ? <MdChevronRight /> : <MdExpandMore />}
         </span>
-        <span style={{ position: 'sticky', left: `${21 + indentWidth}px`, color: '#000000ec', padding: '0px 6px', whiteSpace: 'nowrap' }}>{entry.displayName}</span>
+        <span style={{ position: 'sticky', left: `${36 + indentWidth}px`, color: '#000000ec', padding: '0px 6px', whiteSpace: 'nowrap' }}>{entry.displayName}</span>
       </GanttRow>
       <ContextMenu
         targetRef={ganttRowRef}

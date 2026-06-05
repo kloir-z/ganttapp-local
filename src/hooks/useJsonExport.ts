@@ -31,6 +31,7 @@ export const useJsonExport = () => {
     const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
     const treeData = useSelector((state: RootState) => state.notes.treeData);
     const noteData = useSelector((state: RootState) => state.notes.noteData);
+    const rowNoteData = useSelector((state: RootState) => state.notes.rowNoteData);
     const treeExpandedKeys = useSelector((state: RootState) => state.notes.treeExpandedKeys);
     const treeScrollPosition = useSelector((state: RootState) => state.notes.treeScrollPosition);
     const editorStates = useSelector((state: RootState) => state.notes.editorStates);
@@ -59,6 +60,7 @@ export const useJsonExport = () => {
                 dateFormat,
                 treeData,
                 noteData,
+                rowNoteData,
                 language: currentLanguage,
                 scrollPosition,
                 notesModalState,
@@ -97,7 +99,7 @@ export const useJsonExport = () => {
     }, [
         colors, dateRange, columns, data, holidayInput, holidayColor,
         regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title,
-        showYear, dateFormat, treeData, noteData, currentLanguage, 
+        showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage,
         scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition,
         editorStates, selectedNodeKey, historySnapshots, dispatch, t
     ]);

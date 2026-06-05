@@ -80,6 +80,7 @@ export const returnToPresentWithRestore = createAsyncThunk(
         dispatch(setNotes({
           treeData: backupData.treeData,
           noteData: backupData.noteData,
+          rowNoteData: backupData.rowNoteData,
         }));
       } else {
         // TODO: Implement proper error reporting system

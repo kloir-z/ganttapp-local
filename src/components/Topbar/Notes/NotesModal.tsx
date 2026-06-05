@@ -26,6 +26,8 @@ const NotesModal: React.FC = memo(() => {
   const currentTreeData = useSelector((state: RootState) => state.notes.treeData);
   const currentNoteData = useSelector((state: RootState) => state.notes.noteData);
   const currentSelectedNodeKey = useSelector((state: RootState) => state.notes.selectedNodeKey);
+  const selectedRowNoteId = useSelector((state: RootState) => state.notes.selectedRowNoteId);
+  const rowNoteData = useSelector((state: RootState) => state.notes.rowNoteData);
   
   // Use historical data if viewing past, otherwise current data
   // Note: For selectedNodeKey, always use current selection even during history viewing to allow navigation
@@ -113,6 +115,8 @@ const NotesModal: React.FC = memo(() => {
           selectedNodeKey={selectedNodeKey}
           noteData={noteData}
           isViewingPast={isViewingPast}
+          selectedRowNoteId={selectedRowNoteId}
+          rowNoteData={rowNoteData}
         />
       </StyledContainer>
       

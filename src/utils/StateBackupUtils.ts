@@ -15,6 +15,7 @@ export const createStateBackup = (state: RootState): string => {
     dateFormat: state.wbsData.dateFormat,
     treeData: state.notes.treeData,
     noteData: state.notes.noteData,
+    rowNoteData: state.notes.rowNoteData,
   });
 };
 
@@ -32,6 +33,7 @@ export interface BackupData {
   dateFormat: string;
   treeData: any;
   noteData: any;
+  rowNoteData: any;
 }
 
 /**

@@ -33,6 +33,7 @@ export interface ExportData {
   dateFormat: DateFormatType;
   treeData: ExtendedTreeDataNode[];
   noteData: noteData;
+  rowNoteData?: noteData;
   language: string;
   scrollPosition: { scrollLeft: number; scrollTop: number };
   notesModalState?: NotesModalState;
@@ -62,6 +63,7 @@ export const buildProjectData = (options: ExportData) => {
     dateFormat,
     treeData,
     noteData,
+    rowNoteData,
     language,
     scrollPosition,
     notesModalState,
@@ -71,6 +73,16 @@ export const buildProjectData = (options: ExportData) => {
     selectedNodeKey,
     historySnapshots,
   } = options;
+  // Deferred orphan cleanup: only persist row notes whose row still exists in
+  // the current WBS data. Rows deleted earlier leave their notes in state until
+  // the next save, at which point they are dropped here.
+  const prunedRowNoteData: noteData = {};
+  const sourceRowNoteData = rowNoteData ?? {};
+  for (const rowId of Object.keys(sourceRowNoteData)) {
+    if (data[rowId]) {
+      prunedRowNoteData[rowId] = sourceRowNoteData[rowId];
+    }
+  }
   return {
     version: EXPORT_SCHEMA_VERSION,
     colors,
@@ -88,6 +100,7 @@ export const buildProjectData = (options: ExportData) => {
     dateFormat,
     treeData,
     noteData,
+    rowNoteData: prunedRowNoteData,
     language,
     scrollPosition,
     ...(notesModalState && { notesModalState }),
@@ -193,9 +206,10 @@ export const handleImport = createAsyncThunk<void, { file: Blob; skipHistoryImpo
       dispatch(setCellWidth(parsedData.cellWidth));
     }
     if (parsedData.noteData && parsedData.treeData) {
-      dispatch(setNotes({ 
-        treeData: parsedData.treeData, 
+      dispatch(setNotes({
+        treeData: parsedData.treeData,
         noteData: parsedData.noteData,
+        rowNoteData: parsedData.rowNoteData ?? {},
         modalState: parsedData.notesModalState,
         treeExpandedKeys: parsedData.treeExpandedKeys,
         treeScrollPosition: parsedData.treeScrollPosition,

@@ -90,6 +90,7 @@ const TopBarLocal: React.FC = memo(() => {
   const columns = useSelector((state: RootState) => state.wbsData.columns);
   const treeData = useSelector((state: RootState) => state.notes.treeData);
   const noteData = useSelector((state: RootState) => state.notes.noteData);
+  const rowNoteData = useSelector((state: RootState) => state.notes.rowNoteData);
   const notesModalState = useSelector((state: RootState) => state.notes.modalState);
   const treeExpandedKeys = useSelector((state: RootState) => state.notes.treeExpandedKeys);
   const treeScrollPosition = useSelector((state: RootState) => state.notes.treeScrollPosition);
@@ -163,6 +164,7 @@ const TopBarLocal: React.FC = memo(() => {
         dateFormat,
         treeData,
         noteData,
+        rowNoteData,
         language: currentLanguage,
         scrollPosition,
         notesModalState,
@@ -192,7 +194,7 @@ const TopBarLocal: React.FC = memo(() => {
         : t('Download failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
     }
-  }, [colors, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title, showYear, dateFormat, treeData, noteData, currentLanguage, notesModalState, historySnapshots, resetIsSavedChangesFlags, handleClose, dispatch, t]);
+  }, [colors, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, notesModalState, historySnapshots, resetIsSavedChangesFlags, handleClose, dispatch, t]);
 
   const handleSaveAsSubmit = useCallback(async () => {
     if (!newTitle) return;

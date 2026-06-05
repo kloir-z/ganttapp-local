@@ -7,6 +7,12 @@ export const GanttRow = styled.div`
   display: flex;
   border-bottom: solid 1px #00000016;
   user-select: none;
+  &:hover .row-note-icon {
+    opacity: 1 !important;
+  }
+  &:hover .row-note-icon--has {
+    color: #4a90e2 !important;
+  }
 `;
 
 interface StyledBarProps {

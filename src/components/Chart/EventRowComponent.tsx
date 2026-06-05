@@ -4,6 +4,7 @@ import { EventRow, EventData } from '../../types/DataTypes';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, updateEventRow, pushPastState, removePastState } from '../../reduxStoreAndSlices/store';
 import { ChartBar } from './ChartBar';
+import RowNoteButton from './RowNoteButton';
 import { GanttRow } from '../../styles/GanttStyles';
 import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
@@ -322,8 +323,21 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
     contextMenu
   });
 
+  // Anchor the note icon just left of the earliest event bar in this row.
+  // Falls back to the sticky left edge when the row has no event yet.
+  const noteAnchorLeft = useMemo(() => {
+    const starts = localEvents.map(e => e.startDate).filter(Boolean) as string[];
+    if (starts.length === 0) return undefined;
+    const earliest = starts.reduce((a, b) => (cdate(a) <= cdate(b) ? a : b));
+    const startCDate = cdate(earliest);
+    let startIndex = dateArray.findIndex(date => date >= startCDate);
+    if (startIndex === -1) startIndex = 0;
+    return Math.max(2, startIndex * cellWidth - 26);
+  }, [localEvents, dateArray, cellWidth]);
+
   return (
     <GanttRow style={{ position: 'absolute', top: `${topPosition}px`, width: `${calendarWidth}px`, height: `${rowHeight}px` }} onDoubleClick={handleDoubleClick} onContextMenu={(e) => handleBarRightClick(e, null)} ref={ganttRowRef}>
+      <RowNoteButton rowId={entry.id} displayName={entry.displayName} anchorLeftPx={noteAnchorLeft} />
       {(isEditing || isBarDragging || isBarEndDragging || isBarStartDragging) && (
         <div
           style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: 'calc(100vh - 12px)', zIndex: 9999, cursor: 'pointer' }}

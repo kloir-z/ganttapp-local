@@ -85,6 +85,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
   const treeData = useSelector((state: RootState) => state.notes.treeData);
   const noteData = useSelector((state: RootState) => state.notes.noteData);
+  const rowNoteData = useSelector((state: RootState) => state.notes.rowNoteData);
   const treeExpandedKeys = useSelector((state: RootState) => state.notes.treeExpandedKeys);
   const treeScrollPosition = useSelector((state: RootState) => state.notes.treeScrollPosition);
   const editorStates = useSelector((state: RootState) => state.notes.editorStates);
@@ -121,6 +122,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
         dateFormat,
         treeData,
         noteData,
+        rowNoteData,
         language: currentLanguage,
         scrollPosition,
         notesModalState,
@@ -156,7 +158,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
   }, [
     colors, dateRange, columns, data, holidayInput, holidayColor,
     regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title,
-    showYear, dateFormat, treeData, noteData, currentLanguage, scrollPosition, notesModalState, historySnapshots, dispatch, t
+    showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, historySnapshots, dispatch, t
   ]);
 
   const handleImportJson = useCallback(async () => {
