@@ -1,71 +1,64 @@
 # GitHub Pages デプロイ手順
 
-このアプリケーションをGitHub Pagesで公開するための手順です。
+このアプリは [`gh-pages`](https://www.npmjs.com/package/gh-pages) パッケージを使って、
+ビルド成果物（`dist/`）を `gh-pages` ブランチへ公開します。GitHub Actions による
+自動デプロイは設定していません。
 
 ## 前提条件
 
 - GitHubアカウント
 - このリポジトリがGitHubにプッシュされていること
+- 依存関係をインストール済み（`npm install`）
 
-## セットアップ手順
-
-### 1. GitHub Pages の有効化
+## 初回セットアップ（GitHub Pages の有効化）
 
 1. GitHubリポジトリページで **Settings** タブを開く
 2. 左側メニューから **Pages** を選択
-3. **Source** で **GitHub Actions** を選択
-4. **Save** をクリック
-
-### 2. ワークフローの実行
-
-1. `master` ブランチにコードをプッシュ
-2. **Actions** タブで自動デプロイの状況を確認
-3. デプロイ完了後、以下のURLでアクセス可能：
+3. **Build and deployment** の **Source** で **Deploy from a branch** を選択
+4. **Branch** で `gh-pages` / `/(root)` を選び **Save**
+5. 公開URL：
    ```
    https://[username].github.io/ganttapp-local/
    ```
 
-### 3. カスタムドメイン（オプション）
+## デプロイ（更新）
 
-独自ドメインを使用する場合：
-
-1. GitHub Pages設定で **Custom domain** を入力
-2. DNSレコードを設定
-3. **Enforce HTTPS** を有効化
-
-## ローカルでのテスト
-
-GitHub Pages環境をローカルで確認：
+変更をコミットした後、以下を実行します：
 
 ```bash
-# GitHub Pages用ビルド
-npm run build:gh-pages
+npm run deploy
+```
 
-# ローカルサーバーで確認
-npm run preview
+- `predeploy` が自動で `npm run build` を実行します
+  （`vite.config.ts` の `base: '/ganttapp-local/'` が適用されます）
+- 続いて `gh-pages -d dist` が `dist/` を `gh-pages` ブランチへプッシュし、
+  GitHub Pages の配信が更新されます
+
+> **注**: 自動デプロイ（GitHub Actions）は設定していません。
+> デモを最新化するには、その都度 `npm run deploy` を実行してください。
+
+## ローカルでの確認
+
+GitHub Pages と同じ `base` でビルドして確認します：
+
+```bash
+npm run build      # 本番ビルド（base: /ganttapp-local/ が適用される）
+npm run preview    # ローカルサーバーでプレビュー
 ```
 
 ## トラブルシューティング
 
-### デプロイが失敗する場合
-
-1. **Actions** タブでエラーログを確認
-2. Node.jsバージョンの互換性をチェック
-3. 依存関係の問題がないか確認
-
 ### アセットが読み込まれない場合
 
-1. `vite.config.ts` の `base` パスが正しいか確認
-2. リポジトリ名と一致しているかチェック
+1. `vite.config.ts` の `base` がリポジトリ名（`/ganttapp-local/`）と一致しているか確認
+2. GitHub Pages の **Source** が `gh-pages` ブランチになっているか確認
 
-### パフォーマンスの最適化
+### デプロイが反映されない場合
 
-- 大きなアセットは別途CDNを検討
-- 必要に応じてコード分割を実装
-- キャッシュ戦略を調整
+1. `gh-pages` ブランチに最新の `dist` がプッシュされたか確認
+2. 反映には数分かかる場合があります。ブラウザのキャッシュもクリアして確認
 
 ## セキュリティ注意事項
 
 - 機密情報をリポジトリに含めない
-- 環境変数は GitHub Secrets を使用
-- 定期的に依存関係をアップデート
+- 定期的に依存関係をアップデートする

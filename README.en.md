@@ -54,6 +54,13 @@ When ChatGPT emerged in 2023, I learned about its high code generation capabilit
 - **Chart daily width adjustable in 0.5px increments** - Supports overview display of long-term projects
 - Displays up to 1000 tasks smoothly
 
+### Notes
+- **Notebook (tree-based)**: Hierarchical rich-text (Quill) notes
+- **Row notes**: Attach a note to any Gantt chart row. A sticky-note icon appears
+  when you hover a row; click it to edit in an in-place popover (draggable and
+  resizable). Row notes can also be reviewed and edited from the "Task Notes"
+  list in the notebook
+
 ### Other Features
 - **Undo/Redo**: Maintains up to 30 operation history
 - **Multi-language Support**: Japanese and English support
@@ -69,8 +76,8 @@ When ChatGPT emerged in 2023, I learned about its high code generation capabilit
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/gantt-local.git
-cd gantt-local
+git clone https://github.com/kloir-z/ganttapp-local.git
+cd ganttapp-local
 ```
 
 2. Install dependencies:
@@ -98,9 +105,16 @@ npm run dev
 - **Load**: Use "File" → "Import" to open saved files
 
 ### Using Notes
-1. Open the notes screen with the "Notes" button
-2. Select a task in the left tree
-3. Record notes in the right editor
+- **Notebook (tree-based)**:
+  1. Open the notes screen with the "Notes" button
+  2. Select an item in the left tree
+  3. Record notes in the right editor
+- **Row notes**:
+  1. Hover a Gantt chart row to reveal the sticky-note icon on the left
+  2. Click it to open a popover and record that row's note in rich text
+     (drag the header to move, drag the bottom-right corner to resize)
+  3. The notebook's "Task Notes" list shows every row note with its row number
+     and task name for quick review and editing
 
 ## Build & Distribution
 
