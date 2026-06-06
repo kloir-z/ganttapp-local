@@ -9,7 +9,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setActiveModal, setIsLoading } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { RootState, undo, redo, setMessageInfo, removePastState } from '../../reduxStoreAndSlices/store';
 import { setTitle } from '../../reduxStoreAndSlices/baseSettingsSlice';
-import { handleExport, handleImport } from '../../utils/ExportImportHandler'; // handleImportを追加
+import { handleExport, handleImport, buildProjectData } from '../../utils/ExportImportHandler'; // handleImportを追加
+import { exportProjectAsHtml } from '../../utils/HtmlSnapshotExport';
 import { useTranslation } from 'react-i18next';
 import TitleSetting from './TitleSetting';
 import TopMenu from './TopMenu';
@@ -202,6 +203,46 @@ const TopBarLocal: React.FC = memo(() => {
     handleLocalSave(newTitle);
   }, [dispatch, handleLocalSave, newTitle]);
 
+  const handleExportHtml = useCallback(async () => {
+    try {
+      const projectData = buildProjectData({
+        fileId: uuidv4(),
+        colors,
+        dateRange,
+        columns,
+        data,
+        holidayInput,
+        holidayColor,
+        regularDaysOffSetting,
+        wbsWidth,
+        calendarWidth,
+        cellWidth,
+        title,
+        showYear,
+        dateFormat,
+        treeData,
+        noteData,
+        rowNoteData,
+        language: currentLanguage,
+        scrollPosition,
+        notesModalState,
+        treeExpandedKeys,
+        treeScrollPosition,
+        editorStates,
+        selectedNodeKey,
+        historySnapshots,
+      });
+      await exportProjectAsHtml(projectData, title);
+      handleClose();
+      dispatch(setMessageInfo({ message: t('HTML file downloaded successfully.'), severity: 'success' }));
+    } catch (error) {
+      const errorMessage = error instanceof Error
+        ? t('HTML export failed: ') + error.message
+        : t('HTML export failed. An unknown error occurred.');
+      dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
+    }
+  }, [colors, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey, historySnapshots, handleClose, dispatch, t]);
+
   const handleLocalOpen = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -272,10 +313,15 @@ const TopBarLocal: React.FC = memo(() => {
         children: t('Export PDF'),
         onClick: () => exportPdf(),
         path: '5'
+      },
+      {
+        children: t('Export HTML'),
+        onClick: () => handleExportHtml(),
+        path: '6'
       }
     ];
     return options;
-  }, [t, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf]);
+  }, [t, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, handleExportHtml]);
 
   const editMenuOptions = useMemo(() => {
     const options = [

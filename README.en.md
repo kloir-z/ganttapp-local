@@ -103,6 +103,7 @@ npm run dev
 ### Saving and Loading Projects
 - **Save**: Use "File" → "Export" to save as ZIP file
 - **Load**: Use "File" → "Import" to open saved files
+- **Export standalone HTML**: Use "File" → "Export Standalone HTML" to write a single HTML file with the app and the current data baked in. The recipient just double-clicks it to see the finished Gantt chart — scrolling, editing, and viewing notes all work, with no server. Run it from the single-file build (`build:singlefile`) for full `file://` support.
 
 ### Using Notes
 - **Notebook (tree-based)**:

@@ -151,6 +151,7 @@ This is an offline-first Gantt chart application built with React 18, TypeScript
 - Import/export handled in `src/utils/ExportImportHandler.ts`
 - Supports both ZIP and JSON formats
 - **Legacy Data Migration**: Automatic migration of notes data where `treeData` is empty but `noteData` exists
+- **Standalone HTML export** (`src/utils/HtmlSnapshotExport.ts`): "File → Export Standalone HTML" clones the live DOM, inlines external assets, strips the runtime CSP meta, and injects the current `ProjectData` as a `<script type="application/json">`. On startup `LocalApp` calls `readEmbeddedProjectData()` and, if present, feeds it through `handleImport` and suppresses the welcome modal — so opening the exported file shows the finished chart. Produces a fully `file://`-openable file when run from the single-file build.
 
 ### Testing
 - Jest + React Testing Library setup
