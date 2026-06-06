@@ -103,7 +103,10 @@ const WelcomeModal: React.FC = () => {
 
         for (const sample of sampleDefinitions) {
             try {
-                const response = await fetch(`${import.meta.env.BASE_URL}samples/${sample.filename}`, { method: 'HEAD' });
+                // Resolve against the document base rather than import.meta.env.BASE_URL:
+                // the single-file build uses a relative base, which forces BASE_URL to '/'
+                // and would point sample fetches at the domain root instead of the subpath.
+                const response = await fetch(new URL(`samples/${sample.filename}`, document.baseURI), { method: 'HEAD' });
                 if (response.ok) {
                     availableList.push(sample);
                 }
@@ -121,7 +124,7 @@ const WelcomeModal: React.FC = () => {
         dispatch(setIsLoading(true));
 
         try {
-            const response = await fetch(`${import.meta.env.BASE_URL}samples/${sampleDef.filename}`);
+            const response = await fetch(new URL(`samples/${sampleDef.filename}`, document.baseURI));
             if (!response.ok) {
                 throw new Error('Failed to fetch sample data');
             }
