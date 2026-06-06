@@ -101,9 +101,24 @@ npm run dev
 4. Adjust periods in the Gantt chart
 
 ### Saving and Loading Projects
-- **Save**: Use "File" → "Export" to save as ZIP file
-- **Load**: Use "File" → "Import" to open saved files
-- **Export standalone HTML**: Use "File" → "Export Standalone HTML" to write a single HTML file with the app and the current data baked in. The recipient just double-clicks it to see the finished Gantt chart — scrolling, editing, and viewing notes all work, with no server. Exporting from the live site (GitHub Pages) or the single-file build (`build:singlefile`) yields a file that works via `file://` (output from the dev server `npm run dev` uses `type="module"` scripts and won't run via `file://`).
+- **Save**: Use "File" → "Download Project ZIP" to save as a ZIP file (contains the project plus its notes)
+- **Load**: Use "File" → "Upload Project ZIP" to open a saved file
+- This ZIP is the only "real" save format you can re-edit. The exports below (PDF / Excel / standalone HTML) are output for distribution/viewing — you cannot load a PDF or Excel file back into the app.
+
+### Export (PDF / Excel / Standalone HTML)
+The "File" → "Export" submenu writes the chart in three formats depending on your need.
+
+- **PDF**: Rasterizes the whole chart as an image and writes it to PDF (virtualization is disabled so every row and date fits on the page). Good for printing or non-editable handouts.
+- **Excel (view-only)**: Reproduces the on-screen appearance as an `.xlsx`. **It is not a feature-equivalent of the app — it only "displays" the chart in Excel.** Specifically:
+  - The left side holds the WBS table (visible columns; the on-screen `No` column is replaced with a mechanical hierarchical WBS number like `1` / `1-1` / `1-1-1`), and the right side is a one-column-per-day chart.
+  - Planned/actual bars, weekend/holiday shading, separator bands, and the month-start grid line are reproduced as static visuals.
+  - However, there is **no dependency calculation, holiday avoidance, or drag editing** — none of the dynamic behavior. Cell colors are baked in statically; moving a date does not move the bars. It is purely a snapshot to open and look at (or print) in Excel.
+- **Standalone HTML**: Writes a single HTML file with the app and the current data baked in.
+  - **Pros**: The recipient just double-clicks it to see the finished Gantt chart. No server required, and unlike PDF/Excel the **dynamic features stay alive** — scrolling, editing, and viewing notes all work. Ideal for letting colleagues try the app without installing anything.
+  - **Caveats**:
+    - It only works correctly via `file://` when exported from the **live site (GitHub Pages) or the single-file build (`build:singlefile`)**. Output from the dev server `npm run dev` uses `type="module"` scripts and won't run via `file://`.
+    - Edits are not saved back into the file itself. To keep changes, export again as ZIP or standalone HTML from the opened copy.
+    - The data is embedded as plain JSON inside the HTML, so be aware the contents are readable when you distribute it.
 
 ### Using Notes
 - **Notebook (tree-based)**:
@@ -149,6 +164,7 @@ npm run preview    # Preview build results
 - **UI Libraries**: Material-UI, Ant Design
 - **Rich Text**: Quill Editor
 - **File Processing**: JSZip
+- **Export**: ExcelJS (Excel), jsPDF + html2canvas (PDF), a custom DOM snapshot (standalone HTML)
 - **Testing**: Jest + React Testing Library
 
 ## License
