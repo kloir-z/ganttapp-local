@@ -116,6 +116,15 @@ npm run dev
 npm run build      # 本番用ビルド (dist/フォルダに出力)
 ```
 
+### 単一HTMLビルド（オフライン配布）
+```bash
+npm run build:singlefile   # 全アセットを1ファイルに埋め込み (dist-single/index.html)
+```
+- JS / CSS / 祝日データまで `dist-single/index.html` に全てインライン化されます
+- **この1ファイルだけ**を配布すれば、サーバー不要で **ダブルクリック（`file://`）** で開けます
+- ルーティングは `HashRouter`、祝日はバンドル埋め込みで動作します
+- 制限: サンプルプロジェクトは `file://` では ZIP を読み込めないためウェルカム画面に表示されません（手動でのインポート／エクスポートは可能）
+
 ### 開発用コマンド
 ```bash
 npm run dev        # 開発サーバー起動

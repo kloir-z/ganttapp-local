@@ -123,6 +123,15 @@ npm run dev
 npm run build      # Production build (output to dist/ folder)
 ```
 
+### Single-File Build (offline distribution)
+```bash
+npm run build:singlefile   # Inline all assets into one file (dist-single/index.html)
+```
+- JS / CSS / holiday data are all inlined into `dist-single/index.html`
+- Distribute **just this one file** — it opens by **double-click (`file://`)**, no server required
+- Uses `HashRouter` for routing and bundled holiday data so both work under `file://`
+- Limitation: sample projects are not shown in the welcome screen under `file://` (ZIP fetch is blocked); manual import/export still works
+
 ### Development Commands
 ```bash
 npm run dev        # Start development server

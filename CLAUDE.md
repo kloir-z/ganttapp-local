@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `npm run dev` - Start development server (Vite, runs on http://localhost:5173)
 - `npm run build` - Build for production (TypeScript compile + Vite build)
+- `npm run build:singlefile` - Build a self-contained single HTML file to `dist-single/index.html` (all JS/CSS/holiday data inlined; opens via `file://`. Uses HashRouter and `base: './'`. Samples are unavailable under `file://`.)
 - `npm run lint` - Run ESLint with TypeScript rules
 - `npm run test` - Run Jest test suite
 - `npm run test:watch` - Run tests in watch mode
@@ -190,7 +191,7 @@ NotesModal (90 lines)
 ### Internationalization
 - i18next configuration in `src/i18n/config.ts`
 - Supports English and Japanese
-- Holiday data in `public/i18n/holidays/` directory
+- Holiday data source files live in `public/i18n/holidays/` and are bundled at build time via `import.meta.glob` in `CommonUtils.ts` (not fetched at runtime), so holidays work even when opened via `file://`
 
 ### Utility Systems
 

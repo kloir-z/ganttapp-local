@@ -46,6 +46,17 @@ npm run build      # 本番ビルド（base: /ganttapp-local/ が適用される
 npm run preview    # ローカルサーバーでプレビュー
 ```
 
+## 単一HTMLでの配布（サーバー不要）
+
+GitHub Pages を使わず、1ファイルを配って `file://` で開いてもらう方法もあります：
+
+```bash
+npm run build:singlefile   # dist-single/index.html を生成
+```
+
+`dist-single/index.html` の1ファイルだけを配布すれば、ダブルクリックで起動します
+（詳細・制限は README の「単一HTMLビルド」を参照）。
+
 ## トラブルシューティング
 
 ### アセットが読み込まれない場合
