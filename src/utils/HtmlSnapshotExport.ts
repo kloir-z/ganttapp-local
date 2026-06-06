@@ -64,6 +64,30 @@ const inlineExternalAssets = async (root: HTMLElement): Promise<void> => {
       console.warn('Could not inline stylesheet, leaving as external reference:', href, error);
     }
   }
+
+  // Inline the favicon as a data URI (or drop it) so an exported file opened via
+  // file:// does not emit a noisy ERR_FILE_NOT_FOUND for a sibling icon file.
+  const icons = Array.from(root.querySelectorAll('link[rel~="icon"][href]'));
+  for (const icon of icons) {
+    const href = icon.getAttribute('href');
+    if (!href || href.startsWith('data:')) continue;
+    try {
+      const res = await fetch(new URL(href, document.baseURI).href);
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const blob = await res.blob();
+      const dataUri = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      icon.setAttribute('href', dataUri);
+    } catch (error) {
+      // Cannot fetch (e.g. exporting from file://): drop the link entirely.
+      console.warn('Could not inline favicon, removing it:', href, error);
+      icon.remove();
+    }
+  }
 };
 
 const triggerDownload = (html: string, fileName: string): void => {

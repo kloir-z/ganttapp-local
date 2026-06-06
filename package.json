@@ -31,8 +31,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "predeploy": "npm run build:singlefile",
+    "deploy": "gh-pages -d dist-single"
   },
   "dependencies": {
     "@emotion/react": "^11.11.3",

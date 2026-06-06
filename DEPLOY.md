@@ -1,8 +1,13 @@
 # GitHub Pages デプロイ手順
 
 このアプリは [`gh-pages`](https://www.npmjs.com/package/gh-pages) パッケージを使って、
-ビルド成果物（`dist/`）を `gh-pages` ブランチへ公開します。GitHub Actions による
-自動デプロイは設定していません。
+**単一HTMLビルドの成果物（`dist-single/`）** を `gh-pages` ブランチへ公開します。
+GitHub Actions による自動デプロイは設定していません。
+
+> **なぜ単一HTMLビルドを配信するのか**: ライブサイトの「ファイル → 単体HTMLファイルに
+> 出力」で書き出したファイルが `file://`（ダブルクリック）でそのまま動くようにするためです。
+> 通常の分割ビルドは `<script type="module">` 形式で、`file://` では実行できません。
+> 単一HTMLビルドはクラシックスクリプトに変換されるため、書き出したスナップショットも動作します。
 
 ## 前提条件
 
@@ -29,33 +34,32 @@
 npm run deploy
 ```
 
-- `predeploy` が自動で `npm run build` を実行します
-  （`vite.config.ts` の `base: '/ganttapp-local/'` が適用されます）
-- 続いて `gh-pages -d dist` が `dist/` を `gh-pages` ブランチへプッシュし、
+- `predeploy` が自動で `npm run build:singlefile` を実行します
+  （`--mode singlefile`：全アセットを `dist-single/index.html` にインライン化、`base: './'`、HashRouter）
+- 続いて `gh-pages -d dist-single` が `dist-single/` を `gh-pages` ブランチへプッシュし、
   GitHub Pages の配信が更新されます
+- 公開URLは `https://[username].github.io/ganttapp-local/#/`（HashRouter のため `#/` が付きます）
 
 > **注**: 自動デプロイ（GitHub Actions）は設定していません。
 > デモを最新化するには、その都度 `npm run deploy` を実行してください。
 
 ## ローカルでの確認
 
-GitHub Pages と同じ `base` でビルドして確認します：
-
-```bash
-npm run build      # 本番ビルド（base: /ganttapp-local/ が適用される）
-npm run preview    # ローカルサーバーでプレビュー
-```
-
-## 単一HTMLでの配布（サーバー不要）
-
-GitHub Pages を使わず、1ファイルを配って `file://` で開いてもらう方法もあります：
+配信されるものと同じ単一HTMLビルドで確認します：
 
 ```bash
 npm run build:singlefile   # dist-single/index.html を生成
 ```
 
-`dist-single/index.html` の1ファイルだけを配布すれば、ダブルクリックで起動します
-（詳細・制限は README の「単一HTMLビルド」を参照）。
+`dist-single/index.html` をブラウザで開けば、配信版と同じ挙動を確認できます
+（ダブルクリックの `file://` でも動作します）。
+
+分割ビルド版（開発・プレビュー用）を確認する場合：
+
+```bash
+npm run build      # dist/ に出力（base: /ganttapp-local/）
+npm run preview    # ローカルサーバーでプレビュー
+```
 
 ## トラブルシューティング
 
