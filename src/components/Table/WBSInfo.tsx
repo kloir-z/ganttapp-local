@@ -15,6 +15,7 @@ import ContextMenu from '../ContextMenu/ContextMenu';
 import { setCopiedRows } from '../../reduxStoreAndSlices/copiedRowsSlice';
 import useInsertCopiedRow from '../../hooks/useInsertCopiedRow';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
+import { useImeCellOverlay } from '../../hooks/useImeCellOverlay';
 import DependencyHelp from './DependencyHelp';
 
 const WBSInfo: React.FC = memo(() => {
@@ -200,6 +201,10 @@ const WBSInfo: React.FC = memo(() => {
     setSelectedRanges(newSelection);
     areAllSelectedColumnsVisible(Array.from(visibleColumnIds).every(id => selectedColumnIds.has(id)));
   }, [visibleColumnIds]);
+
+  // IME(日本語)変換中の文字と候補ウィンドウを、画面中央の隠し要素ではなく
+  // フォーカス中のセル上に表示する(Excelライクな直接入力)。
+  useImeCellOverlay(wbsRef);
 
   const [vKeyDownActive, setVKeyDownActive] = useState(false);
   const [cKeyDownActive, setCKeyDownActive] = useState(false);

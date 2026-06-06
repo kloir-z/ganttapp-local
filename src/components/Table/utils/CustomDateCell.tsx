@@ -13,6 +13,9 @@ export interface CustomDateCell extends Cell {
   longDate: string;
   shortDate: string;
   value: number;
+  // タイプ入力で編集開始したときの最初の文字。getCompatibleCell の正規化で消える text とは
+  // 別フィールドで持つことで、ReactGrid の編集中セル状態に乗せて render まで確実に届ける。
+  seedText?: string;
 }
 
 export class CustomDateCellTemplate implements CellTemplate<CustomDateCell> {
@@ -35,10 +38,19 @@ export class CustomDateCellTemplate implements CellTemplate<CustomDateCell> {
 
   handleKeyDown(
     cell: Compatible<CustomDateCell>,
-    keyCode: number
+    keyCode: number,
+    ctrl: boolean,
+    _shift: boolean,
+    alt: boolean,
+    key?: string
   ): { cell: Compatible<CustomDateCell>; enableEditMode: boolean } {
     if (keyCode === keyCodes.F2 || keyCode === keyCodes.POINTER) {
-      return { cell, enableEditMode: true };
+      return { cell: { ...cell, seedText: undefined }, enableEditMode: true };
+    }
+    // 数字・区切り(/ - .)を打ち始めたら、その文字をシードにテキスト入力で編集開始。
+    // cell.text は変更せず(正規化で消えるため) seedText に載せて render へ渡す。
+    if (key && /^[0-9/\-.]$/.test(key) && !ctrl && !alt && keyCode !== 229) {
+      return { cell: { ...cell, seedText: key }, enableEditMode: true };
     }
     return { cell, enableEditMode: false };
   }
@@ -56,6 +68,7 @@ export class CustomDateCellTemplate implements CellTemplate<CustomDateCell> {
       return (
         <CustomDatePicker
           cell={cell}
+          initialText={cell.seedText}
           onCellChanged={(updatedCell, commit) => {
             onCellChanged(updatedCell, commit);
           }}
