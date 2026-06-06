@@ -62,6 +62,9 @@ coverage/
 # Optional REPL history
 .node_repl_history
 
+# PowerShell session history (Claude Code)
+.pshistory
+
 # Output of 'npm pack'
 *.tgz
 
