@@ -31,6 +31,8 @@ const ResizeBar: React.FC<ResizeBarProps> = memo(({ setIsGridRefDragging }) => {
   const initialPositionRef = useRef<number | null>(null);
   const maxWbsWidth = useSelector((state: RootState) => state.baseSettings.maxWbsWidth);
   const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
+  // 依存ビルダーを開いている間は、ポップオーバーに重なるリサイズバーを反応させない。
+  const isDependencyEditing = useSelector((state: RootState) => state.uiFlags.isDependencyEditing);
 
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (initialPositionRef.current !== null) {
@@ -57,6 +59,8 @@ const ResizeBar: React.FC<ResizeBarProps> = memo(({ setIsGridRefDragging }) => {
     setIsGridRefDragging(true);
     event.preventDefault();
   }, [handleMouseMove, handleMouseUp, setIsGridRefDragging]);
+
+  if (isDependencyEditing) return null;
 
   return (
     <StyledResizeBar

@@ -10,13 +10,13 @@ import { CustomDateCell, CustomDateCellTemplate } from './utils/CustomDateCell';
 import { CustomTextCell, CustomTextCellTemplate } from './utils/CustomTextCell';
 import { CustomNumberCell, CustomNumberCellTemplate } from './utils/CustomNumberCell';
 import { SeparatorCell, SeparatorCellTemplate } from './utils/SeparatorCell';
+import { CustomDependencyCell, CustomDependencyCellTemplate } from './utils/CustomDependencyCell';
 import { assignIds, reorderArray } from './utils/wbsHelpers';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import { setCopiedRows } from '../../reduxStoreAndSlices/copiedRowsSlice';
 import useInsertCopiedRow from '../../hooks/useInsertCopiedRow';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { useImeCellOverlay } from '../../hooks/useImeCellOverlay';
-import DependencyHelp from './DependencyHelp';
 
 const WBSInfo: React.FC = memo(() => {
   const activeModal = useSelector((state: RootState) => state.uiFlags.activeModal);
@@ -51,10 +51,6 @@ const WBSInfo: React.FC = memo(() => {
     selectedRowIds: [],
     selectedColumnIds: []
   });
-
-  const isDependencyColumnSelected = useMemo(() => {
-    return selectedRanges.selectedColumnIds.includes('dependency');
-  }, [selectedRanges.selectedColumnIds]);
 
   const { visibleColumns, visibleColumnIds } = useMemo(() => {
     let filteredColumns = columns.filter(column => column.visible);
@@ -92,8 +88,9 @@ const WBSInfo: React.FC = memo(() => {
   const customTextCellTemplate = useMemo(() => new CustomTextCellTemplate(), []);
   const customNumberCellTemplate = useMemo(() => new CustomNumberCellTemplate(), []);
   const separatorCellTemplate = useMemo(() => new SeparatorCellTemplate(), [])
+  const customDependencyCellTemplate = useMemo(() => new CustomDependencyCellTemplate(), []);
 
-  const getRows = useCallback((data: WBSData[]): Row<DefaultCellTypes | CustomDateCell | CustomTextCell | CustomDateCell | CustomNumberCell | SeparatorCell>[] => {
+  const getRows = useCallback((data: WBSData[]): Row<DefaultCellTypes | CustomDateCell | CustomTextCell | CustomDateCell | CustomNumberCell | SeparatorCell | CustomDependencyCell>[] => {
     const collapseStack: number[] = [];
     return [
       headerRow,
@@ -263,17 +260,13 @@ const WBSInfo: React.FC = memo(() => {
         onContextMenu={handleContextMenu}
         onSelectionChanged={handleSelectionChanged}
         canReorderRows={handleCanReorderRows}
-        customCellTemplates={{ customDate: customDateCellTemplate, customText: customTextCellTemplate, customNumber: customNumberCellTemplate, separator: separatorCellTemplate }}
+        customCellTemplates={{ customDate: customDateCellTemplate, customText: customTextCellTemplate, customNumber: customNumberCellTemplate, separator: separatorCellTemplate, customDependency: customDependencyCellTemplate }}
         minColumnWidth={10}
         minRowHeight={10}
       />
       <ContextMenu
         targetRef={wbsRef}
         items={menuOptions}
-      />
-      <DependencyHelp
-        show={isDependencyColumnSelected}
-        wbsWidth={wbsWidth}
       />
     </div>
   );

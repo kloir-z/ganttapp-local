@@ -4,6 +4,40 @@ body {
   font-size: 0.73rem;
 }
 
+/* 依存ビルダーで選択中の依存先(赤)/依存元(青)をチャート上で強調(半透明枠＋パルス) */
+.dependency-target-highlight {
+  border: 2px solid rgba(229, 57, 53, 0.9);
+  background-color: rgba(229, 57, 53, 0.12);
+  border-radius: 2px;
+  animation: dependency-target-pulse 1s ease-in-out infinite;
+}
+@keyframes dependency-target-pulse {
+  0%, 100% {
+    border-color: rgba(229, 57, 53, 0.9);
+    background-color: rgba(229, 57, 53, 0.12);
+  }
+  50% {
+    border-color: rgba(229, 57, 53, 0.35);
+    background-color: rgba(229, 57, 53, 0.04);
+  }
+}
+.dependency-source-highlight {
+  border: 2px dashed rgba(53, 121, 248, 0.9);
+  background-color: rgba(53, 121, 248, 0.12);
+  border-radius: 2px;
+  animation: dependency-source-pulse 1s ease-in-out infinite;
+}
+@keyframes dependency-source-pulse {
+  0%, 100% {
+    border-color: rgba(53, 121, 248, 0.9);
+    background-color: rgba(53, 121, 248, 0.12);
+  }
+  50% {
+    border-color: rgba(53, 121, 248, 0.35);
+    background-color: rgba(53, 121, 248, 0.04);
+  }
+}
+
 /* Styled-components inheritance */
 div,
 span,
@@ -69,6 +103,11 @@ input {
 }
 
 .rg-customText-celleditor {
+  width: auto !important;
+  background-color: aliceblue;
+}
+
+.rg-customDependency-celleditor {
   width: auto !important;
   background-color: aliceblue;
 }

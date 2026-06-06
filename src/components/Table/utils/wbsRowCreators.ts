@@ -5,6 +5,7 @@ import { CustomDateCell } from './CustomDateCell';
 import { CustomTextCell } from './CustomTextCell';
 import { SeparatorCell } from './SeparatorCell';
 import { CustomNumberCell } from './CustomNumberCell';
+import { CustomDependencyCell } from './CustomDependencyCell';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fillEmptyCells = (cells: (NumberCell | CheckboxCell | CustomTextCell | CustomDateCell | CustomNumberCell | SeparatorCell)[], columnCount: number, style?: any) => {
@@ -14,8 +15,8 @@ const fillEmptyCells = (cells: (NumberCell | CheckboxCell | CustomTextCell | Cus
   }
 };
 
-export const createChartRow = (chartRow: ChartRow, columns: Column[], rowHeight: number): Row<DefaultCellTypes | CustomTextCell | CustomDateCell | CustomNumberCell> => {
-  const rowCells: (NumberCell | CustomTextCell | CustomDateCell | CustomNumberCell | CheckboxCell)[] = columns.map(column => {
+export const createChartRow = (chartRow: ChartRow, columns: Column[], rowHeight: number): Row<DefaultCellTypes | CustomTextCell | CustomDateCell | CustomNumberCell | CustomDependencyCell> => {
+  const rowCells: (NumberCell | CustomTextCell | CustomDateCell | CustomNumberCell | CheckboxCell | CustomDependencyCell)[] = columns.map(column => {
     const columnId = column.columnId as string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let cellValue = (chartRow as any)[columnId];
@@ -34,6 +35,8 @@ export const createChartRow = (chartRow: ChartRow, columns: Column[], rowHeight:
       return { type: "checkbox", checked: cellValue };
     } else if (columnId === "progress") {
       return { type: "customNumber", text: cellValue, value: NaN, columnWidth };
+    } else if (columnId === "dependency") {
+      return { type: "customDependency", text: cellValue, value: NaN, columnWidth, rowId: chartRow.id };
     } else {
       return { type: "customText", text: cellValue, value: NaN, columnWidth };
     }

@@ -8,8 +8,9 @@ import { CustomTextCell } from "./CustomTextCell";
 import { addPlannedDays, validateDateString } from "../../../utils/CommonUtils";
 import { SeparatorCell } from "./SeparatorCell";
 import { CustomNumberCell } from './CustomNumberCell';
+import { CustomDependencyCell } from './CustomDependencyCell';
 
-type AllCellTypes = TextCell | NumberCell | CheckboxCell | EmailCell | DropdownCell | ChevronCell | HeaderCell | TimeCell | DateCell | CustomDateCell | CustomTextCell | CustomNumberCell | SeparatorCell;
+type AllCellTypes = TextCell | NumberCell | CheckboxCell | EmailCell | DropdownCell | ChevronCell | HeaderCell | TimeCell | DateCell | CustomDateCell | CustomTextCell | CustomNumberCell | SeparatorCell | CustomDependencyCell;
 
 const validateTextLength = (text: string, maxLength: number) => {
   const length = text.length;

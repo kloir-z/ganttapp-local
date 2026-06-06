@@ -8,6 +8,13 @@ interface UIFlagsState {
   // When true, the Gantt renders every row at full content size (no virtualization)
   // so the whole chart can be captured as an image for PDF export.
   isExporting: boolean;
+  // True while the dependency builder popover is open. Used to suppress the chart
+  // crosshair indicators while editing a dependency.
+  isDependencyEditing: boolean;
+  // Row id that the dependency being edited currently points to (for chart highlight).
+  dependencyTargetRowId: string | null;
+  // Row id being edited (the dependent / source side) for chart highlight.
+  dependencySourceRowId: string | null;
 }
 
 const initialState: UIFlagsState = {
@@ -15,6 +22,9 @@ const initialState: UIFlagsState = {
   isContextMenuOpen: false,
   isLoading: true,
   isExporting: false,
+  isDependencyEditing: false,
+  dependencyTargetRowId: null,
+  dependencySourceRowId: null,
 };
 
 const uiFlagsSlice = createSlice({
@@ -37,8 +47,17 @@ const uiFlagsSlice = createSlice({
     setIsExporting(state, action: PayloadAction<boolean>) {
       state.isExporting = action.payload;
     },
+    setIsDependencyEditing(state, action: PayloadAction<boolean>) {
+      state.isDependencyEditing = action.payload;
+    },
+    setDependencyTargetRowId(state, action: PayloadAction<string | null>) {
+      state.dependencyTargetRowId = action.payload;
+    },
+    setDependencySourceRowId(state, action: PayloadAction<string | null>) {
+      state.dependencySourceRowId = action.payload;
+    },
   },
 });
 
-export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting } = uiFlagsSlice.actions;
+export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId } = uiFlagsSlice.actions;
 export default uiFlagsSlice.reducer;

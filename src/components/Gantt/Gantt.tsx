@@ -50,6 +50,7 @@ function Gantt() {
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
   const isContextMenuOpen = useSelector((state: RootState) => state.uiFlags.isContextMenuOpen);
   const isExporting = useSelector((state: RootState) => state.uiFlags.isExporting);
+  const isDependencyEditing = useSelector((state: RootState) => state.uiFlags.isDependencyEditing);
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
   const [isGridRefDragging, setIsGridRefDragging] = useState(false);
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -542,7 +543,7 @@ function Gantt() {
         </div>
       </div>
 
-      {!activeModal && !isGridRefDragging && (
+      {!activeModal && !isGridRefDragging && !isDependencyEditing && (
         <>
           {(indicatorPosition.y > 51 && window.innerHeight - indicatorPosition.y > 36) && (
             <div
