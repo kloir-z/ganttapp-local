@@ -1,25 +1,3 @@
-01/01/2022 Sa. Neujahr
-15/04/2022 Fr. Karfreitag
-18/04/2022 Mo. Ostermontag
-01/05/2022 So. Maifeiertag
-26/05/2022 Do. Christi Himmelfahrt
-06/06/2022 Mo. Pfingstmontag
-03/10/2022 Mo. Tag der Deutschen Einheit
-24/12/2022 Sa. Heiliger Abend
-25/12/2022 So. 1. Weihnachtstag
-26/12/2022 Mo. 2. Weihnachtstag
-31/12/2022 Sa. Silvester
-01/01/2023 So. Neujahr
-07/04/2023 Fr. Karfreitag
-10/04/2023 Mo. Ostermontag
-01/05/2023 Mo. Maifeiertag
-18/05/2023 Do. Christi Himmelfahrt
-29/05/2023 Mo. Pfingstmontag
-03/10/2023 Di. Tag der Deutschen Einheit
-24/12/2023 So. Heiliger Abend
-25/12/2023 Mo. 1. Weihnachtstag
-26/12/2023 Di. 2. Weihnachtstag
-31/12/2023 So. Silvester
 01/01/2024 Mo. Neujahr
 29/03/2024 Fr. Karfreitag
 01/04/2024 Mo. Ostermontag
@@ -86,3 +64,25 @@
 25/12/2029 Di. 1. Weihnachtstag
 26/12/2029 Mi. 2. Weihnachtstag
 31/12/2029 Mo. Silvester
+01/01/2030 Di. Neujahr
+19/04/2030 Fr. Karfreitag
+22/04/2030 Mo. Ostermontag
+01/05/2030 Mi. Maifeiertag
+30/05/2030 Do. Christi Himmelfahrt
+10/06/2030 Mo. Pfingstmontag
+03/10/2030 Do. Tag der Deutschen Einheit
+24/12/2030 Di. Heiliger Abend
+25/12/2030 Mi. 1. Weihnachtstag
+26/12/2030 Do. 2. Weihnachtstag
+31/12/2030 Di. Silvester
+01/01/2031 Mi. Neujahr
+11/04/2031 Fr. Karfreitag
+14/04/2031 Mo. Ostermontag
+01/05/2031 Do. Maifeiertag
+22/05/2031 Do. Christi Himmelfahrt
+02/06/2031 Mo. Pfingstmontag
+03/10/2031 Fr. Tag der Deutschen Einheit
+24/12/2031 Mi. Heiliger Abend
+25/12/2031 Do. 1. Weihnachtstag
+26/12/2031 Fr. 2. Weihnachtstag
+31/12/2031 Mi. Silvester

@@ -1,31 +1,3 @@
-01/01/2022 Sat New Year's Day
-01/17/2022 Mon Martin Luther King Jr. Day
-02/21/2022 Mon Washington's Birthday
-05/30/2022 Mon Memorial Day
-06/19/2022 Sun Juneteenth
-06/20/2022 Mon Juneteenth (substitute day)
-07/04/2022 Mon Independence Day
-09/05/2022 Mon Labour Day
-10/10/2022 Mon Columbus Day
-11/11/2022 Fri Veterans Day
-11/24/2022 Thu Thanksgiving Day
-12/24/2022 Sat Christmas Eve
-12/25/2022 Sun Christmas Day
-12/26/2022 Mon Christmas Day (substitute day)
-01/01/2023 Sun New Year's Day
-01/02/2023 Mon New Year's Day (substitute day)
-01/16/2023 Mon Martin Luther King Jr. Day
-02/20/2023 Mon Washington's Birthday
-05/29/2023 Mon Memorial Day
-06/19/2023 Mon Juneteenth
-07/04/2023 Tue Independence Day
-09/04/2023 Mon Labour Day
-10/09/2023 Mon Columbus Day
-11/10/2023 Fri Veterans Day (substitute day)
-11/11/2023 Sat Veterans Day
-11/23/2023 Thu Thanksgiving Day
-12/24/2023 Sun Christmas Eve
-12/25/2023 Mon Christmas Day
 01/01/2024 Mon New Year's Day
 01/15/2024 Mon Martin Luther King Jr. Day
 02/19/2024 Mon Washington's Birthday
@@ -105,3 +77,27 @@
 11/22/2029 Thu Thanksgiving Day
 12/24/2029 Mon Christmas Eve
 12/25/2029 Tue Christmas Day
+01/01/2030 Tue New Year's Day
+01/21/2030 Mon Martin Luther King Jr. Day
+02/18/2030 Mon Washington's Birthday
+05/27/2030 Mon Memorial Day
+06/19/2030 Wed Juneteenth
+07/04/2030 Thu Independence Day
+09/02/2030 Mon Labour Day
+10/14/2030 Mon Columbus Day
+11/11/2030 Mon Veterans Day
+11/28/2030 Thu Thanksgiving Day
+12/24/2030 Tue Christmas Eve
+12/25/2030 Wed Christmas Day
+01/01/2031 Wed New Year's Day
+01/20/2031 Mon Martin Luther King Jr. Day
+02/17/2031 Mon Washington's Birthday
+05/26/2031 Mon Memorial Day
+06/19/2031 Thu Juneteenth
+07/04/2031 Fri Independence Day
+09/01/2031 Mon Labour Day
+10/13/2031 Mon Columbus Day
+11/11/2031 Tue Veterans Day
+11/27/2031 Thu Thanksgiving Day
+12/24/2031 Wed Christmas Eve
+12/25/2031 Thu Christmas Day
