@@ -116,9 +116,9 @@ The "File" → "Export" submenu writes the chart in three formats depending on y
 - **Standalone HTML**: Writes a single HTML file with the app and the current data baked in.
   - **Pros**: The recipient just double-clicks it to see the finished Gantt chart. No server required, and unlike PDF/Excel the **dynamic features stay alive** — scrolling, editing, and viewing notes all work. Ideal for letting colleagues try the app without installing anything.
   - **Caveats**:
-    - It only works correctly via `file://` when exported from the **live site (GitHub Pages) or the single-file build (`build:singlefile`)**. Output from the dev server `npm run dev` uses `type="module"` scripts and won't run via `file://`.
-    - Edits are not saved back into the file itself. To keep changes, export again as ZIP or standalone HTML from the opened copy.
+    - Edits made in the opened copy are not saved back into the file itself. To keep changes, export again as ZIP or standalone HTML.
     - The data is embedded as plain JSON inside the HTML, so be aware the contents are readable when you distribute it.
+  - Note (for developers): files exported from the live site or the single-file build (`build:singlefile`) open directly via `file://`. The only exception is a file exported from the dev server `npm run dev` — it loads JS as external modules (`type="module"`), which browsers block over `file://`. This is irrelevant for normal use.
 
 ### Using Notes
 - **Notebook (tree-based)**:
