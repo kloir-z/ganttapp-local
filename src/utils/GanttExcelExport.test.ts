@@ -160,6 +160,18 @@ describe('buildGanttWorkbook', () => {
     expect(ws.getRow(1).getCell(5).value).toBe('2026/12');
   });
 
+  it('draws a faint hairline under every chart cell for even row heights', async () => {
+    const data: { [id: string]: WBSData } = { r1: chartRow({}) };
+    const wb = await buildGanttWorkbook(baseParams(data));
+    const ws = wb.worksheets[0];
+    // A plain weekday cell well outside the bar (06/20 -> col 24) still gets the line.
+    const plainCell = ws.getRow(3).getCell(24);
+    expect((plainCell.border?.bottom as any)?.style).toBe('hair');
+    // A filled bar cell (06/03 -> col 7) gets the same bottom line.
+    const barCell = ws.getRow(3).getCell(7);
+    expect((barCell.border?.bottom as any)?.style).toBe('hair');
+  });
+
   it('honors collapsed separators by hiding their children', async () => {
     const data: { [id: string]: WBSData } = {
       s1: sepRow({ no: 1, isCollapsed: true }),

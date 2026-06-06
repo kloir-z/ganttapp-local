@@ -377,6 +377,11 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
 
   const actualColor = parseColor(colors[999]?.color) ?? parseColor('#0000003d');
   const thinGray = { style: 'thin' as const, color: { argb: 'FFE0E0E0' } };
+  // Near-invisible hairline drawn on every chart cell so filled and unfilled cells
+  // render at the same height — Excel draws a solid fill 1px taller than a cell that
+  // only shows the default gridline, which otherwise makes day-off/bar cells look
+  // misaligned against plain weekday cells.
+  const chartHLine = { style: 'hair' as const, color: { argb: 'FFE8E8E8' } };
 
   // --- Data rows ---
   rows.forEach((row, rIdx) => {
@@ -465,6 +470,7 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
       if (isPainted) {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: toARGB(rgb) } };
       }
+      cell.border = { ...(cell.border || {}), bottom: chartHLine };
     });
 
     // Label the planned bar with the task name, like the chart's bar label. The
