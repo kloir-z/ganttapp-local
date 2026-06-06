@@ -4,6 +4,14 @@ body {
   font-size: 0.73rem;
 }
 
+/* 依存ビルダーのセルエディタ(.rg-celleditor)は position:fixed; z-index:5 で
+   独立したスタッキングコンテキストを作るため、内部の z-index 指定はその中(レベル5)に
+   閉じ込められる。チャート側の依存ハイライト枠(z-index:25)より手前に出すには、
+   エディタ自体のスタッキングレベルを引き上げる必要がある。 */
+.rg-customDependency-celleditor {
+  z-index: 1001;
+}
+
 /* 依存ビルダーで選択中の依存先(赤)/依存元(青)をチャート上で強調(半透明枠＋パルス) */
 .dependency-target-highlight {
   border: 2px solid rgba(229, 57, 53, 0.9);

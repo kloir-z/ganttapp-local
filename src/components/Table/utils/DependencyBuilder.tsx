@@ -7,6 +7,7 @@
 // 確定は「適用」ボタンと Enter のみ。別セルへの移動・ESC・「キャンセル」は元の値に戻す。
 // 書式テキストは表のセル自体に表示されるため、ここには直接編集欄を置かない。
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
+import { useTranslation } from "react-i18next";
 import { Compatible } from "@silevis/reactgrid";
 import { isAlphaNumericKey, isNavigationKey } from "@silevis/reactgrid";
 import { useSelector, useDispatch } from "react-redux";
@@ -141,6 +142,7 @@ const NumberStepper = ({ value, onChange, min, width }: { value: number; onChang
 };
 
 const DependencyBuilder = memo(({ cell, onCellChanged }: DependencyBuilderProps) => {
+  const { t } = useTranslation();
   const data = useSelector((state: RootState) => state.wbsData.data);
   const dispatch = useDispatch();
 
@@ -161,13 +163,12 @@ const DependencyBuilder = memo(({ cell, onCellChanged }: DependencyBuilderProps)
   // ずらしの数え方は現在行(依存する側)の含休日設定で変わる。
   const dayUnit = useMemo(() => {
     const cur = data[cell.rowId];
-    return isChartRow(cur) && cur.isIncludeHolidays ? '日' : '営業日';
-  }, [data, cell.rowId]);
+    return isChartRow(cur) && cur.isIncludeHolidays ? t('days_unit') : t('business_days_unit');
+  }, [data, cell.rowId, t]);
 
   const [parsed, setParsed] = useState<ParsedDependency>(() => parseDependency(cell.text));
   const [rawText, setRawText] = useState<string>(cell.text);
   const inputRef = useRef<HTMLInputElement>(null);
-  const wasEscPressed = useRef(false);
 
   // ポップオーバーのドラッグ移動
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -213,11 +214,18 @@ const DependencyBuilder = memo(({ cell, onCellChanged }: DependencyBuilderProps)
     }));
   }, [cell.rowId, dispatch]);
 
-  // 確定して閉じる(handleGridChanges 経由で最終値を反映)
+  // 確定して閉じる。
+  // ReactGrid は「値が変わらないセル変更」を間引いて onCellsChanged を呼ばないため、
+  // 変更なしのコミット(空のまま確定/キャンセルで元の値に戻す等)では onCellChanged の
+  // currentlyEditedCell=undefined が反映される再レンダーが起きず、エディタが画面に残る。
+  // そこで先に liveApply で必ず新しい参照を dispatch して再レンダーを保証し、その後に
+  // onCellChanged で確定する。これでどの経路でも確実に閉じる。
   const closeWith = useCallback((str: string) => {
+    if (committedRef.current) return;
     committedRef.current = true;
+    liveApply(str);
     onCellChanged(toCell(str), true);
-  }, [onCellChanged, toCell]);
+  }, [liveApply, onCellChanged, toCell]);
 
   // コントロール変更 -> parsed・セル入力欄を更新 + チャートへ即反映
   const applyParsed = useCallback((next: ParsedDependency) => {
@@ -248,8 +256,8 @@ const DependencyBuilder = memo(({ cell, onCellChanged }: DependencyBuilderProps)
   // 警告(循環参照 / 対象未解決)。問題がある時のみ表示する。
   const warning = useMemo(() => {
     if (!buildDependency(parsed)) return null;
-    if (!resolvedTarget) return '対象行が見つかりません';
-    if (wouldCreateCycle(data, cell.rowId, resolvedTarget.id)) return '循環参照です（依存の計算は途中で停止します）';
+    if (!resolvedTarget) return 'Target row not found';
+    if (wouldCreateCycle(data, cell.rowId, resolvedTarget.id)) return 'Circular reference warning';
     return null;
   }, [parsed, resolvedTarget, data, cell.rowId]);
 
@@ -302,23 +310,17 @@ const DependencyBuilder = memo(({ cell, onCellChanged }: DependencyBuilderProps)
       onClick={e => e.stopPropagation()}
       onPointerDown={e => e.stopPropagation()}
       onMouseDown={e => {
-        // 入力欄/セレクト以外(ボタン・余白・ラベル)のクリックでフォーカスが外れて
-        // ポップオーバーが閉じてしまうのを防ぐ(クリックしてもフォーカスを保持する)。
+        // 入力欄/セレクト以外(ボタン・余白・ラベル)のクリックでフォーカスが外れるのを防ぐ
+        // (クリックしてもフォーカスを保持する)。
         e.stopPropagation();
-        const t = e.target as HTMLElement;
-        if (!t.closest('input, select, textarea')) e.preventDefault();
+        const el = e.target as HTMLElement;
+        if (!el.closest('input, select, textarea')) e.preventDefault();
       }}
       onKeyDown={e => {
-        if (e.key === 'Escape') { wasEscPressed.current = true; return; }
+        // Escape は ReactGrid に委ねて編集モードを抜ける(アンマウント時に元の値へ戻る)。
+        if (e.key === 'Escape') return;
         if (e.key === 'Enter') { closeWith(buildDependency(parsed)); return; }
         if (isAlphaNumericKey(e.keyCode) || isNavigationKey(e.keyCode)) e.stopPropagation();
-      }}
-      onBlur={e => {
-        const related = e.relatedTarget as Node | null;
-        if (e.currentTarget.contains(related)) return;            // エディタ内に留まる
-        if (wasEscPressed.current) { wasEscPressed.current = false; return; }
-        // 確定は「適用」/Enter のみ。それ以外は元の値に戻して閉じる。
-        closeWith(originalRow.current.dependency);
       }}
     >
       {/* セル内の入力欄: 表示名セルと同じ自動幅。現在値をリアルタイム表示し直接編集も可能。 */}
@@ -342,98 +344,97 @@ const DependencyBuilder = memo(({ cell, onCellChanged }: DependencyBuilderProps)
           transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)`,
         }}
       >
-        {/* ドラッグ用ヘッダー(掴んで移動) */}
+        {/* ドラッグ用ハンドル(掴んで移動)。グリップ記号のみで操作は自明なため文言は置かない。 */}
         <div
           onMouseDown={onDragStart}
           style={{
-            cursor: 'move', userSelect: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            margin: '-12px -14px 10px', padding: '6px 10px', background: '#f1f3f4',
+            cursor: 'move', userSelect: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '-12px -14px 10px', padding: '4px 10px', background: '#f1f3f4',
             borderTopLeftRadius: '7px', borderTopRightRadius: '7px', borderBottom: '1px solid #e3e5e8',
-            fontSize: '11px', color: COLORS.label,
+            fontSize: '13px', letterSpacing: '2px', color: COLORS.label,
           }}
         >
-          <span>依存関係の設定（ドラッグで移動）</span>
-          <span style={{ fontSize: '13px', letterSpacing: '1px' }}>⠿</span>
+          ⠿
         </div>
 
         {/* 対象の指定方法 */}
         <div style={{ ...rowStyle, flexWrap: 'nowrap' }}>
-          <span style={sectionLabel}>対象の指定</span>
+          <span style={sectionLabel}>{t('Specify target by')}</span>
           <label style={{ ...wordStyle, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-            <input type="radio" checked={parsed.targetMode === 'no'} onChange={() => switchMode('no')} /> 絶対指定
+            <input type="radio" checked={parsed.targetMode === 'no'} onChange={() => switchMode('no')} /> {t('Absolute (row No)')}
           </label>
           <label style={{ ...wordStyle, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-            <input type="radio" checked={parsed.targetMode === 'relative'} onChange={() => switchMode('relative')} /> 相対指定
+            <input type="radio" checked={parsed.targetMode === 'relative'} onChange={() => switchMode('relative')} /> {t('Relative (offset)')}
           </label>
         </div>
 
         {/* 対象行 */}
         {parsed.targetMode === 'no' ? (
           <div style={rowStyle}>
-            <span style={sectionLabel}>対象行</span>
+            <span style={sectionLabel}>{t('Target Row')}</span>
             <select
               value={parsed.targetNo === '' ? '' : String(parsed.targetNo)}
               onChange={e => applyParsed({ ...parsed, targetNo: e.currentTarget.value === '' ? '' : parseInt(e.currentTarget.value, 10) })}
               style={{ ...fieldBox, flex: 1, maxWidth: '215px' }}
             >
-              <option value="">（対象行を選択）</option>
+              <option value="">{t('(Select target row)')}</option>
               {chartRows.map(r => (
-                <option key={r.id} value={r.no}>No.{r.no} {r.displayName || '(名称なし)'}</option>
+                <option key={r.id} value={r.no}>No.{r.no} {r.displayName || t('(Untitled row)')}</option>
               ))}
             </select>
           </div>
         ) : (
           <div style={rowStyle}>
-            <span style={sectionLabel}>対象行</span>
-            <span style={wordStyle}>この行の</span>
+            <span style={sectionLabel}>{t('Target Row')}</span>
+            {t('rel_prefix') && <span style={wordStyle}>{t('rel_prefix')}</span>}
             <NumberStepper value={relMagnitude} min={1} width={32} onChange={v => setRelative(v, relDirection)} />
             <select
               value={relDirection}
               onChange={e => setRelative(relMagnitude, e.currentTarget.value as 'up' | 'down')}
               style={fieldBox}
             >
-              <option value="up">つ上の行</option>
-              <option value="down">つ下の行</option>
+              <option value="up">{t('rows above')}</option>
+              <option value="down">{t('rows below')}</option>
             </select>
           </div>
         )}
 
         {/* 関係 */}
         <div style={rowStyle}>
-          <span style={sectionLabel}>関係</span>
+          <span style={sectionLabel}>{t('Relationship')}</span>
           <select
             value={parsed.type}
             onChange={e => applyParsed({ ...parsed, type: e.currentTarget.value as DepType })}
             style={{ ...fieldBox, flex: 1, maxWidth: '215px' }}
           >
-            <option value="after">終了後に開始（後続）</option>
-            <option value="sameas">同じ日に開始（並行）</option>
+            <option value="after">{t('Start after end (successor)')}</option>
+            <option value="sameas">{t('Start same day (parallel)')}</option>
           </select>
         </div>
 
         {/* オフセット(after のみ) */}
         {parsed.type === 'after' && (
           <div style={rowStyle}>
-            <span style={sectionLabel}>オフセット</span>
+            <span style={sectionLabel}>{t('Offset')}</span>
             <NumberStepper value={parsed.offsetDays} width={38} onChange={v => applyParsed({ ...parsed, offsetDays: v })} />
-            <span style={wordStyle}>{dayUnit} 後に開始</span>
+            <span style={wordStyle}>{dayUnit} {t('later_start')}</span>
           </div>
         )}
 
         {warning && (
           <div style={{ fontSize: '12px', color: '#c5221f', background: '#fce8e6', borderRadius: '5px', padding: '6px 8px', margin: '0 0 10px' }}>
-            ⚠ {warning}
+            ⚠ {t(warning)}
           </div>
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
           <button type="button" tabIndex={-1} onMouseDown={e => e.preventDefault()}
-            onClick={() => closeWith('')} style={{ ...fieldBox, background: '#f1f3f4' }}>クリア</button>
+            onClick={() => closeWith('')} style={{ ...fieldBox, background: '#f1f3f4' }}>{t('Clear')}</button>
           <span style={{ flex: 1 }} />
           <button type="button" tabIndex={-1} onMouseDown={e => e.preventDefault()}
-            onClick={() => closeWith(originalRow.current.dependency)} style={{ ...fieldBox, background: '#f1f3f4' }}>キャンセル</button>
+            onClick={() => closeWith(originalRow.current.dependency)} style={{ ...fieldBox, background: '#f1f3f4' }}>{t('Cancel')}</button>
           <button type="button" tabIndex={-1} onMouseDown={e => e.preventDefault()}
-            onClick={() => closeWith(buildDependency(parsed))} style={{ ...fieldBox, background: COLORS.accent, color: '#fff', borderColor: COLORS.accent, fontWeight: 'bold' }}>適用</button>
+            onClick={() => closeWith(buildDependency(parsed))} style={{ ...fieldBox, background: COLORS.accent, color: '#fff', borderColor: COLORS.accent, fontWeight: 'bold' }}>{t('Apply')}</button>
         </div>
       </div>
     </div>
