@@ -528,6 +528,28 @@ export function createNewRow(rowType: RowType): WBSData {
   }
 }
 
+// 祝日データをバンドルに埋め込む。fetch を使わないため、単一HTMLを file:// で
+// 直接開いても祝日の初期ロードが機能する。jest 環境では import.meta.glob が
+// 未定義のため try/catch でガードする（テストは getInitialHolidays を使わない）。
+const holidayDataByCountry: Record<string, string> = (() => {
+  try {
+    const files = import.meta.glob('../../public/i18n/holidays/*.txt', {
+      as: 'raw',
+      eager: true,
+    }) as Record<string, string>;
+    const map: Record<string, string> = {};
+    for (const path in files) {
+      const match = path.match(/([A-Z]{2})\.txt$/);
+      if (match) {
+        map[match[1]] = files[path];
+      }
+    }
+    return map;
+  } catch {
+    return {};
+  }
+})();
+
 export async function getInitialHolidays(dateFormat: DateFormatType): Promise<{ holidayInput: string, parsedHolidays: string[] }> {
   const languageSetting = navigator.language;
   let countryCode;
@@ -543,11 +565,10 @@ export async function getInitialHolidays(dateFormat: DateFormatType): Promise<{ 
     countryCode = (languageSetting.split('-')[1] || languageSetting).toUpperCase();
   }
   try {
-    const response = await fetch(`${import.meta.env.BASE_URL}i18n/holidays/${countryCode}.txt`);
-    if (!response.ok) {
-      throw new Error(`Failed to load holiday data: ${response.statusText}`);
+    const holidayInput = holidayDataByCountry[countryCode];
+    if (!holidayInput) {
+      return { holidayInput: '', parsedHolidays: [] };
     }
-    const holidayInput = await response.text();
     const parsedHolidays = parseHolidaysFromInput(holidayInput, dateFormat);
     if (parsedHolidays.length === 0) {
       return { holidayInput: '', parsedHolidays: [] };

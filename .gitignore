@@ -5,6 +5,7 @@ node_modules/
 
 # Production builds
 dist/
+dist-single/
 build/
 
 # Environment variables
