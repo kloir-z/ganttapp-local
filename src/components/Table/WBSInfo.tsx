@@ -175,6 +175,7 @@ const WBSInfo: React.FC = memo(() => {
 
   const menuOptions = useContextMenuOptions({
     selectedRowIds: selectedRanges.selectedRowIds,
+    selectedColumnIds: selectedRanges.selectedColumnIds,
     includeColumnSettings: true,
     columns,
     dataArray

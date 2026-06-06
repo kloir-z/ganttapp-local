@@ -386,6 +386,26 @@ export const wbsDataSlice = createSlice({
           : column
       );
     },
+    // Hide multiple columns at once (Excel-style "Hide" on a selection). Never
+    // hides the fixed 'no' column, and refuses to hide the last visible column so
+    // the table never collapses to nothing. Recorded as a single undo step.
+    hideColumns(state, action: PayloadAction<string[]>) {
+      const idsToHide = action.payload.filter(id => id !== 'no');
+      if (idsToHide.length === 0) return;
+      const remainingVisible = state.columns.filter(
+        column => column.visible && column.columnId !== 'no' && !idsToHide.includes(column.columnId)
+      ).length;
+      if (remainingVisible < 1) return;
+      state.past.push({ data: state.data, columns: state.columns });
+      state.future = [];
+      if (state.past.length > 30) {
+        state.past.shift();
+      }
+      state.columns = state.columns.map(column =>
+        idsToHide.includes(column.columnId) ? { ...column, visible: false } : column
+      );
+      state.isSavedChanges = false;
+    },
     handleColumnResize(state, action: PayloadAction<{ columnId: string; width: number }>) {
       const columnIndex = state.columns.findIndex(col => col.columnId === action.payload.columnId);
       if (columnIndex >= 0) {
@@ -578,6 +598,7 @@ export const {
   setDateFormat,
   setColumns,
   toggleColumnVisibility,
+  hideColumns,
   handleColumnResize,
   resetStore,
   pushPastState,

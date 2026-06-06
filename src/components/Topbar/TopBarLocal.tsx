@@ -18,6 +18,7 @@ import JsonDataModal from './JsonDataModal';
 import styled from 'styled-components';
 import { v4 as uuidv4 } from 'uuid';
 import { useGanttPdfExport } from '../../hooks/useGanttPdfExport';
+import { useGanttExcelExport } from '../../hooks/useGanttExcelExport';
 import useWarnIfUnsavedChanges from '../../hooks/useWarnIfUnsavedChanges';
 import useResetIsSavedChangesFlags from '../../hooks/useResetIsSavedChangesFlags';
 import useResetReduxStates from '../../hooks/useResetReduxStates';
@@ -110,6 +111,7 @@ const TopBarLocal: React.FC = memo(() => {
   const resetIsSavedChangesFlags = useResetIsSavedChangesFlags();
   const resetReduxStates = useResetReduxStates();
   const { exportPdf } = useGanttPdfExport();
+  const { exportExcel } = useGanttExcelExport();
 
   useWarnIfUnsavedChanges(!isSavedColor)
   useWarnIfUnsavedChanges(!isSavedNotes)
@@ -310,18 +312,29 @@ const TopBarLocal: React.FC = memo(() => {
         path: '4'
       },
       {
-        children: t('Export PDF'),
-        onClick: () => exportPdf(),
-        path: '5'
-      },
-      {
-        children: t('Export HTML'),
-        onClick: () => handleExportHtml(),
-        path: '6'
+        children: t('Export'),
+        path: '5',
+        items: [
+          {
+            children: t('Export PDF'),
+            onClick: () => exportPdf(),
+            path: '5.0'
+          },
+          {
+            children: t('Export Excel'),
+            onClick: () => exportExcel(),
+            path: '5.1'
+          },
+          {
+            children: t('Export HTML'),
+            onClick: () => handleExportHtml(),
+            path: '5.2'
+          }
+        ]
       }
     ];
     return options;
-  }, [t, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, handleExportHtml]);
+  }, [t, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, exportExcel, handleExportHtml]);
 
   const editMenuOptions = useMemo(() => {
     const options = [

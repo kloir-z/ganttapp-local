@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState, deleteRows, convertDisplayNameOnlyRowsToSeparator, toggleColumnVisibility, ExtendedColumn, createTaskChain, pushPastState, setSeparatorLevel } from '../reduxStoreAndSlices/store';
+import { RootState, deleteRows, convertDisplayNameOnlyRowsToSeparator, toggleColumnVisibility, hideColumns, ExtendedColumn, createTaskChain, pushPastState, setSeparatorLevel, setMessageInfo } from '../reduxStoreAndSlices/store';
 import { setCopiedRows } from '../reduxStoreAndSlices/copiedRowsSlice';
 import { openRowDialog } from '../reduxStoreAndSlices/rowDialogSlice';
 import { updateAlias } from '../reduxStoreAndSlices/colorSlice';
@@ -19,6 +19,7 @@ const selectWbsDataArray = createSelector(
 interface UseContextMenuOptionsProps {
     entry?: WBSData;
     selectedRowIds?: string[];
+    selectedColumnIds?: string[];
     onDeleteBar?: () => void;
     contextMenu?: number | string | null;
     includeColumnSettings?: boolean;
@@ -29,6 +30,7 @@ interface UseContextMenuOptionsProps {
 export const useContextMenuOptions = ({
     entry,
     selectedRowIds,
+    selectedColumnIds = [],
     onDeleteBar,
     contextMenu,
     includeColumnSettings = false,
@@ -350,6 +352,30 @@ export const useContextMenuOptions = ({
         );
 
         if (includeColumnSettings && columns.length > 0) {
+            // Excel-style quick hide of the currently selected column(s).
+            const hideableColumnIds = columns
+                .filter(col => col.visible && col.columnId !== 'no' && selectedColumnIds.includes(col.columnId))
+                .map(col => col.columnId);
+            if (hideableColumnIds.length > 0) {
+                const visibleNonNoCount = columns.filter(col => col.visible && col.columnId !== 'no').length;
+                baseOptions.push({
+                    children: hideableColumnIds.length > 1
+                        ? `${t("Hide Columns")} (${hideableColumnIds.length})`
+                        : t("Hide Column"),
+                    onClick: () => {
+                        if (hideableColumnIds.length >= visibleNonNoCount) {
+                            dispatch(setMessageInfo({
+                                message: t("At least one column must remain visible."),
+                                severity: 'warning'
+                            }));
+                            return;
+                        }
+                        dispatch(hideColumns(hideableColumnIds));
+                    },
+                    path: String(pathCounter++)
+                });
+            }
+
             const initialColumnOrder = [
                 'displayName', 'color', 'plannedStartDate', 'plannedEndDate',
                 'plannedDays', 'actualStartDate', 'actualEndDate', 'progress', 'dependency',
@@ -415,7 +441,7 @@ export const useContextMenuOptions = ({
         });
 
         return baseOptions;
-    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, selectedRowIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting]);
+    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting]);
 
     return menuOptions;
 };

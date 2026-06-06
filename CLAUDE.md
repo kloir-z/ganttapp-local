@@ -151,7 +151,10 @@ This is an offline-first Gantt chart application built with React 18, TypeScript
 - Import/export handled in `src/utils/ExportImportHandler.ts`
 - Supports both ZIP and JSON formats
 - **Legacy Data Migration**: Automatic migration of notes data where `treeData` is empty but `noteData` exists
-- **Standalone HTML export** (`src/utils/HtmlSnapshotExport.ts`): "File → Export Standalone HTML" clones the live DOM, inlines external assets, strips the runtime CSP meta, and injects the current `ProjectData` as a `<script type="application/json">`. On startup `LocalApp` calls `readEmbeddedProjectData()` and, if present, feeds it through `handleImport` and suppresses the welcome modal — so opening the exported file shows the finished chart. Produces a fully `file://`-openable file when run from the single-file build.
+- **File menu layout** (`TopBarLocal.tsx`): save/open actions (New, Open File, Download, Download As, JSON Data) stay flat; the three output formats are grouped under a single **Export ▸** submenu (PDF / Excel / HTML). Submenu paths use dot notation (`5.0`, `5.1`, `5.2`) because `subMenuSlice.setOpenSubMenu` derives the open-ancestor chain by splitting the path on `.` — hyphenated paths would collapse the parent on hover.
+- **Standalone HTML export** (`src/utils/HtmlSnapshotExport.ts`): "File → Export ▸ HTML" clones the live DOM, inlines external assets, strips the runtime CSP meta, and injects the current `ProjectData` as a `<script type="application/json">`. On startup `LocalApp` calls `readEmbeddedProjectData()` and, if present, feeds it through `handleImport` and suppresses the welcome modal — so opening the exported file shows the finished chart. Produces a fully `file://`-openable file when run from the single-file build.
+- **PDF export** (`src/hooks/useGanttPdfExport.ts`): "File → Export ▸ PDF" rasterizes the full chart via `html2canvas` + `jsPDF` (full-render mode bypasses virtualization so every row/date is captured).
+- **Excel export** (`src/utils/GanttExcelExport.ts` + `src/hooks/useGanttExcelExport.ts`): "File → Export ▸ Excel" rebuilds the on-screen view as a styled `.xlsx` using `exceljs` — left WBS table (visible columns, with the on-screen `No` column replaced by a mechanical hierarchical WBS number `1` / `1-1` / `1-1-1`) followed by a one-column-per-day grid. Planned/actual bars, weekend/holiday shading, separator bands (`#ddedff`) and the month-start grid line are reproduced by alpha-compositing each layer to an opaque fill (the live chart stacks a translucent actual bar over the planned bar, so per-cell colors are composited white → day-off → planned → actual). Palette colors saved by the in-app picker as `rgba(...)` are parsed alongside hex. Narrow chart widths (`cellWidth <= 8`) switch the date header to week-of-month numbers, mirroring `Calendar.tsx`. After serialization the sheet XML is post-patched (via the bundled `jszip`) with an `<ignoredErrors>` block (`numberStoredAsText`, `twoDigitTextYear`) to suppress Excel's green-triangle warnings on the intentionally text-typed numeric/date cells — exceljs 4.x has no API for this.
 
 ### Testing
 - Jest + React Testing Library setup
@@ -199,11 +202,15 @@ NotesModal (90 lines)
 #### Core Utilities (`src/utils/`)
 - **CommonUtils.ts**: Core business logic for date calculations, dependency resolution, holiday handling, and row operations
 - **ExportImportHandler.ts**: File import/export operations for ZIP and JSON formats
+- **HtmlSnapshotExport.ts**: Standalone single-file HTML export
+- **GanttExcelExport.ts**: Styled `.xlsx` export reproducing the chart (`buildGanttWorkbook` builds the workbook; `buildGanttXlsxBuffer` serializes it and injects `<ignoredErrors>`). Pure/DOM-free, unit-tested in `GanttExcelExport.test.ts`.
 - **WelcomeUtils.ts**: Sample project management and first-time user experience
 
 #### Custom Hooks (`src/hooks/`)
 - **useAddRow.ts**: Hook for adding new rows to the WBS
-- **useContextMenuOptions.ts**: Context menu option generation and handling
+- **useContextMenuOptions.ts**: Context menu option generation and handling (includes the Excel-style "Hide Column(s)" action that hides the selected columns via the `hideColumns` reducer)
+- **useGanttPdfExport.ts**: Full-chart PDF export (html2canvas + jsPDF)
+- **useGanttExcelExport.ts**: Excel export — gathers Redux state and downloads the workbook from `GanttExcelExport.ts`
 - **useInsertCopiedRow.ts**: Copy/paste row insertion logic
 - **useLanguageChange.ts**: Language switching functionality
 - **useResetIsSavedChangesFlags.ts**: Unsaved changes flag management

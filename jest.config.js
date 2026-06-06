@@ -7,7 +7,7 @@ export default {
     '^.+\\.tsx?$': [
       'ts-jest',
       {
-        tsconfig: { jsx: 'react-jsx' },
+        tsconfig: { jsx: 'react-jsx', esModuleInterop: true },
         astTransformers: {
           before: [
             {

@@ -16,6 +16,9 @@ jest.mock('i18next', () => ({
 // Mock JSZip - simplified for testing
 jest.mock('jszip', () => {
   return {
+    // esModuleInterop is enabled for ts-jest, so the default import is unwrapped
+    // via __importDefault; mark this mock as an ES module so `default` is used.
+    __esModule: true,
     default: jest.fn().mockImplementation(() => ({
       file: jest.fn(),
       generateAsync: jest.fn().mockResolvedValue(new Blob(['test'], { type: 'application/zip' })),
