@@ -2,27 +2,15 @@
 
 [English](README.en.md) | 日本語
 
-##  動作環境について
+ブラウザだけで動く、インストール不要のガントチャートアプリです。Excelのような表操作と、マウスでの直感的なチャート編集ができます。自分で使いたくて作ったものですが、同じ悩みを持つ方の役に立てばと思い公開しています。
 
-**PCのChromium系ブラウザ（Chrome/Edge）でのみ動作します。**
-
-- Firefox/Safariでは動作しません（対応予定なし）
-- スマホ等モバイル端末では使用できません（対応予定なし）
-- あくまで自分で使いたいために作成したものですが、同じ悩みを持つ方には役立つのではと思い、公開してみました
+![Gantt Chart Screenshot](docs/images/screenshot.png)
 
 ## お試しページ
 
 **[https://kloir-z.github.io/ganttapp-local/](https://kloir-z.github.io/ganttapp-local/)**
 
-## スクリーンショット
-
-![Gantt Chart Screenshot](docs/images/screenshot.png)
-
-## 制作の背景
-
-Excelで条件付き書式と数式を組み合わせてガントチャートを作成していましたが、少し行数が増える（200行以上など）と更新が煩雑で、「間違ったExcelの使い方」の代表例のような感じがしてもやもやしていました。動作も重く、俯瞰性も悪い。
-
-2023年にChatGPTが登場し、コード生成能力の高さを知って「ガントチャートアプリを作れるのでは？」と思ったのがきっかけで制作を始めました。
+（Chrome / Edge で開いてください。詳しくは[動作環境](#動作環境)を参照）
 
 ## 主な機能とポイント
 
@@ -60,32 +48,6 @@ Excelで条件付き書式と数式を組み合わせてガントチャートを
 - **取り消し・やり直し**: 最大30回の操作履歴を保持
 - **多言語対応**: 日本語・英語に対応
 - **日付形式設定**: yyyy/mm/dd、mm/dd/yyyy、dd/mm/yyyy形式から選択可能
-
-## セットアップ
-
-### 前提条件
-- Node.js 16以上
-- npm または yarn
-
-### インストール手順
-
-1. リポジトリをクローン:
-```bash
-git clone https://github.com/kloir-z/ganttapp-local.git
-cd ganttapp-local
-```
-
-2. 依存関係をインストール:
-```bash
-npm install
-```
-
-3. 開発サーバーを起動:
-```bash
-npm run dev
-```
-
-4. ブラウザで `http://localhost:5173` にアクセス
 
 ## 基本的な使い方
 
@@ -125,14 +87,48 @@ npm run dev
   2. クリックするとポップオーバーが開き、その行のメモをリッチテキストで記録（ヘッダーをドラッグで移動、右下でリサイズ）
   3. メモ帳の「タスクメモ」一覧からも、行番号・タスク名つきで一覧・編集できる
 
-## ビルド・配布
+## 制作の背景
 
-### 通常のビルド
+Excelで条件付き書式と数式を組み合わせてガントチャートを作成していましたが、少し行数が増える（200行以上など）と更新が煩雑で、「間違ったExcelの使い方」の代表例のような感じがしてもやもやしていました。動作も重く、俯瞰性も悪い。
+
+2023年にChatGPTが登場し、コード生成能力の高さを知って「ガントチャートアプリを作れるのでは？」と思ったのがきっかけで制作を始めました。
+
+## 動作環境
+
+**PCのChromium系ブラウザ（Chrome / Edge）でのみ動作します。**
+
+- Firefox / Safari では動作しません（対応予定なし）
+- スマホなどモバイル端末では使えません（対応予定なし）
+
+---
+
+## 開発者向け
+
+### セットアップ
+
+前提条件:
+- Node.js 16以上
+- npm または yarn
+
+```bash
+# リポジトリをクローン
+git clone https://github.com/kloir-z/ganttapp-local.git
+cd ganttapp-local
+
+# 依存関係をインストール
+npm install
+
+# 開発サーバーを起動（http://localhost:5173）
+npm run dev
+```
+
+### ビルド・配布
+
 ```bash
 npm run build      # 本番用ビルド (dist/フォルダに出力)
 ```
 
-### 単一HTMLビルド（オフライン配布）
+#### 単一HTMLビルド（オフライン配布）
 ```bash
 npm run build:singlefile   # 全アセットを1ファイルに埋め込み (dist-single/index.html)
 ```
@@ -141,15 +137,14 @@ npm run build:singlefile   # 全アセットを1ファイルに埋め込み (dis
 - ルーティングは `HashRouter`、祝日はバンドル埋め込みで動作します
 - 制限: サンプルプロジェクトは `file://` では ZIP を読み込めないためウェルカム画面に表示されません（手動でのインポート／エクスポートは可能）
 
-### 開発用コマンド
+#### その他のコマンド
 ```bash
-npm run dev        # 開発サーバー起動
 npm run lint       # コード品質チェック
 npm run test       # テスト実行
 npm run preview    # ビルド結果のプレビュー
 ```
 
-## 技術構成
+### 技術構成
 
 - **フロントエンド**: React 18 + TypeScript
 - **状態管理**: Redux Toolkit  

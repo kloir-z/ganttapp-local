@@ -2,29 +2,15 @@
 
 English | [日本語](README.md)
 
-## System Requirements
+A Gantt chart app that runs entirely in the browser, with nothing to install. It gives you Excel-like table editing and intuitive chart editing with the mouse. I originally built it for my own use, but I'm publishing it in case it helps others with the same frustrations.
 
-**Only works on PC Chromium-based browsers (Chrome/Edge).**
-
-- Does not work on Firefox/Safari (no support planned)
-- Cannot be used on mobile devices (no support planned)  
-- Originally created for personal use, but published in case it might help others with similar needs
+![Gantt Chart Screenshot](docs/images/screenshot.png)
 
 ## Try It Out
 
 **[https://kloir-z.github.io/ganttapp-local/](https://kloir-z.github.io/ganttapp-local/)**
 
-## Screenshot
-
-![Gantt Chart Screenshot](docs/images/screenshot.png)
-
-## Why I Created This
-
-I was creating Gantt charts in Excel using conditional formatting and formulas, but when the number of rows increased (200+ rows), updates became cumbersome and felt like a typical example of "wrong way to use Excel." The performance was slow and lacked good overview capability.
-
-When ChatGPT emerged in 2023, I learned about its high code generation capabilities and thought "maybe I can create a Gantt chart app?" This was the catalyst for starting development.
-
-**Goal**: A tool where you can directly manipulate charts with mouse, with lightweight performance, good overview capability, and support for complex dependency relationships.
+(Open it in Chrome / Edge. See [System Requirements](#system-requirements) for details.)
 
 ## Key Features and Points
 
@@ -66,32 +52,6 @@ When ChatGPT emerged in 2023, I learned about its high code generation capabilit
 - **Multi-language Support**: Japanese and English support
 - **Date Format Options**: Choose from yyyy/mm/dd, mm/dd/yyyy, or dd/mm/yyyy formats
 
-## Setup
-
-### Prerequisites
-- Node.js 16+
-- npm or yarn
-
-### Installation Steps
-
-1. Clone the repository:
-```bash
-git clone https://github.com/kloir-z/ganttapp-local.git
-cd ganttapp-local
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Start the development server:
-```bash
-npm run dev
-```
-
-4. Access `http://localhost:5173` in your browser
-
 ## Basic Usage
 
 ### Creating a New Project
@@ -132,14 +92,48 @@ The "File" → "Export" submenu writes the chart in three formats depending on y
   3. The notebook's "Task Notes" list shows every row note with its row number
      and task name for quick review and editing
 
-## Build & Distribution
+## Why I Created This
 
-### Regular Build
+I was creating Gantt charts in Excel using conditional formatting and formulas, but when the number of rows increased (200+ rows), updates became cumbersome and felt like a typical example of "wrong way to use Excel." The performance was slow and lacked good overview capability.
+
+When ChatGPT emerged in 2023, I learned about its high code generation capabilities and thought "maybe I can create a Gantt chart app?" This was the catalyst for starting development.
+
+## System Requirements
+
+**Only works on PC Chromium-based browsers (Chrome / Edge).**
+
+- Does not work on Firefox / Safari (no support planned)
+- Cannot be used on mobile devices (no support planned)
+
+---
+
+## For Developers
+
+### Setup
+
+Prerequisites:
+- Node.js 16+
+- npm or yarn
+
+```bash
+# Clone the repository
+git clone https://github.com/kloir-z/ganttapp-local.git
+cd ganttapp-local
+
+# Install dependencies
+npm install
+
+# Start the development server (http://localhost:5173)
+npm run dev
+```
+
+### Build & Distribution
+
 ```bash
 npm run build      # Production build (output to dist/ folder)
 ```
 
-### Single-File Build (offline distribution)
+#### Single-File Build (offline distribution)
 ```bash
 npm run build:singlefile   # Inline all assets into one file (dist-single/index.html)
 ```
@@ -148,15 +142,14 @@ npm run build:singlefile   # Inline all assets into one file (dist-single/index.
 - Uses `HashRouter` for routing and bundled holiday data so both work under `file://`
 - Limitation: sample projects are not shown in the welcome screen under `file://` (ZIP fetch is blocked); manual import/export still works
 
-### Development Commands
+#### Other Commands
 ```bash
-npm run dev        # Start development server
 npm run lint       # Code quality check
 npm run test       # Run tests
 npm run preview    # Preview build results
 ```
 
-## Technology Stack
+### Technology Stack
 
 - **Frontend**: React 18 + TypeScript
 - **State Management**: Redux Toolkit  
