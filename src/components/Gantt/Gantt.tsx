@@ -181,10 +181,17 @@ function Gantt() {
     if (!gridRef.current) return;
     const startIndex = Math.max(Math.floor(gridRef.current.scrollTop / rowHeight) - renderRowsInterval, 0);
     const endIndex = Math.min(totalRows - 1, startIndex + visibleRows + (renderRowsInterval * 2));
-    if (Math.abs(startIndex - visibleRange.startIndex) >= renderRowsInterval || (startIndex == 0 && visibleRange.startIndex != 0)) {
+    const startChanged = Math.abs(startIndex - visibleRange.startIndex) >= renderRowsInterval || (startIndex === 0 && visibleRange.startIndex !== 0);
+    // Also refresh when the viewport grows (browser zoom-out / window resize): scrollTop
+    // — and therefore startIndex — can stay put while visibleRows increases, so endIndex
+    // must follow. Without this the lower rows beyond a stale endIndex stop rendering
+    // (their horizontal grid lines and bars vanish) even though the vertical grid, sized
+    // from the updated gridHeight, keeps extending down.
+    const endChanged = Math.abs(endIndex - visibleRange.endIndex) >= renderRowsInterval || (endIndex === totalRows - 1 && visibleRange.endIndex !== totalRows - 1);
+    if (startChanged || endChanged) {
       setVisibleRange({ startIndex, endIndex });
     }
-  }, [rowHeight, visibleRows, totalRows, visibleRange.startIndex]);
+  }, [rowHeight, visibleRows, totalRows, visibleRange.startIndex, visibleRange.endIndex]);
 
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (!gridRef.current) return;
