@@ -2,7 +2,11 @@
 
 English | [日本語](README.md)
 
-A Gantt chart app that runs entirely in the browser, with nothing to install. It gives you Excel-like table editing and intuitive chart editing with the mouse. I originally built it for my own use, but I'm publishing it in case it helps others with the same frustrations.
+A Gantt chart app that runs entirely in the browser, with nothing to install. It gives you Excel-like table editing and intuitive chart editing with the mouse.
+
+It doesn't just lay out a schedule — it recalculates dependencies ("start 3 days after the previous task," and so on) automatically, skipping weekends and holidays. You can redefine which days count as holidays, and toggle holiday-avoidance on or off per row. It stays responsive even at several hundred to 1000 rows, so it handles the kind of large plans that became too heavy to manage in Excel.
+
+I originally built it for my own use, but I'm publishing it in case it helps others with the same frustrations.
 
 ![Gantt Chart Screenshot](docs/images/screenshot.png)
 
