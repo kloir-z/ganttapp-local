@@ -377,7 +377,7 @@ export const useContextMenuOptions = ({
             }
 
             const initialColumnOrder = [
-                'displayName', 'color', 'plannedStartDate', 'plannedEndDate',
+                'no', 'wbsNumber', 'displayName', 'color', 'plannedStartDate', 'plannedEndDate',
                 'plannedDays', 'actualStartDate', 'actualEndDate', 'progress', 'dependency',
                 'textColumn1', 'textColumn2', 'textColumn3', 'isIncludeHolidays'
             ];

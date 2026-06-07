@@ -381,7 +381,7 @@ export const wbsDataSlice = createSlice({
         state.past.shift();
       }
       state.columns = state.columns.map(column =>
-        column.columnId === action.payload && column.columnId !== 'no'
+        column.columnId === action.payload
           ? { ...column, visible: !column.visible }
           : column
       );

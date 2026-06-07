@@ -14,13 +14,13 @@ const ColumnSetting: React.FC = memo(() => {
   const allColumns = useSelector((state: RootState) => state.wbsData.columns);
   const showYear = useSelector((state: RootState) => state.wbsData.showYear);
   const initialColumnOrder = [
-    'displayName', 'color', 'plannedStartDate', 'plannedEndDate',
+    'no', 'wbsNumber', 'displayName', 'color', 'plannedStartDate', 'plannedEndDate',
     'plannedDays', 'actualStartDate', 'actualEndDate', 'progress', 'dependency',
     'textColumn1', 'textColumn2', 'textColumn3', 'isIncludeHolidays'
   ];
   const filteredColumns = initialColumnOrder
     .map(id => allColumns.find(col => col.columnId === id))
-    .filter(col => col !== undefined && col.columnId !== 'no') as typeof allColumns;
+    .filter(col => col !== undefined) as typeof allColumns;
 
   const updateColumnName = (columnId: string, newName: string) => {
     dispatch(setColumns(

@@ -12,12 +12,22 @@ interface SeparatorRowLabelProps {
 const SeparatorRowLabelComponent: React.FC<SeparatorRowLabelProps> = memo(({ entry, topPosition }) => {
   const dispatch = useDispatch();
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
+  // The label overlay starts after whatever leading fixed columns are visible
+  // (the "No" and optional "WBS" columns), so it stays aligned when either is
+  // hidden. ~3px per column accounts for cell borders.
+  const columns = useSelector((state: RootState) => state.wbsData.columns);
+  const leadingOffset = columns.reduce((acc, c) => {
+    if (c.visible && (c.columnId === 'no' || c.columnId === 'wbsNumber')) {
+      return acc + (c.width ?? 0) + 3;
+    }
+    return acc;
+  }, 0);
   const adjustedTopPosition = topPosition;
   const isCollapsed: boolean = entry.isCollapsed;
   const indentWidth = (entry.level ?? 0) * 9;
 
   return (
-    <div style={{ position: 'absolute', display: 'flex', alignItems: 'center', top: `${adjustedTopPosition}px`, left: `${40 + indentWidth}px`, height: `${rowHeight}px` }}>
+    <div style={{ position: 'absolute', display: 'flex', alignItems: 'center', top: `${adjustedTopPosition}px`, left: `${leadingOffset + indentWidth}px`, height: `${rowHeight}px` }}>
       <div
         style={{
           display: 'flex',

@@ -17,6 +17,7 @@ import { setCopiedRows } from '../../reduxStoreAndSlices/copiedRowsSlice';
 import useInsertCopiedRow from '../../hooks/useInsertCopiedRow';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { useImeCellOverlay } from '../../hooks/useImeCellOverlay';
+import { buildWbsNumberMap } from '../../utils/wbsNumber';
 
 const WBSInfo: React.FC = memo(() => {
   const activeModal = useSelector((state: RootState) => state.uiFlags.activeModal);
@@ -84,6 +85,11 @@ const WBSInfo: React.FC = memo(() => {
     return Object.values(data);
   }, [data]);
 
+  // Mechanical WBS numbers for the optional read-only "WBS" column. Only computed
+  // when that column is actually shown so hidden state stays free of overhead.
+  const wbsNumberVisible = useMemo(() => visibleColumns.some(c => c.columnId === 'wbsNumber'), [visibleColumns]);
+  const wbsNumberMap = useMemo(() => (wbsNumberVisible ? buildWbsNumberMap(data) : {}), [wbsNumberVisible, data]);
+
   const customDateCellTemplate = useMemo(() => new CustomDateCellTemplate(showYear, dateFormat), [showYear, dateFormat]);
   const customTextCellTemplate = useMemo(() => new CustomTextCellTemplate(), []);
   const customNumberCellTemplate = useMemo(() => new CustomNumberCellTemplate(), []);
@@ -105,23 +111,23 @@ const WBSInfo: React.FC = memo(() => {
           if (item.isCollapsed) {
             collapseStack.push(item.level || 0);
           }
-          return createSeparatorRow(item, visibleColumns, rowHeight);
+          return createSeparatorRow(item, visibleColumns, rowHeight, wbsNumberMap[item.id]);
         } else if (isChartRow(item)) {
           if (collapseStack.length > 0) {
             return [];
           }
-          return createChartRow(item, visibleColumns, rowHeight);
+          return createChartRow(item, visibleColumns, rowHeight, wbsNumberMap[item.id]);
         } else if (isEventRow(item)) {
           if (collapseStack.length > 0) {
             return [];
           }
-          return createEventRow(item, visibleColumns, rowHeight);
+          return createEventRow(item, visibleColumns, rowHeight, wbsNumberMap[item.id]);
         } else {
           return [];
         }
       })
     ];
-  }, [headerRow, visibleColumns, rowHeight]);
+  }, [headerRow, visibleColumns, rowHeight, wbsNumberMap]);
 
   const rows = useMemo(() => getRows(dataArray), [dataArray, getRows]);
 
@@ -134,12 +140,15 @@ const WBSInfo: React.FC = memo(() => {
   }, [dataArray, dispatch]);
 
   const handleColumnsReorder = useCallback((targetColumnId: Id, columnIds: Id[]) => {
-    if (columnIds.includes("no")) {
+    // "no" and the optional "wbsNumber" column are pinned to the front.
+    if (columnIds.includes("no") || columnIds.includes("wbsNumber")) {
       return;
     }
     const targetIndex = columns.findIndex(data => data.columnId === targetColumnId);
     const noColumnIndex = columns.findIndex(data => data.columnId === "no");
-    const adjustedTargetIndex = targetIndex <= noColumnIndex ? noColumnIndex + 1 : targetIndex;
+    const wbsColumnIndex = columns.findIndex(data => data.columnId === "wbsNumber");
+    const lastPinnedIndex = Math.max(noColumnIndex, wbsColumnIndex);
+    const adjustedTargetIndex = targetIndex <= lastPinnedIndex ? lastPinnedIndex + 1 : targetIndex;
     const movingColumnsIndexes = columnIds.map(id => columns.findIndex(data => data.columnId === id));
     const sortedMovingColumnsIndexes = [...movingColumnsIndexes].sort((a, b) => a - b);
     const tempColumns = columns.map(column => ({ ...column, id: column.columnId }));

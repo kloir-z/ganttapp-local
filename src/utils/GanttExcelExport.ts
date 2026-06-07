@@ -23,6 +23,7 @@ import {
 import { ColorInfo } from '../reduxStoreAndSlices/colorSlice';
 import { ExtendedColumn } from '../reduxStoreAndSlices/store';
 import { generateDates, isHoliday } from './CommonUtils';
+import { collectVisibleRows, computeWbsNumbers } from './wbsNumber';
 import { standardizeLongDateFormat, standardizeShortDateFormat } from '../components/Table/utils/wbsHelpers';
 
 export interface BuildGanttWorkbookParams {
@@ -173,42 +174,6 @@ const cellTextFor = (
 
 // Filter the data into render order, honoring collapsed separators exactly like
 // the chart's filteredData does.
-const collectVisibleRows = (data: { [id: string]: WBSData }): WBSData[] => {
-  const result: WBSData[] = [];
-  const collapseStack: number[] = [];
-  Object.values(data).forEach((entry) => {
-    if (isSeparatorRow(entry)) {
-      while (collapseStack.length > 0 && collapseStack[collapseStack.length - 1] >= (entry.level || 0)) {
-        collapseStack.pop();
-      }
-      if (collapseStack.length > 0) return;
-      result.push(entry);
-      if (entry.isCollapsed) collapseStack.push(entry.level || 0);
-    } else {
-      if (collapseStack.length > 0) return;
-      result.push(entry);
-    }
-  });
-  return result;
-};
-
-// Assign a mechanical hierarchical WBS number to each visible row. Separator rows
-// occupy their own `level` depth; leaf rows (chart/event) are numbered one level
-// below the current section. Produces "1", "1-1", "1-1-1", etc.
-const computeWbsNumbers = (rows: WBSData[]): string[] => {
-  const counters: number[] = [];
-  let leafDepth = 0;
-  return rows.map((row) => {
-    const depth = isSeparatorRow(row) ? (row.level ?? 0) : leafDepth;
-    counters.length = depth + 1; // truncate any deeper counters
-    counters[depth] = (counters[depth] ?? 0) + 1;
-    if (isSeparatorRow(row)) leafDepth = depth + 1;
-    const parts: number[] = [];
-    for (let i = 0; i <= depth; i += 1) parts.push(counters[i] ?? 1);
-    return parts.join('-');
-  });
-};
-
 // Crop trailing empty date columns: keep up to one month past the last content
 // date (mirrors the PDF export's exportDateColumns crop).
 const croppedDateCount = (
