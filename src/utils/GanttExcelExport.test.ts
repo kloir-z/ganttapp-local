@@ -209,7 +209,7 @@ describe('buildGanttWorkbook', () => {
     // A plain weekday cell outside the bar (06/20 -> col 24) gets a faint left line.
     const plain = ws.getRow(3).getCell(24);
     expect((plain.border?.left as any)?.style).toBe('hair');
-    expect((plain.border?.left as any)?.color?.argb).toBe('FFEFEFEF');
+    expect((plain.border?.left as any)?.color?.argb).toBe('FFE6E6E6');
     // A bar cell (06/04 -> col 8, inside 06/03–06/07) gets NO left line, so the bar
     // reads as a continuous block rather than being sliced day by day.
     expect((ws.getRow(3).getCell(8).border?.left as any) ?? undefined).toBeFalsy();
@@ -220,12 +220,12 @@ describe('buildGanttWorkbook', () => {
     const data: { [id: string]: WBSData } = { r1: chartRow({ plannedStartDate: '', plannedEndDate: '', actualStartDate: '', actualEndDate: '' }) };
     // Medium width (5.5 < cw <= 8): every day, extra-light line. 06/04 (Thu) -> col 8.
     const medium = await buildGanttWorkbook({ ...baseParams(data), dateRange: range, cellWidth: 7 });
-    expect((medium.worksheets[0].getRow(3).getCell(8).border?.left as any)?.color?.argb).toBe('FFF7F7F7');
+    expect((medium.worksheets[0].getRow(3).getCell(8).border?.left as any)?.color?.argb).toBe('FFEEEEEE');
     // Very narrow (cw <= 5.5): weekdays have no line, only Sundays. 06/04 Thu -> col 8,
     // 06/07 Sun -> col 11.
     const narrow = await buildGanttWorkbook({ ...baseParams(data), dateRange: range, cellWidth: 5 });
     expect((narrow.worksheets[0].getRow(3).getCell(8).border?.left as any) ?? undefined).toBeFalsy();
-    expect((narrow.worksheets[0].getRow(3).getCell(11).border?.left as any)?.color?.argb).toBe('FFEFEFEF');
+    expect((narrow.worksheets[0].getRow(3).getCell(11).border?.left as any)?.color?.argb).toBe('FFE6E6E6');
   });
 
   it('honors collapsed separators by hiding their children', async () => {

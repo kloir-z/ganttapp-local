@@ -351,16 +351,17 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
   // render at the same height — Excel draws a solid fill 1px taller than a cell that
   // only shows the default gridline, which otherwise makes day-off/bar cells look
   // misaligned against plain weekday cells.
-  const chartHLine = { style: 'hair' as const, color: { argb: 'FFE8E8E8' } };
+  const chartHLine = { style: 'hair' as const, color: { argb: 'FFE0E0E0' } };
 
   // Faint per-day vertical grid line, mirroring GridVertical.tsx: the web draws
-  // translucent black hairlines (~6% / ~3% opacity) that lighten as the chart
-  // narrows, and on very narrow widths only Sundays get a line. Excel borders are
-  // opaque, so these are the composited-over-white approximations of that look.
+  // translucent black hairlines that lighten as the chart narrows, and on very
+  // narrow widths only Sundays get a line. Excel borders are opaque, so these are
+  // composited-over-white approximations — nudged a touch darker than the web's
+  // values so the gridlines stay legible against Excel's white sheet.
   const dayLineColor = (dayOfWeek: number): string | null => {
-    if (cellWidth > 8) return 'FFEFEFEF';          // wide: every day, ~#00000010
-    if (cellWidth > 5.5) return 'FFF7F7F7';        // medium: every day, ~#00000008
-    return dayOfWeek === 0 ? 'FFEFEFEF' : null;    // narrow: Sundays only, weekdays none
+    if (cellWidth > 8) return 'FFE6E6E6';          // wide: every day
+    if (cellWidth > 5.5) return 'FFEEEEEE';        // medium: every day (lighter)
+    return dayOfWeek === 0 ? 'FFE6E6E6' : null;    // narrow: Sundays only, weekdays none
   };
 
   // --- Data rows ---
