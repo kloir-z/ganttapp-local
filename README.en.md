@@ -74,8 +74,8 @@ The "File" → "Export" submenu writes the chart in three formats depending on y
 
 - **PDF**: Rasterizes the whole chart as an image and writes it to PDF (virtualization is disabled so every row and date fits on the page). Good for printing or non-editable handouts.
 - **Excel (view-only)**: Reproduces the on-screen appearance as an `.xlsx`. **It is not a feature-equivalent of the app — it only "displays" the chart in Excel.** Specifically:
-  - The left side holds the WBS table (visible columns; the on-screen `No` column is replaced with a mechanical hierarchical WBS number like `1` / `1-1` / `1-1-1`), and the right side is a one-column-per-day chart.
-  - Planned/actual bars, weekend/holiday shading, separator bands, and the month-start grid line are reproduced as static visuals.
+  - The left side holds the WBS table (visible columns), and the right side is a one-column-per-day chart. The on-screen `No` column is omitted (Excel's own row numbers replace it); instead an always-on column carrying a mechanical hierarchical WBS number like `1` / `1-1` / `1-1-1` is written up front, and task names are indented to their WBS depth.
+  - Planned/actual bars, weekend/holiday shading, separator bands, the faint per-day vertical lines, and the darker month-start line are reproduced as static visuals.
   - However, there is **no dependency calculation, holiday avoidance, or drag editing** — none of the dynamic behavior. Cell colors are baked in statically; moving a date does not move the bars. It is purely a snapshot to open and look at (or print) in Excel.
 - **Standalone HTML**: Writes a single HTML file with the app and the current data baked in.
   - **Pros**: The recipient just double-clicks it to see the finished Gantt chart. No server required, and unlike PDF/Excel the **dynamic features stay alive** — scrolling, editing, and viewing notes all work. Ideal for letting colleagues try the app without installing anything.

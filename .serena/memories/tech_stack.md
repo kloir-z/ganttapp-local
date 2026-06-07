@@ -14,7 +14,9 @@
 
 ## Specialized Libraries
 - **Quill.js** for rich text editing in notes system
-- **JSZip** for project file compression/decompression
+- **JSZip** for project file compression/decompression and post-patching exported `.xlsx`
+- **ExcelJS** for the styled, view-only `.xlsx` Gantt export
+- **jsPDF + html2canvas** for the full-chart PDF export
 - **i18next** for internationalization (English/Japanese)
 - **date-fns, dayjs, moment** for date manipulation and calculations
 - **React Router** for client-side routing

@@ -53,8 +53,6 @@ const SEPARATOR_BG = '#ddedff';
 const SEPARATOR_COLLAPSED_BAND = '#bfbfbf5d';
 // A cleaner-looking font than Excel's default; falls back gracefully if absent.
 const FONT = 'Meiryo';
-// Synthetic leading column id holding the mechanical WBS number (1 / 1-1 / 1-1-1).
-const WBS_NO_COL = '__wbsno__';
 
 // Parse a CSS color into RGBA. Supports both the hex forms (#rgb / #rgba /
 // #rrggbb / #rrggbbaa) and the rgb()/rgba() forms the in-app color picker saves
@@ -212,11 +210,15 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
     regularDaysOffSetting, dateFormat, showYear, title, cellWidth, t,
   } = params;
 
-  // Drop the on-screen 'No' column (it mirrors Excel's own row numbers) and put a
-  // mechanical WBS number column in its place at the front.
-  const dataColumns = columns.filter((c) => c.visible !== false && c.columnId !== 'no');
+  // Drop the on-screen 'No' column (Excel's own row numbers replace it). Always
+  // emit the mechanical WBS-number column up front, even when it's hidden on
+  // screen — it carries the hierarchy ("1" / "1-1" / "1-1-1").
+  const dataColumns = columns.filter(
+    (c) => c.visible !== false && c.columnId !== 'no' && c.columnId !== 'wbsNumber',
+  );
+  const wbsNumberCol = columns.find((c) => c.columnId === 'wbsNumber');
   const wbsColumns: { columnId: string; columnName: string; width: number }[] = [
-    { columnId: WBS_NO_COL, columnName: 'No', width: 48 },
+    { columnId: 'wbsNumber', columnName: wbsNumberCol?.columnName || 'WBS', width: wbsNumberCol?.width || 50 },
     ...dataColumns.map((c) => ({ columnId: c.columnId, columnName: c.columnName, width: c.width || 50 })),
   ];
   const rows = collectVisibleRows(data);
@@ -263,6 +265,7 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
     return {
       key: d.format('YYYYMMDD'),
       date: dateNum,
+      dayOfWeek,
       // cdate's get('M') is 0-indexed; format('M') gives the human 1-12 month.
       month: Number(d.format('M')),
       year: Number(d.format('YYYY')),
@@ -274,7 +277,9 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
   const wb = new Workbook();
   wb.creator = 'Gantty';
   const ws = wb.addWorksheet(title ? title.slice(0, 28) : 'Gantt', {
-    views: [{ state: 'frozen', xSplit: wbsColumns.length, ySplit: 2 }],
+    // Hide Excel's default gridlines (they read darker than the chart's faint
+    // day lines); every visible line below is drawn explicitly instead.
+    views: [{ state: 'frozen', xSplit: wbsColumns.length, ySplit: 2, showGridLines: false }],
   });
 
   const wbsColCount = wbsColumns.length;
@@ -348,33 +353,56 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
   // misaligned against plain weekday cells.
   const chartHLine = { style: 'hair' as const, color: { argb: 'FFE8E8E8' } };
 
+  // Faint per-day vertical grid line, mirroring GridVertical.tsx: the web draws
+  // translucent black hairlines (~6% / ~3% opacity) that lighten as the chart
+  // narrows, and on very narrow widths only Sundays get a line. Excel borders are
+  // opaque, so these are the composited-over-white approximations of that look.
+  const dayLineColor = (dayOfWeek: number): string | null => {
+    if (cellWidth > 8) return 'FFEFEFEF';          // wide: every day, ~#00000010
+    if (cellWidth > 5.5) return 'FFF7F7F7';        // medium: every day, ~#00000008
+    return dayOfWeek === 0 ? 'FFEFEFEF' : null;    // narrow: Sundays only, weekdays none
+  };
+
   // --- Data rows ---
   rows.forEach((row, rIdx) => {
     const excelRow = ws.getRow(rIdx + 3);
     excelRow.height = 15;
     const isSep = isSeparatorRow(row);
 
+    // The WBS number (e.g. "1-1-1") doubles as the hierarchy depth signal: the
+    // count of dashes is the indent level. Empty placeholder rows get a blank
+    // number, so they read as level 0 (and are skipped for color fills below).
+    const wbsNo = wbsNumbers[rIdx] || '';
+    const depth = wbsNo === '' ? 0 : wbsNo.split('-').length - 1;
+
     // WBS columns.
     wbsColumns.forEach((c, cIdx) => {
       const cell = excelRow.getCell(cIdx + 1);
-      const isWbsNo = c.columnId === WBS_NO_COL;
+      const isWbsNo = c.columnId === 'wbsNumber';
       // Keep the WBS number and display name on separator rows; blank the rest.
       const keepOnSep = isWbsNo || c.columnId === 'displayName';
       cell.value = isWbsNo
-        ? wbsNumbers[rIdx]
+        ? wbsNo
         : isSep && !keepOnSep
           ? ''
           : cellTextFor(c.columnId, row, dateFormat, showYear);
-      cell.font = { name: FONT, size: 10, bold: isSep };
+      // Size 9 matches the chart-side bar/separator labels so the two panes read
+      // at one consistent type size.
+      cell.font = { name: FONT, size: 9, bold: isSep };
+      // Indent the task name to its hierarchy depth (level 1 = flush left), using
+      // Excel's native cell indent so the outline reads like a real WBS.
+      const indent = c.columnId === 'displayName' ? depth : 0;
       cell.alignment = {
         horizontal: c.columnId === 'displayName' ? 'left' : 'center',
         vertical: 'middle',
+        ...(indent > 0 ? { indent } : {}),
       };
       cell.border = { right: thinGray, bottom: thinGray };
       if (isSep) {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEDFF' } };
-      } else if (c.columnId === 'color' && (isChartRow(row) || isEventRow(row))) {
-        // Paint the color cell with the planned bar color, like the swatch.
+      } else if (c.columnId === 'color' && wbsNo !== '' && (isChartRow(row) || isEventRow(row))) {
+        // Paint the color cell with the planned bar color, like the swatch — but
+        // skip wholly-empty rows so blank placeholders stay uncolored.
         const planned = parseColor(resolvePlannedColor((row as ChartRow).color, colors, fallbackColor));
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: toARGB(composite(WHITE, planned)) } };
       }
@@ -417,17 +445,22 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
       let rgb = info.bg;
       const inRange = (s: string, e: string) => s !== '' && e !== '' && info.key >= s && info.key <= e;
 
+      // Track whether a bar/separator band actually covers this cell, so we can
+      // keep the faint vertical line off it — an opaque Excel border drawn across
+      // a bar would visually slice it into daily segments.
+      let barPainted = false;
       if (isSep) {
         // The whole separator row is light blue (opaque), covering weekend shading
         // so the band connects seamlessly with the table side.
         rgb = sepBg;
         if (sepCollapsed && inRange(sepStart, sepEnd)) rgb = composite(rgb, collapsedBand);
+        barPainted = true;
       } else {
-        if (inRange(pStart, pEnd)) rgb = composite(rgb, plannedColor);
+        if (inRange(pStart, pEnd)) { rgb = composite(rgb, plannedColor); barPainted = true; }
         eventRanges.forEach((er) => {
-          if (inRange(er.start, er.end)) rgb = composite(rgb, er.planned ? plannedColor : actualColor);
+          if (inRange(er.start, er.end)) { rgb = composite(rgb, er.planned ? plannedColor : actualColor); barPainted = true; }
         });
-        if (inRange(aStart, aEnd)) rgb = composite(rgb, actualColor);
+        if (inRange(aStart, aEnd)) { rgb = composite(rgb, actualColor); barPainted = true; }
       }
 
       const cell = excelRow.getCell(wbsColCount + dIdx + 1);
@@ -435,7 +468,14 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
       if (isPainted) {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: toARGB(rgb) } };
       }
-      cell.border = { ...(cell.border || {}), bottom: chartHLine };
+      // Faint day line only on cells with no bar over them; month-start columns are
+      // drawn later by the darker monthLine pass, so leave them to it.
+      const lineArgb = barPainted || info.date === 1 ? null : dayLineColor(info.dayOfWeek);
+      cell.border = {
+        ...(cell.border || {}),
+        bottom: chartHLine,
+        ...(lineArgb ? { left: { style: 'hair' as const, color: { argb: lineArgb } } } : {}),
+      };
     });
 
     // Label the planned bar with the task name, like the chart's bar label. The

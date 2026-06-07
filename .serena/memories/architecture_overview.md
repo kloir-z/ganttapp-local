@@ -35,6 +35,7 @@ LocalApp (root)
 - **Dependency System**: String-based format with distance calculations
 - **Date Handling**: Multiple date libraries for different purposes
 - **File Format**: ZIP containers with `project.json` + `notes.json`
+- **Export Formats**: View-only `.xlsx` (ExcelJS), full-chart PDF (jsPDF + html2canvas), and a self-contained standalone HTML snapshot — all distribution/viewing outputs, not re-importable save formats
 
 ### Performance Optimizations
 - **React.memo**: Component memoization for large lists

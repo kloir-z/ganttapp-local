@@ -111,13 +111,40 @@ describe('buildGanttWorkbook', () => {
     };
     const wb = await buildGanttWorkbook(baseParams(data));
     const ws = wb.worksheets[0];
-    // Column 1 is now the WBS number column (header "No"); the old No column is gone.
-    expect(ws.getRow(2).getCell(1).value).toBe('No');
+    // Column 1 is the always-on WBS number column (header "WBS"); the old No column is gone.
+    expect(ws.getRow(2).getCell(1).value).toBe('WBS');
     expect(ws.getRow(3).getCell(1).value).toBe('1');     // separator A
     expect(ws.getRow(4).getCell(1).value).toBe('1-1');   // task under A
     expect(ws.getRow(5).getCell(1).value).toBe('1-2');
     expect(ws.getRow(6).getCell(1).value).toBe('1-3');   // sub-separator A1
     expect(ws.getRow(7).getCell(1).value).toBe('1-3-1'); // task under A1
+
+    // The display-name cell (col 2) is indented to its WBS depth: level 1 flush
+    // left (no indent), deeper rows step right one indent unit per dash.
+    expect((ws.getRow(3).getCell(2).alignment as any)?.indent ?? 0).toBe(0); // "1"
+    expect((ws.getRow(4).getCell(2).alignment as any)?.indent ?? 0).toBe(1); // "1-1"
+    expect((ws.getRow(6).getCell(2).alignment as any)?.indent ?? 0).toBe(1); // "1-3"
+    expect((ws.getRow(7).getCell(2).alignment as any)?.indent ?? 0).toBe(2); // "1-3-1"
+  });
+
+  it('paints the color cell for content rows but leaves wholly-empty rows uncolored', async () => {
+    const colsWithColor: ExtendedColumn[] = [
+      { columnId: 'no', columnName: 'No', width: 37, visible: true } as ExtendedColumn,
+      { columnId: 'displayName', columnName: 'DisplayName', width: 100, visible: true } as ExtendedColumn,
+      { columnId: 'color', columnName: 'Color', width: 50, visible: true } as ExtendedColumn,
+    ];
+    const data: { [id: string]: WBSData } = {
+      r1: chartRow({ no: 1, id: 'r1', displayName: 'Task A', color: 'A' }),
+      r2: chartRow({
+        no: 2, id: 'r2', displayName: '', color: '',
+        plannedStartDate: '', plannedEndDate: '', actualStartDate: '', actualEndDate: '',
+      }),
+    };
+    const wb = await buildGanttWorkbook({ ...baseParams(data), columns: colsWithColor });
+    const ws = wb.worksheets[0];
+    // Color column is the 3rd WBS cell. Content row -> filled; empty row -> no fill.
+    expect((ws.getRow(3).getCell(3).fill as any)?.fgColor?.argb).toBeTruthy();
+    expect((ws.getRow(4).getCell(3).fill as any)?.fgColor?.argb).toBeFalsy();
   });
 
   it('injects ignoredErrors so Excel suppresses the number/text-date warnings', async () => {
@@ -170,6 +197,35 @@ describe('buildGanttWorkbook', () => {
     // A filled bar cell (06/03 -> col 7) gets the same bottom line.
     const barCell = ws.getRow(3).getCell(7);
     expect((barCell.border?.bottom as any)?.style).toBe('hair');
+  });
+
+  it('draws a faint day line on empty cells but never across a bar, and hides default gridlines', async () => {
+    // Wide chart so every day gets a vertical line. Bar runs 06/03–06/07.
+    const data: { [id: string]: WBSData } = { r1: chartRow({}) };
+    const wb = await buildGanttWorkbook({ ...baseParams(data), cellWidth: 15 });
+    const ws = wb.worksheets[0];
+    // Default gridlines are off; we supply all visible lines ourselves.
+    expect((ws.views[0] as any).showGridLines).toBe(false);
+    // A plain weekday cell outside the bar (06/20 -> col 24) gets a faint left line.
+    const plain = ws.getRow(3).getCell(24);
+    expect((plain.border?.left as any)?.style).toBe('hair');
+    expect((plain.border?.left as any)?.color?.argb).toBe('FFEFEFEF');
+    // A bar cell (06/04 -> col 8, inside 06/03–06/07) gets NO left line, so the bar
+    // reads as a continuous block rather than being sliced day by day.
+    expect((ws.getRow(3).getCell(8).border?.left as any) ?? undefined).toBeFalsy();
+  });
+
+  it('lightens the day line as the chart narrows and drops weekday lines when very narrow', async () => {
+    const range = { startDate: '2026/06/01', endDate: '2026/06/30' };
+    const data: { [id: string]: WBSData } = { r1: chartRow({ plannedStartDate: '', plannedEndDate: '', actualStartDate: '', actualEndDate: '' }) };
+    // Medium width (5.5 < cw <= 8): every day, extra-light line. 06/04 (Thu) -> col 8.
+    const medium = await buildGanttWorkbook({ ...baseParams(data), dateRange: range, cellWidth: 7 });
+    expect((medium.worksheets[0].getRow(3).getCell(8).border?.left as any)?.color?.argb).toBe('FFF7F7F7');
+    // Very narrow (cw <= 5.5): weekdays have no line, only Sundays. 06/04 Thu -> col 8,
+    // 06/07 Sun -> col 11.
+    const narrow = await buildGanttWorkbook({ ...baseParams(data), dateRange: range, cellWidth: 5 });
+    expect((narrow.worksheets[0].getRow(3).getCell(8).border?.left as any) ?? undefined).toBeFalsy();
+    expect((narrow.worksheets[0].getRow(3).getCell(11).border?.left as any)?.color?.argb).toBe('FFEFEFEF');
   });
 
   it('honors collapsed separators by hiding their children', async () => {
