@@ -6,19 +6,24 @@
 //
 // 確定は「適用」ボタンと Enter のみ。別セルへの移動・ESC・「キャンセル」は元の値に戻す。
 // 書式テキストは表のセル自体に表示されるため、ここには直接編集欄を置かない。
-import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Compatible } from "@silevis/reactgrid";
 import { isAlphaNumericKey, isNavigationKey } from "@silevis/reactgrid";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, setEntireData } from "../../../reduxStoreAndSlices/store";
-import { setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId } from "../../../reduxStoreAndSlices/uiFlagSlice";
+import { setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds } from "../../../reduxStoreAndSlices/uiFlagSlice";
 import { WBSData, ChartRow, isChartRow } from "../../../types/DataTypes";
+import { collectDependencyChainIds } from "../../../utils/CommonUtils";
 import { CustomDependencyCell } from "./CustomDependencyCell";
+import DependencyConnector from "./DependencyConnector";
 
 interface DependencyBuilderProps {
   cell: Compatible<CustomDependencyCell>;
   onCellChanged: (cell: Compatible<CustomDependencyCell>, commit: boolean) => void;
+  // When true, the builder renders as a free-floating popover (opened from the
+  // chart's right-click menu) rather than anchored under a table cell.
+  standalone?: boolean;
 }
 
 type DepType = 'after' | 'sameas';
@@ -141,7 +146,7 @@ const NumberStepper = ({ value, onChange, min, width }: { value: number; onChang
   );
 };
 
-const DependencyBuilder = memo(({ cell, onCellChanged }: DependencyBuilderProps) => {
+const DependencyBuilder = memo(({ cell, onCellChanged, standalone = false }: DependencyBuilderProps) => {
   const { t } = useTranslation();
   const data = useSelector((state: RootState) => state.wbsData.data);
   const dispatch = useDispatch();
@@ -171,6 +176,8 @@ const DependencyBuilder = memo(({ cell, onCellChanged }: DependencyBuilderProps)
   const inputRef = useRef<HTMLInputElement>(null);
 
   // ポップオーバーのドラッグ移動
+  const popRef = useRef<HTMLDivElement>(null);
+  const [autoNudge, setAutoNudge] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null);
   const onDragStart = useCallback((e: React.MouseEvent) => {
@@ -269,6 +276,7 @@ const DependencyBuilder = memo(({ cell, onCellChanged }: DependencyBuilderProps)
       dispatch(setIsDependencyEditing(false));
       dispatch(setDependencyTargetRowId(null));
       dispatch(setDependencySourceRowId(null));
+      dispatch(setDependencyChainRowIds([]));
       if (!committedRef.current) revertLive();
     };
   }, [dispatch, cell.rowId, revertLive]);
@@ -277,6 +285,14 @@ const DependencyBuilder = memo(({ cell, onCellChanged }: DependencyBuilderProps)
   useEffect(() => {
     dispatch(setDependencyTargetRowId(resolvedTarget ? resolvedTarget.id : null));
   }, [resolvedTarget, dispatch]);
+
+  // 編集行と連動して動く行(上流・下流の連結すべて)を軽い枠で示す。直接の依存先(赤)と
+  // 編集行(青)は別ハイライトなので除く。data 変更時(=編集操作時)のみ再計算。
+  const chainIds = useMemo(() => collectDependencyChainIds(data, cell.rowId), [data, cell.rowId]);
+  useEffect(() => {
+    const targetId = resolvedTarget?.id;
+    dispatch(setDependencyChainRowIds(chainIds.filter(id => id !== targetId)));
+  }, [chainIds, resolvedTarget, dispatch]);
 
   // 指定方法の切替時、現在の対象を機械的に等価変換して引き継ぐ。
   const switchMode = (mode: TargetMode) => {
@@ -302,11 +318,36 @@ const DependencyBuilder = memo(({ cell, onCellChanged }: DependencyBuilderProps)
   const relDirection: 'up' | 'down' = parsed.relativeOffset < 0 ? 'up' : 'down';
   const setRelative = (mag: number, dir: 'up' | 'down') => applyParsed({ ...parsed, relativeOffset: (dir === 'up' ? -1 : 1) * Math.max(1, mag) });
 
+  // 開いた直後、ビューポートからはみ出していたら画面内へ寄せる(動的配置)。ドラッグ前の
+  // 一度だけ。warning の有無で高さが変わるので、その変化時にも測り直す。
+  useLayoutEffect(() => {
+    const el = popRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const margin = 8;
+    let nx = 0;
+    let ny = 0;
+    if (r.right > window.innerWidth - margin) nx = (window.innerWidth - margin) - r.right;
+    if (r.bottom > window.innerHeight - margin) ny = (window.innerHeight - margin) - r.bottom;
+    if (r.left + nx < margin) nx = margin - r.left;
+    if (r.top + ny < margin) ny = margin - r.top;
+    if (nx !== 0 || ny !== 0) setAutoNudge(n => ({ x: n.x + nx, y: n.y + ny }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [warning]);
+
   const dummyMinWidth = cell.columnWidth ? cell.columnWidth - 11 : 80;
+
+  // セル下に開く場合は absolute(セルの右隣)、チャートから開く場合は呼び出し側が
+  // fixed 配置するので relative。
+  const popoverAnchorStyle: React.CSSProperties = standalone
+    ? { position: 'relative' }
+    // セルの右隣かつ1行ぶん下に開く。真横だと表とチャートが近いとき編集行のバーを
+    // 隠してしまうため、少し下げてバーが見えるようにする。
+    : { position: 'absolute', top: 'calc(100% + 2px)', left: 'calc(100% + 4px)', zIndex: 1000 };
 
   return (
     <div
-      className="input-text__item"
+      className={standalone ? undefined : "input-text__item"}
       onClick={e => e.stopPropagation()}
       onPointerDown={e => e.stopPropagation()}
       onMouseDown={e => {
@@ -318,43 +359,59 @@ const DependencyBuilder = memo(({ cell, onCellChanged }: DependencyBuilderProps)
       }}
       onKeyDown={e => {
         // Escape は ReactGrid に委ねて編集モードを抜ける(アンマウント時に元の値へ戻る)。
+        // standalone では ReactGrid がないので呼び出し側(ChartDependencyBuilder)が閉じる。
         if (e.key === 'Escape') return;
         if (e.key === 'Enter') { closeWith(buildDependency(parsed)); return; }
         if (isAlphaNumericKey(e.keyCode) || isNavigationKey(e.keyCode)) e.stopPropagation();
       }}
     >
-      {/* セル内の入力欄: 表示名セルと同じ自動幅。現在値をリアルタイム表示し直接編集も可能。 */}
-      <div className="input-text__dummy js-dummy-input-text" style={{ minWidth: `${dummyMinWidth}px` }} data-placeholder=" ">{rawText}</div>
-      <input
-        ref={inputRef}
-        type="text"
-        className="input-text js-input-text"
-        value={rawText}
-        onChange={e => onRawChange(e.currentTarget.value)}
-        onCopy={e => e.stopPropagation()} onCut={e => e.stopPropagation()} onPaste={e => e.stopPropagation()}
-      />
+      {/* セル内の入力欄: 表示名セルと同じ自動幅。現在値をリアルタイム表示し直接編集も可能。
+          チャートから開く standalone ではセルが無いので出さない。 */}
+      {!standalone && (
+        <>
+          <div className="input-text__dummy js-dummy-input-text" style={{ minWidth: `${dummyMinWidth}px` }} data-placeholder=" ">{rawText}</div>
+          <input
+            ref={inputRef}
+            type="text"
+            className="input-text js-input-text"
+            value={rawText}
+            onChange={e => onRawChange(e.currentTarget.value)}
+            onCopy={e => e.stopPropagation()} onCut={e => e.stopPropagation()} onPaste={e => e.stopPropagation()}
+          />
+        </>
+      )}
 
-      {/* ビルダー本体(セルの下にポップオーバー) */}
+      {/* ビルダー本体 */}
+      <DependencyConnector popoverRef={popRef} />
       <div
+        ref={popRef}
         className="dependency-builder"
         style={{
-          position: 'absolute', top: 'calc(100% + 2px)', left: '-2px', zIndex: 1000,
+          ...popoverAnchorStyle,
           width: '320px', background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: '8px',
           boxShadow: '0 6px 24px rgba(0,0,0,0.18)', padding: '12px 14px', boxSizing: 'border-box', cursor: 'default',
-          transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)`,
+          transform: `translate(${dragOffset.x + autoNudge.x}px, ${dragOffset.y + autoNudge.y}px)`,
         }}
       >
-        {/* ドラッグ用ハンドル(掴んで移動)。グリップ記号のみで操作は自明なため文言は置かない。 */}
+        {/* ヘッダーバー: 左にドラッグ用グリップ、右に×(キャンセル)。バー全体を掴んで移動できる。 */}
         <div
           onMouseDown={onDragStart}
           style={{
-            cursor: 'move', userSelect: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '-12px -14px 10px', padding: '4px 10px', background: '#f1f3f4',
+            cursor: 'move', userSelect: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            margin: '-12px -14px 10px', padding: '3px 4px 3px 10px', background: '#f1f3f4',
             borderTopLeftRadius: '7px', borderTopRightRadius: '7px', borderBottom: '1px solid #e3e5e8',
-            fontSize: '13px', letterSpacing: '2px', color: COLORS.label,
+            fontSize: '13px', color: COLORS.label,
           }}
         >
-          ⠿
+          <span style={{ letterSpacing: '2px' }}>⠿</span>
+          <span
+            onMouseDown={e => { e.stopPropagation(); e.preventDefault(); }}
+            onClick={() => closeWith(originalRow.current.dependency)}
+            title={t('Cancel')}
+            style={{ cursor: 'pointer', padding: '0 6px', color: '#777', fontSize: '17px', lineHeight: 1 }}
+          >
+            ×
+          </span>
         </div>
 
         {/* 対象の指定方法 */}

@@ -38,7 +38,8 @@ const toolbarOptions = [
     'link',
     { align: [] }, { color: [] }, { background: [] },
     'clean',
-    'divider'
+    'divider',
+    'datetime'
   ]
 ];
 
@@ -312,7 +313,8 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
         '.ql-color': t('Text Color'),
         '.ql-background': t('Background Color'),
         '.ql-clean': t('Remove Formatting') + ' (Ctrl+:)',
-        '.ql-divider': t('Insert Divider') + ' (Ctrl+h)'
+        '.ql-divider': t('Insert Divider') + ' (Ctrl+h)',
+        '.ql-datetime': t('Insert Date & Time') + ' (Ctrl+/)'
       };
 
       Object.entries(tooltipMap).forEach(([selector, tooltip]) => {
@@ -321,6 +323,17 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
           element.setAttribute('title', tooltip);
         }
       });
+
+      // Quill renders custom toolbar buttons empty; give datetime a clock icon.
+      const dtBtn = toolbar.querySelector('.ql-datetime') as HTMLElement;
+      if (dtBtn && !dtBtn.querySelector('svg')) {
+        dtBtn.innerHTML =
+          '<svg viewBox="0 0 18 18">' +
+          '<circle class="ql-stroke" cx="9" cy="9" r="6.5" fill="none"></circle>' +
+          '<line class="ql-stroke" x1="9" y1="9" x2="9" y2="5"></line>' +
+          '<line class="ql-stroke" x1="9" y1="9" x2="12" y2="10.5"></line>' +
+          '</svg>';
+      }
     }, 100);
   }, [t]);
 
@@ -407,6 +420,19 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     if (editorElement) {
       editorElement.addEventListener('copy', handleCopy);
     }
+    // The datetime button is a custom format with no registered blot, so Quill's
+    // attach() (run during construction, before any handler exists) skips wiring
+    // its click listener. We attach our own listener instead.
+    let dtButton: HTMLElement | null = null;
+    const handleDateTimeClick = (e: Event) => {
+      e.preventDefault();
+      const range = editor.getSelection(true);
+      if (range) {
+        const dt = getCurrentDateTime();
+        editor.insertText(range.index, dt);
+        editor.setSelection(range.index + dt.length);
+      }
+    };
     const toolbar = editorRef.current!.getModule('toolbar');
     if (toolbar instanceof Toolbar) {
       toolbar.addHandler('divider', () => {
@@ -417,6 +443,8 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
           editor.setSelection(range.index + 2);
         }
       });
+      dtButton = editorContainer.parentNode?.querySelector('.ql-datetime') as HTMLElement | null;
+      if (dtButton) dtButton.addEventListener('click', handleDateTimeClick);
     } else if (!readOnly) {
       // Only log error when not in readOnly mode (toolbar is disabled in readOnly mode)
       console.error('Toolbar module is not available');
@@ -554,6 +582,8 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
     return () => {
       editor.off('text-change', handleContentChange);
       editor.off('selection-change', handleSelectionChange);
+
+      if (dtButton) dtButton.removeEventListener('click', handleDateTimeClick);
 
       const editorElement = editorContainer.querySelector('.ql-editor');
       if (editorElement) {

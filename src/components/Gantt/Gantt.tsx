@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import ErrorMessage from '../MessageInfo';
 import { setActiveModal } from '../../reduxStoreAndSlices/uiFlagSlice';
 import CustomRowCountDialogContainer from '../ContextMenu/CustomRowCountDialogContainer';
+import ChartDependencyBuilder from '../Chart/ChartDependencyBuilder';
 import { useLocation } from 'react-router-dom';
 import TopBarLocal from '../Topbar/TopBarLocal';
 
@@ -53,10 +54,16 @@ function Gantt() {
   const isDependencyEditing = useSelector((state: RootState) => state.uiFlags.isDependencyEditing);
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
   const [isGridRefDragging, setIsGridRefDragging] = useState(false);
-  const [isMouseDown, setIsMouseDown] = useState(false);
-  const [canGridRefDrag, setCanGridRefDrag] = useState(true);
-  const [startX, setStartX] = useState(0);
-  const [startY, setStartY] = useState(0);
+  // Drag-scroll bookkeeping is kept in refs (not state) so the window mousemove
+  // listener always reads the current values synchronously. With state, the
+  // mousedown -> re-render -> listener-reattach delay (worse while the dependency
+  // builder is open and re-renders are heavy) made the first mousemoves read a
+  // stale isMouseDown=false and silently drop the drag.
+  const isMouseDownRef = useRef(false);
+  const canGridRefDragRef = useRef(true);
+  const startXRef = useRef(0);
+  const startYRef = useRef(0);
+  const setCanGridRefDrag = useCallback((value: boolean) => { canGridRefDragRef.current = value; }, []);
   const [gridHeight, setGridHeight] = useState<number>(0);
   const [indicatorPosition, setIndicatorPosition] = useState({ x: 0, y: 0 });
   const [visibleRange, setVisibleRange] = useState({ startIndex: 0, endIndex: 200 });
@@ -153,7 +160,7 @@ function Gantt() {
     const gridStartX = (gridRef.current.scrollLeft - wbsWidth) % cellWidth;
     const adjustedX = Math.floor((event.clientX + gridStartX - 1) / cellWidth) * cellWidth - gridStartX + 1;
     let adjustedY = indicatorPosition.y;
-    if (canGridRefDrag) {
+    if (canGridRefDragRef.current) {
       const gridStartY = (gridRef.current.scrollTop % rowHeight) + topbarHeight + 7;
       adjustedY = Math.floor((event.clientY + gridStartY + 1) / rowHeight) * rowHeight - gridStartY;
     }
@@ -161,20 +168,25 @@ function Gantt() {
       setIndicatorPosition({ x: adjustedX, y: adjustedY });
       prevIndicatorRef.current = { x: adjustedX, y: adjustedY };
     }
-  }, [canGridRefDrag, cellWidth, indicatorPosition.y, isContextMenuOpen, rowHeight, wbsWidth]);
+  }, [cellWidth, indicatorPosition.y, isContextMenuOpen, rowHeight, wbsWidth]);
 
   const handleMouseDown = useCallback((event: MouseEvent) => {
     if (event.button === 0) {
-      setIsMouseDown(true);
-      if (canGridRefDrag && gridRef.current) {
-        setStartX(event.clientX + gridRef.current.scrollLeft);
-        setStartY(event.clientY + gridRef.current.scrollTop);
+      isMouseDownRef.current = true;
+      if (canGridRefDragRef.current && gridRef.current) {
+        startXRef.current = event.clientX + gridRef.current.scrollLeft;
+        startYRef.current = event.clientY + gridRef.current.scrollTop;
       }
     }
-  }, [canGridRefDrag]);
+  }, []);
 
   const handleMouseUp = useCallback((event: MouseEvent) => {
-    setIsMouseDown(false);
+    isMouseDownRef.current = false;
+    // Safety net: re-enable drag-scroll on any mouse release. A bar-drag sets
+    // canGridRefDrag=false and resets it on its own overlay's mouseup; but if that
+    // mouseup lands on something stacked above the chart (e.g. the floating
+    // dependency builder), the overlay misses it and drag-scroll stays disabled.
+    canGridRefDragRef.current = true;
     calculateAndSetIndicatorPosition(event)
   }, [calculateAndSetIndicatorPosition]);
 
@@ -197,19 +209,16 @@ function Gantt() {
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (!gridRef.current) return;
 
-    if (canGridRefDrag && isMouseDown) {
-      const newScrollLeft = startX - event.clientX;
-      const newScrollTop = startY - event.clientY;
-      gridRef.current.scrollLeft = newScrollLeft;
-      gridRef.current.scrollTop = newScrollTop;
+    if (canGridRefDragRef.current && isMouseDownRef.current) {
+      gridRef.current.scrollLeft = startXRef.current - event.clientX;
+      gridRef.current.scrollTop = startYRef.current - event.clientY;
       calculateAndSetIndicatorPosition(event)
     } else if (!isGridRefDragging) {
       calculateAndSetIndicatorPosition(event)
-    } else if (isGridRefDragging && !isMouseDown) {
+    } else if (isGridRefDragging && !isMouseDownRef.current) {
       setIsGridRefDragging(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canGridRefDrag, cellWidth, isGridRefDragging, isMouseDown, startX, startY, wbsWidth, isContextMenuOpen]);
+  }, [isGridRefDragging, calculateAndSetIndicatorPosition]);
 
   const resetDragTimeout = useCallback(() => {
     if (dragTimeoutRef.current) {
@@ -218,11 +227,11 @@ function Gantt() {
     dragTimeoutRef.current = window.setTimeout(() => {
       if (dragTimeoutRef.current !== null) {
         clearTimeout(dragTimeoutRef.current);
-      } else if (!isMouseDown) {
+      } else if (!isMouseDownRef.current) {
         setIsGridRefDragging(false);
       }
     }, 80) as unknown as number;
-  }, [isMouseDown]);
+  }, []);
 
   const handleVerticalScroll = useCallback((sourceRef: React.RefObject<HTMLDivElement>, targetRef: React.RefObject<HTMLDivElement>) => {
     if (!isGridRefDragging) {
@@ -230,7 +239,7 @@ function Gantt() {
     }
     if (sourceRef.current && targetRef.current) {
       targetRef.current.scrollTop = sourceRef.current.scrollTop;
-      if (isMouseDown) {
+      if (isMouseDownRef.current) {
         resetDragTimeout();
       }
       updateVisibleRange();
@@ -241,7 +250,7 @@ function Gantt() {
         scrollTop: sourceRef.current.scrollTop
       }));
     }
-  }, [dispatch, isGridRefDragging, isMouseDown, resetDragTimeout, updateVisibleRange]);
+  }, [dispatch, isGridRefDragging, resetDragTimeout, updateVisibleRange]);
 
   const handleHorizontalScroll = useCallback((sourceRef: React.RefObject<HTMLDivElement>, targetRef: React.RefObject<HTMLDivElement>) => {
     if (!isGridRefDragging) {
@@ -249,7 +258,7 @@ function Gantt() {
     }
     if (sourceRef.current && targetRef.current) {
       targetRef.current.scrollLeft = sourceRef.current.scrollLeft;
-      if (isMouseDown) {
+      if (isMouseDownRef.current) {
         resetDragTimeout();
       }
     }
@@ -259,7 +268,7 @@ function Gantt() {
         scrollTop: sourceRef.current.scrollTop
       }));
     }
-  }, [dispatch, isGridRefDragging, isMouseDown, resetDragTimeout]);
+  }, [dispatch, isGridRefDragging, resetDragTimeout]);
 
   useEffect(() => {
     const isChromiumBased = /Chrome/.test(navigator.userAgent) || /Chromium/.test(navigator.userAgent);
@@ -602,6 +611,7 @@ function Gantt() {
         </div>
       )}
       <ErrorMessage />
+      <ChartDependencyBuilder />
     </div>
   );
 }

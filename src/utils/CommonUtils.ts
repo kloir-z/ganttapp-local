@@ -127,6 +127,33 @@ export const adjustColorOpacity = (color: string): string => {
   return color;
 };
 
+// All chart rows that move together with `rootId` when its dates change. This is
+// the connected component over dependentId edges treated as undirected, matching
+// updateDependentRows which propagates both upstream (via dependentId) and
+// downstream (via the dependency map). The root itself is excluded.
+export const collectDependencyChainIds = (data: { [id: string]: WBSData }, rootId: string): string[] => {
+  const adj: { [id: string]: string[] } = {};
+  const addEdge = (a: string, b: string) => {
+    (adj[a] = adj[a] || []).push(b);
+    (adj[b] = adj[b] || []).push(a);
+  };
+  Object.values(data).forEach(row => {
+    if (isChartRow(row) && row.dependentId && isChartRow(data[row.dependentId])) {
+      addEdge(row.id, row.dependentId);
+    }
+  });
+  const seen = new Set<string>([rootId]);
+  const queue: string[] = [rootId];
+  while (queue.length) {
+    const cur = queue.shift() as string;
+    (adj[cur] || []).forEach(n => {
+      if (!seen.has(n)) { seen.add(n); queue.push(n); }
+    });
+  }
+  seen.delete(rootId);
+  return Array.from(seen);
+};
+
 export function buildDependencyMap(data: { [id: string]: WBSData }) {
   const dependencyMap: { [id: string]: string[] } = {};
   Object.keys(data).forEach(id => {

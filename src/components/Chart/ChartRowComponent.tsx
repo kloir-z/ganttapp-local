@@ -10,6 +10,7 @@ import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { ColorInfo } from '../../reduxStoreAndSlices/colorSlice';
+import { openDependencyBuilder } from '../../reduxStoreAndSlices/uiFlagSlice';
 
 interface ChartRowProps {
   entry: ChartRow;
@@ -51,6 +52,9 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   // 依存ビルダーが現在この行を依存先/依存元にしているか(チャート上で強調表示する)
   const isDependencyTarget = useSelector((state: RootState) => state.uiFlags.dependencyTargetRowId === entry.id);
   const isDependencySource = useSelector((state: RootState) => state.uiFlags.dependencySourceRowId === entry.id);
+  // Row that moves together with the edited row (lighter frame). Only visible rows
+  // are mounted (virtualization), so this includes() stays cheap.
+  const isDependencyChain = useSelector((state: RootState) => state.uiFlags.dependencyChainRowIds.includes(entry.id));
   const regularDaysOff = useSelector((state: RootState) => state.wbsData.regularDaysOff);
   const [localPlannedStartDate, setLocalPlannedStartDate] = useState(entry.plannedStartDate ? entry.plannedStartDate : null);
   const [localPlannedEndDate, setLocalPlannedEndDate] = useState(entry.plannedEndDate ? entry.plannedEndDate : null);
@@ -69,6 +73,10 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   const ganttRowRef = useRef<HTMLDivElement>(null);
 
   const handleBarMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual') => {
+    // Left button only. A right-click (to open the context menu / dependency
+    // builder) must NOT start a bar drag — otherwise isBarDragging stays set, its
+    // full-screen overlay lingers, and the chart becomes unresponsive.
+    if (event.button !== 0) return;
     setIsBarDragging(barType);
     setCanGridRefDrag(false);
     dispatch(pushPastState());
@@ -87,6 +95,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   }, [cellWidth, dispatch, gridRef, localActualEndDate, localActualStartDate, localPlannedEndDate, localPlannedStartDate, setCanGridRefDrag, wbsWidth]);
 
   const handleBarEndMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual') => {
+    if (event.button !== 0) return;
     setIsBarEndDragging(barType);
     setCanGridRefDrag(false);
     dispatch(pushPastState());
@@ -105,6 +114,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   }, [cellWidth, dispatch, gridRef, localActualEndDate, localActualStartDate, localPlannedEndDate, setCanGridRefDrag, wbsWidth]);
 
   const handleBarStartMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual') => {
+    if (event.button !== 0) return;
     setIsBarStartDragging(barType);
     setCanGridRefDrag(false);
     dispatch(pushPastState());
@@ -324,10 +334,27 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
     dispatch(updateSeparatorDates());
   }, [dispatch, entry.id, isEditing, isBarDragging, isBarEndDragging, isBarStartDragging, localActualEndDate, localActualStartDate, localPlannedEndDate, localPlannedStartDate, setCanGridRefDrag]);
 
+  // Safety net: finish the drag on a window-level mouseup too. The drag overlay
+  // (z 9999) catches mouseup normally, but if the release lands on something
+  // stacked above it (e.g. the floating dependency builder at z 11001) the overlay
+  // misses it and the drag state — and its screen-covering overlay — would linger.
+  useEffect(() => {
+    const dragging = isEditing || isBarDragging || isBarEndDragging || isBarStartDragging;
+    if (!dragging) return;
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, [isEditing, isBarDragging, isBarEndDragging, isBarStartDragging, handleMouseUp]);
+
+  const rightClickPosRef = useRef({ x: 0, y: 0 });
   const handleBarRightClick = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual' | null) => {
     event.stopPropagation();
+    rightClickPosRef.current = { x: event.clientX, y: event.clientY };
     setContextMenu(barType);
   }, []);
+
+  const handleEditDependency = useCallback(() => {
+    dispatch(openDependencyBuilder({ rowId: entry.id, x: rightClickPosRef.current.x, y: rightClickPosRef.current.y }));
+  }, [dispatch, entry.id]);
 
   const handleDeleteBar = useCallback(() => {
     if (contextMenu !== null) {
@@ -349,12 +376,13 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   const menuOptions = useContextMenuOptions({
     entry,
     onDeleteBar: handleDeleteBar,
+    onEditDependency: handleEditDependency,
     contextMenu
   });
 
   // 依存ハイライトの矩形(対象タスクのバーが占めるセル範囲)。ChartBar と同じ式で算出する。
   const dependencyHighlightRect = useMemo(() => {
-    if (!isDependencyTarget && !isDependencySource) return null;
+    if (!isDependencyTarget && !isDependencySource && !isDependencyChain) return null;
     let start: string | null = null;
     let end: string | null = null;
     if (localPlannedStartDate && localPlannedEndDate) {
@@ -372,7 +400,32 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
     endIndex = endIndex === -1 ? dateArray.length - 1 : endIndex - 1;
     if (endIndex < startIndex) return null;
     return { left: startIndex * cellWidth, width: (endIndex - startIndex + 1) * cellWidth };
-  }, [isDependencyTarget, isDependencySource, localPlannedStartDate, localPlannedEndDate, localActualStartDate, localActualEndDate, dateArray, cellWidth]);
+  }, [isDependencyTarget, isDependencySource, isDependencyChain, localPlannedStartDate, localPlannedEndDate, localActualStartDate, localActualEndDate, dateArray, cellWidth]);
+
+  // Pixel rect (in chart coords, relative to the row's left) spanning the union
+  // of the row's planned/actual bars. Used to frame the bar while its note is
+  // open and to anchor the connector line to the bar's start.
+  const noteBarRect = useMemo(() => {
+    const ranges: [string, string][] = [];
+    if (localPlannedStartDate && localPlannedEndDate) ranges.push([localPlannedStartDate, localPlannedEndDate]);
+    if (localActualStartDate && localActualEndDate) ranges.push([localActualStartDate, localActualEndDate]);
+    if (ranges.length === 0 || dateArray.length === 0) return null;
+    let minStart = ranges[0][0];
+    let maxEnd = ranges[0][1];
+    for (const [s, e] of ranges) {
+      if (+cdate(s) < +cdate(minStart)) minStart = s;
+      if (+cdate(e) > +cdate(maxEnd)) maxEnd = e;
+    }
+    const startCDate = cdate(minStart);
+    const endCDate = cdate(maxEnd);
+    if (+startCDate > +dateArray[dateArray.length - 1] || +endCDate < +dateArray[0]) return null;
+    let startIndex = dateArray.findIndex(date => date >= startCDate);
+    let endIndex = dateArray.findIndex(date => date > endCDate);
+    startIndex = startIndex === -1 ? 0 : startIndex;
+    endIndex = endIndex === -1 ? dateArray.length - 1 : endIndex - 1;
+    if (endIndex < startIndex) return null;
+    return { left: startIndex * cellWidth, width: (endIndex - startIndex + 1) * cellWidth };
+  }, [localPlannedStartDate, localPlannedEndDate, localActualStartDate, localActualEndDate, dateArray, cellWidth]);
 
   // Anchor the note icon just left of the row's earliest bar (planned/actual).
   // Falls back to the sticky left edge when the row has no bar yet.
@@ -390,21 +443,23 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
     <GanttRow style={{ position: 'absolute', top: `${topPosition}px`, width: `${calendarWidth}px`, height: `${rowHeight}px` }} onDoubleClick={handleDoubleClick} onContextMenu={(e) => handleBarRightClick(e, null)} ref={ganttRowRef}>
       {dependencyHighlightRect && (
         <div
-          className={isDependencyTarget ? 'dependency-target-highlight' : 'dependency-source-highlight'}
-          style={{ position: 'absolute', top: 0, left: `${dependencyHighlightRect.left}px`, height: `${rowHeight - 1}px`, width: `${dependencyHighlightRect.width}px`, pointerEvents: 'none', zIndex: 25, boxSizing: 'border-box' }}
+          className={isDependencyTarget ? 'dependency-target-highlight' : isDependencySource ? 'dependency-source-highlight' : 'dependency-chain-highlight'}
+          style={{ position: 'absolute', top: 0, left: `${dependencyHighlightRect.left}px`, height: `${rowHeight - 1}px`, width: `${dependencyHighlightRect.width}px`, pointerEvents: 'none', zIndex: isDependencyTarget || isDependencySource ? 25 : 24, boxSizing: 'border-box' }}
         >
-          <span
-            style={{
-              position: 'absolute', top: '-13px', left: 0, fontSize: '9px', lineHeight: '12px',
-              padding: '0 4px', borderRadius: '2px', whiteSpace: 'nowrap', color: '#fff', zIndex: 26,
-              background: isDependencyTarget ? 'rgba(229,57,53,0.95)' : 'rgba(53,121,248,0.95)',
-            }}
-          >
-            {isDependencyTarget ? '依存先' : '依存元'}
-          </span>
+          {(isDependencyTarget || isDependencySource) && (
+            <span
+              style={{
+                position: 'absolute', top: '-13px', left: 0, fontSize: '9px', lineHeight: '12px',
+                padding: '0 4px', borderRadius: '2px', whiteSpace: 'nowrap', color: '#fff', zIndex: 26,
+                background: isDependencyTarget ? 'rgba(229,57,53,0.95)' : 'rgba(53,121,248,0.95)',
+              }}
+            >
+              {isDependencyTarget ? '依存先' : '依存元'}
+            </span>
+          )}
         </div>
       )}
-      <RowNoteButton rowId={entry.id} displayName={entry.displayName} anchorLeftPx={noteAnchorLeft} />
+      <RowNoteButton rowId={entry.id} displayName={entry.displayName} rowNo={entry.no} anchorLeftPx={noteAnchorLeft} barRect={noteBarRect} rowRef={ganttRowRef} />
       {(isEditing || isBarDragging || isBarEndDragging || isBarStartDragging) && (
         <div
           style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: 'calc(100vh - 12px)', zIndex: 9999, cursor: 'pointer' }}

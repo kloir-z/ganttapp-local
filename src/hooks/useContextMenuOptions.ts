@@ -21,6 +21,7 @@ interface UseContextMenuOptionsProps {
     selectedRowIds?: string[];
     selectedColumnIds?: string[];
     onDeleteBar?: () => void;
+    onEditDependency?: () => void;
     contextMenu?: number | string | null;
     includeColumnSettings?: boolean;
     columns?: ExtendedColumn[];
@@ -32,6 +33,7 @@ export const useContextMenuOptions = ({
     selectedRowIds,
     selectedColumnIds = [],
     onDeleteBar,
+    onEditDependency,
     contextMenu,
     includeColumnSettings = false,
     columns = [],
@@ -163,6 +165,14 @@ export const useContextMenuOptions = ({
                 children: t("Delete Bar"),
                 onClick: onDeleteBar,
                 disabled: contextMenu === null,
+                path: String(pathCounter++)
+            });
+        }
+
+        if (onEditDependency) {
+            baseOptions.push({
+                children: t("Edit dependency"),
+                onClick: onEditDependency,
                 path: String(pathCounter++)
             });
         }

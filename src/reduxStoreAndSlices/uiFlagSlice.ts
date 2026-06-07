@@ -15,6 +15,12 @@ interface UIFlagsState {
   dependencyTargetRowId: string | null;
   // Row id being edited (the dependent / source side) for chart highlight.
   dependencySourceRowId: string | null;
+  // Every other row that moves together with the edited row (the connected
+  // dependency chain, both upstream and downstream), for a lighter chart frame.
+  dependencyChainRowIds: string[];
+  // When set, the dependency builder is open as a floating popover on the chart
+  // (opened from the chart's right-click menu) at the given viewport coordinates.
+  dependencyBuilder: { rowId: string; x: number; y: number } | null;
 }
 
 const initialState: UIFlagsState = {
@@ -25,6 +31,8 @@ const initialState: UIFlagsState = {
   isDependencyEditing: false,
   dependencyTargetRowId: null,
   dependencySourceRowId: null,
+  dependencyChainRowIds: [],
+  dependencyBuilder: null,
 };
 
 const uiFlagsSlice = createSlice({
@@ -56,8 +64,17 @@ const uiFlagsSlice = createSlice({
     setDependencySourceRowId(state, action: PayloadAction<string | null>) {
       state.dependencySourceRowId = action.payload;
     },
+    setDependencyChainRowIds(state, action: PayloadAction<string[]>) {
+      state.dependencyChainRowIds = action.payload;
+    },
+    openDependencyBuilder(state, action: PayloadAction<{ rowId: string; x: number; y: number }>) {
+      state.dependencyBuilder = action.payload;
+    },
+    closeDependencyBuilder(state) {
+      state.dependencyBuilder = null;
+    },
   },
 });
 
-export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId } = uiFlagsSlice.actions;
+export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder } = uiFlagsSlice.actions;
 export default uiFlagsSlice.reducer;
