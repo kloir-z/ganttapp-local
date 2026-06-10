@@ -42,7 +42,7 @@
     "@silevis/reactgrid": "^4.1.7",
     "@tippyjs/react": "^4.2.6",
     "@types/react-redux": "^7.1.33",
-    "antd": "^5.18.0",
+    "antd": "^6.4.3",
     "cdate": "^0.0.7",
     "date-fns": "^3.2.0",
     "dayjs": "^1.11.10",
