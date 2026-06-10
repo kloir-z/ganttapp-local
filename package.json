@@ -2,7 +2,7 @@
   "name": "gantt-local",
   "version": "1.0.0",
   "description": "A local offline Gantt chart application built with React, Redux, and TypeScript",
-  "author": "Your Name",
+  "author": "kloir-z",
   "license": "MIT",
   "homepage": "https://kloir-z.github.io/ganttapp-local",
   "repository": {
