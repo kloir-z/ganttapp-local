@@ -109,12 +109,9 @@ export const exportProjectAsHtml = async (projectData: ProjectData, title: strin
   // assets (the single-file build) come along for free.
   const clone = document.documentElement.cloneNode(true) as HTMLElement;
 
-  // Drop the runtime CSP meta tag (injected by react-helmet-async after mount).
-  // If it were present at parse time in the exported file, `script-src 'self'`
-  // would block the inlined bootstrap script. Helmet re-adds it at runtime.
-  clone
-    .querySelectorAll('meta[http-equiv="Content-Security-Policy" i]')
-    .forEach((node) => node.remove());
+  // Keep the build-time CSP meta (injected by vite.config.ts) in the export:
+  // the policy allows inline scripts but no external hosts, so the exported
+  // file inherits the same "cannot phone home" guarantee as the app itself.
 
   // Boot fresh: the exported app rebuilds the UI from the embedded data.
   const root = clone.querySelector('#root');

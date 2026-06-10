@@ -44,7 +44,10 @@ const NotesEditor: React.FC<NotesEditorProps> = memo(({
 
   // Use props if provided (for historical data), otherwise use hook data
   const selectedNodeKey = propsSelectedNodeKey ?? hookSelectedNodeKey;
-  const isViewingPast = propsIsViewingPast ?? useSelector((state: RootState) => state.history?.isViewingPast || false);
+  // Always call the hook unconditionally (`?? useSelector(...)` would skip it
+  // when the prop is set, breaking the Rules of Hooks).
+  const storeIsViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
+  const isViewingPast = propsIsViewingPast ?? storeIsViewingPast;
 
   const isRowMode = !!selectedRowNoteId;
   const rowDisplayName = useSelector((state: RootState) =>

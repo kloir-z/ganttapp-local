@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 // @ts-nocheck
 import { handleExport, handleImport, buildProjectData, EXPORT_SCHEMA_VERSION } from './ExportImportHandler';
 import { configureStore } from '@reduxjs/toolkit';

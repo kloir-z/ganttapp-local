@@ -30,8 +30,11 @@ const NotesTree: React.FC<NotesTreeProps> = memo(({
   const { t } = useTranslation();
   const treeContainerRef = useRef<HTMLDivElement>(null);
   
-  // Use props if provided, otherwise use current state
-  const isViewingPast = propsIsViewingPast ?? useSelector((state: RootState) => state.history?.isViewingPast || false);
+  // Use props if provided, otherwise use current state.
+  // Always call the hook unconditionally (`?? useSelector(...)` would skip it
+  // when the prop is set, breaking the Rules of Hooks).
+  const storeIsViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
+  const isViewingPast = propsIsViewingPast ?? storeIsViewingPast;
   
   const {
     treeData: hookTreeData,

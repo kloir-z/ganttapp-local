@@ -5,7 +5,6 @@ import { setLanguage } from '../../reduxStoreAndSlices/baseSettingsSlice';
 import i18n from "i18next";
 import { setActiveModal, setIsLoading } from '../../reduxStoreAndSlices/uiFlagSlice';
 import LocalComponents from '../Authenticated/LocalComponents';
-import { Helmet } from 'react-helmet-async';
 import useResetReduxStates from '../../hooks/useResetReduxStates';
 import { WelcomeUtils } from '../../utils/WelcomeUtils';
 import { readEmbeddedProjectData } from '../../utils/HtmlSnapshotExport';
@@ -46,17 +45,10 @@ const LocalApp: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // CSP は実行時注入ではなくビルド時に index.html へ静的に埋め込む
+    // （vite.config.ts の inject-csp-meta プラグインを参照）。
     return (
         <>
-            <Helmet>
-                <meta
-                    httpEquiv="Content-Security-Policy"
-                    content="default-src 'self' https://fonts.gstatic.com; 
-                script-src 'self'; 
-                style-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com 'unsafe-inline'; 
-                img-src 'self' data:;"
-                />
-            </Helmet>
             {!isLoading ? <LocalComponents /> : <div style={{ padding: '10px' }}>Loading...</div>}
         </>
     );

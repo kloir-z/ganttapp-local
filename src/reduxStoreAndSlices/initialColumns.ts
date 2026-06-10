@@ -19,7 +19,7 @@ export const initialColumns = [
 // Inject the optional read-only "WBS" column (added later) into a column list
 // loaded from an older project that predates it. Placed right after "no" and
 // hidden by default; idempotent.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export const ensureWbsNumberColumn = <T extends { columnId: string }>(columns: T[]): T[] => {
   if (!Array.isArray(columns) || columns.some(c => c.columnId === 'wbsNumber')) return columns;
   const noIdx = columns.findIndex(c => c.columnId === 'no');

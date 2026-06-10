@@ -24,15 +24,13 @@
     "build": "cross-env NODE_ENV=production tsc && vite build",
     "build:gh-pages": "cross-env NODE_ENV=production tsc && vite build --base=/ganttapp-local/",
     "build:singlefile": "cross-env NODE_ENV=production tsc && vite build --mode singlefile --outDir dist-single",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives",
     "preview": "vite preview",
     "serve": "npm run build && serve -s dist",
     "generate-holidays": "node scripts/generateHolidays.js",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "predeploy": "npm run build:singlefile",
-    "deploy": "gh-pages -d dist-single"
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@emotion/react": "^11.11.3",
@@ -58,7 +56,6 @@
     "react": "^18.2.0",
     "react-color": "^2.19.3",
     "react-dom": "^18.2.0",
-    "react-helmet-async": "^2.0.5",
     "react-i18next": "^14.1.0",
     "react-icons": "^5.0.1",
     "react-redux": "^9.1.0",
@@ -88,7 +85,6 @@
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
-    "gh-pages": "^6.3.0",
     "jest": "^30.0.5",
     "jest-environment-jsdom": "^30.0.5",
     "jsdom": "^26.1.0",

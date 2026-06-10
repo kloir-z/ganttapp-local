@@ -256,7 +256,7 @@ const TopBarLocal: React.FC = memo(() => {
           dispatch(setIsLoading(true));
           const fileBlob = new Blob([file], { type: file.type });
           await resetReduxStates();
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           await dispatch(handleImport({ file: fileBlob }) as any);
           dispatch(removePastState(1));
           resetIsSavedChangesFlags();

@@ -332,7 +332,7 @@ const DependencyBuilder = memo(({ cell, onCellChanged, standalone = false }: Dep
     if (r.left + nx < margin) nx = margin - r.left;
     if (r.top + ny < margin) ny = margin - r.top;
     if (nx !== 0 || ny !== 0) setAutoNudge(n => ({ x: n.x + nx, y: n.y + ny }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [warning]);
 
   const dummyMinWidth = cell.columnWidth ? cell.columnWidth - 11 : 80;

@@ -180,7 +180,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
       await resetReduxStates();
 
       // Use the existing import handler
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       await dispatch(handleImport({ file: jsonBlob }) as any);
 
       resetIsSavedChangesFlags();

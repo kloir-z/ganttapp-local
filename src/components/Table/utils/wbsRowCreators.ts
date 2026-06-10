@@ -15,7 +15,7 @@ const wbsNumberCell = (wbsNo: string, background = 'rgba(128, 128, 128, 0.1)'): 
 export const createChartRow = (chartRow: ChartRow, columns: Column[], rowHeight: number, wbsNo = ''): Row<DefaultCellTypes | CustomTextCell | CustomDateCell | CustomNumberCell | CustomDependencyCell> => {
   const rowCells: (NumberCell | TextCell | CustomTextCell | CustomDateCell | CustomNumberCell | CheckboxCell | CustomDependencyCell)[] = columns.map(column => {
     const columnId = column.columnId as string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     let cellValue = (chartRow as any)[columnId];
     if (cellValue === null || cellValue === undefined) {
       cellValue = '';
@@ -46,7 +46,7 @@ export const createChartRow = (chartRow: ChartRow, columns: Column[], rowHeight:
 export const createEventRow = (eventRow: EventRow, columns: Column[], rowHeight: number, wbsNo = ''): Row<DefaultCellTypes | CustomTextCell | CustomDateCell | CustomNumberCell> => {
   const rowCells: (NumberCell | TextCell | CustomTextCell | CustomDateCell | CustomNumberCell)[] = columns.map(column => {
     const columnId = column.columnId as string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     let cellValue = (eventRow as any)[columnId];
     if (cellValue === null || cellValue === undefined) {
       cellValue = '';
