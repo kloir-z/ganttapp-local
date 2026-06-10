@@ -76,13 +76,19 @@ const shot = async () => {
 const hold = async (n) => { for (let i = 0; i < n; i++) await shot(); };
 
 // Move cursor and/or camera simultaneously over n eased steps.
-const animate = async (n, { cursorTo, camTo, drag } = {}) => {
+// visualOnly: glide the drawn cursor without moving the real mouse — used
+// around menu interactions because Chromium (at deviceScaleFactor 2)
+// re-dispatches a synthesized mousemove at HALVED coordinates after layout
+// changes; if that lands on another top-bar button while a menu is open,
+// the open menu switches. Real input for those steps is sent as synthetic
+// DOM events instead, with the real mouse parked somewhere harmless.
+const animate = async (n, { cursorTo, camTo, visualOnly } = {}) => {
   const c0 = { ...cur }; const k0 = { ...cam };
   for (let i = 1; i <= n; i++) {
     const t = ease(i / n);
     if (cursorTo) {
       cur.x = lerp(c0.x, cursorTo.x, t); cur.y = lerp(c0.y, cursorTo.y, t);
-      await page.mouse.move(cur.x, cur.y);
+      if (!visualOnly) await page.mouse.move(cur.x, cur.y);
     }
     if (camTo) {
       cam.cx = lerp(k0.cx, camTo.cx, t); cam.cy = lerp(k0.cy, camTo.cy, t);
@@ -90,7 +96,44 @@ const animate = async (n, { cursorTo, camTo, drag } = {}) => {
     }
     await shot();
   }
-  void drag;
+};
+// A spot that is inert both as-is and when Chromium halves it (calendar
+// header / top-bar title area — no hover effects at either point).
+const parkRealMouse = () => page.mouse.move(1185, 40);
+
+// Diagnostic: timestamped trace of pointer events on top-bar buttons and
+// menu mount/unmount, dumped when a scene-2 step fails.
+await page.evaluate(() => {
+  window.__evlog = [];
+  const t0 = performance.now();
+  const log = (m) => window.__evlog.push(`${Math.round(performance.now() - t0)}ms ${m}`);
+  for (const type of ['mousedown', 'mouseup', 'mouseenter', 'click']) {
+    document.addEventListener(type, (e) => {
+      const el = e.target;
+      if (el.tagName === 'BUTTON' || type !== 'mouseenter') {
+        log(`${type} ${el.tagName} "${(el.textContent || '').trim().slice(0, 12)}" @${Math.round(e.clientX)},${Math.round(e.clientY)}`);
+      }
+    }, true);
+  }
+  new MutationObserver((muts) => {
+    for (const m of muts) {
+      for (const n of m.addedNodes) {
+        if (n.nodeType === 1 && n.textContent && /チャート設定|やり直す/.test(n.textContent)) {
+          log(`MENU MOUNTED: "${n.textContent.trim().slice(0, 30)}"`);
+        }
+      }
+      for (const n of m.removedNodes) {
+        if (n.nodeType === 1 && n.textContent && /チャート設定|やり直す/.test(n.textContent)) {
+          log(`MENU REMOVED: "${n.textContent.trim().slice(0, 30)}"`);
+        }
+      }
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+});
+const dumpLog = async (why) => {
+  console.log(`--- ${why} ---`);
+  console.log((await page.evaluate(() => window.__evlog.slice(-60))).join('\n'));
+  await page.screenshot({ path: path.join(root, 'scripts', 'fail-state.png') });
 };
 
 // ---- locate the target bar --------------------------------------------
@@ -114,24 +157,173 @@ const focus = { cx: bar.x + 130, cy: bar.y + 80 };
 const ZOOM = 1.55;
 
 // ---- storyboard ---------------------------------------------------------
+const press = async () => {
+  await page.mouse.down(); cur.pressed = true;
+  rippleStart = frameNo; ripplePos = { x: cur.x, y: cur.y };
+};
+const release = async () => { await page.mouse.up(); cur.pressed = false; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const click = async () => {
+  rippleStart = frameNo; ripplePos = { x: cur.x, y: cur.y };
+  await page.mouse.down(); await sleep(80); await page.mouse.up(); await sleep(120);
+};
+// Deepest visible element matching `text` (menu items may have a ▸ suffix);
+// retries because menus render asynchronously after the opening click.
+const findRect = async (text, { tag = 'button, div, span, li', tries = 8 } = {}) => {
+  for (let i = 0; i < tries; i++) {
+    const p = await page.evaluate((t, sel) => {
+      const els = Array.from(document.querySelectorAll(sel)).filter((e) => {
+        if (e.offsetParent === null) return false;
+        const s = e.textContent.trim();
+        return s === t || (s.startsWith(t) && s.length <= t.length + 2);
+      });
+      const el = els[els.length - 1];
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    }, text, tag);
+    if (p) return p;
+    await sleep(250);
+  }
+  return null;
+};
+
+// ---- scene 1: drag a bar, dependents ripple -----------------------------
 // The camera stays fixed while dragging (only the cursor and bars move) so
 // inter-frame deltas stay small and the GIF compresses well; camera motion
 // is confined to the short zoom-in/out transitions.
 await page.evaluate((c) => window.__setCursor(c.x, c.y, false), cur);
-await hold(10);                                                        // wide
+await hold(8);                                                         // wide
 await animate(16, { cursorTo: bar, camTo: { ...focus, zoom: ZOOM } }); // zoom in
-await hold(3);
-await page.mouse.down(); cur.pressed = true;
+await hold(2);
+await press();
+await hold(4);
+await animate(30, { cursorTo: { x: bar.x + 100, y: bar.y } });         // drag right
+await hold(6);
+await animate(30, { cursorTo: { x: bar.x, y: bar.y } });               // drag back
+await release();
 rippleStart = frameNo; ripplePos = { x: bar.x, y: bar.y };
 await hold(4);
-await animate(32, { cursorTo: { x: bar.x + 100, y: bar.y } });         // drag right
-await hold(8);
-await animate(32, { cursorTo: { x: bar.x, y: bar.y } });               // drag back
-await page.mouse.up(); cur.pressed = false;
-rippleStart = frameNo; ripplePos = { x: bar.x, y: bar.y };
+await animate(14, { camTo: { cx: VW / 2, cy: VH / 2, zoom: 1 } });     // zoom out
+await hold(6);
+
+// ---- scene 2: live chart-color editing ----------------------------------
+// The top-bar menu open/close races against real-mouse event timing when
+// frames are being captured between steps, so the cursor GLIDES for the
+// visuals but the menu itself is driven by synthetic DOM events (reliable).
+const fakeClick = () => { rippleStart = frameNo; ripplePos = { x: cur.x, y: cur.y }; };
+await parkRealMouse();
+let p = await findRect('設定', { tag: 'button' });
+await animate(10, { cursorTo: p, visualOnly: true });
+fakeClick();
+await page.evaluate(() => {
+  const btn = Array.from(document.querySelectorAll('button')).find((b) => b.textContent.trim() === '設定');
+  btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+});
+await hold(3);
+p = await findRect('チャート設定');
+if (!p) { await dumpLog('menu item not found'); throw new Error('chart settings menu item not found'); }
+await animate(8, { cursorTo: p, visualOnly: true });
+fakeClick();
+await page.evaluate(() => {
+  const els = Array.from(document.querySelectorAll('div')).filter((e) => e.textContent.trim() === 'チャート設定');
+  els[els.length - 1].click();
+});
+await hold(4);
+
+// The settings modal opens over the chart; drag it to the bottom-left so the
+// colored bars stay visible while picking.
+const findModal = () => page.evaluate(() => {
+  const input = Array.from(document.querySelectorAll('input')).find((i) => i.value === 'ABC');
+  if (!input) return null;
+  let el = input;
+  while (el.parentElement) {
+    el = el.parentElement;
+    if (el.style.left && el.style.top && getComputedStyle(el).position === 'absolute') break;
+  }
+  const r = el.getBoundingClientRect();
+  return { x: r.x, y: r.y, w: r.width, h: r.height };
+});
+let modal = null;
+for (let i = 0; i < 10 && !modal; i++) { modal = await findModal(); if (!modal) await sleep(300); }
+if (!modal) {
+  await dumpLog('modal not found');
+  throw new Error('settings modal not found (see scripts/fail-state.png)');
+}
+const grip = { x: modal.x + modal.w / 2, y: modal.y + 10 };
+const target = { x: 12, y: Math.max(40, VH - modal.h - 14) };
+await animate(8, { cursorTo: grip, visualOnly: true });
+await page.mouse.move(grip.x, grip.y); // real mouse joins for the actual drag
+await press();
+await hold(2);
+await animate(12, { cursorTo: { x: grip.x + (target.x - modal.x), y: grip.y + (target.y - modal.y) } });
+await release();
+await hold(3);
+
+// Open the picker on the ABC palette color (the pink planned bars).
+const swatch = await page.evaluate(() => {
+  const input = Array.from(document.querySelectorAll('input')).find((i) => i.value === 'ABC');
+  const inner = input.parentElement.firstElementChild.firstElementChild;
+  const r = inner.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+});
+await animate(8, { cursorTo: swatch, visualOnly: true });
+fakeClick();
+await page.evaluate(() => {
+  const input = Array.from(document.querySelectorAll('input')).find((i) => i.value === 'ABC');
+  input.parentElement.firstElementChild.firstElementChild.click();
+});
+await hold(3);
+
+// Sweep the hue slider: grab at the current pink (~324deg) and glide to blue.
+const hue = await page.evaluate(() => {
+  const el = document.querySelector('.chrome-picker .hue-horizontal');
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { x: r.x, y: r.y + r.height / 2, w: r.width };
+});
+if (!hue) throw new Error('hue slider not found');
+await animate(6, { cursorTo: { x: hue.x + hue.w * 0.9, y: hue.y }, visualOnly: true });
+await page.mouse.move(hue.x + hue.w * 0.9, hue.y); // real mouse joins for the drag
+await press();
+await hold(2);
+await animate(22, { cursorTo: { x: hue.x + hue.w * 0.45, y: hue.y } }); // bars recolor live (pink -> teal)
 await hold(5);
-await animate(16, { camTo: { cx: VW / 2, cy: VH / 2, zoom: 1 } });     // zoom out
-await hold(14);
+await release();
+await parkRealMouse();
+await hold(4);
+
+// Close the picker (click its backdrop), then the modal via its X button.
+await animate(6, { cursorTo: { x: 900, y: 480 }, visualOnly: true });
+fakeClick();
+await page.evaluate(() => {
+  document.querySelector('.chrome-picker')?.parentElement?.previousElementSibling?.click();
+});
+await hold(2);
+const closeBtn = await page.evaluate(() => {
+  const input = Array.from(document.querySelectorAll('input')).find((i) => i.value === 'ABC');
+  let el = input;
+  while (el.parentElement) {
+    el = el.parentElement;
+    if (el.style.left && el.style.top && getComputedStyle(el).position === 'absolute') break;
+  }
+  const r = el.getBoundingClientRect();
+  return { x: r.x + r.width - 13, y: r.y + 13 };
+});
+await animate(8, { cursorTo: closeBtn, visualOnly: true });
+fakeClick();
+await page.evaluate(() => {
+  const input = Array.from(document.querySelectorAll('input')).find((i) => i.value === 'ABC');
+  let el = input;
+  while (el.parentElement) {
+    el = el.parentElement;
+    if (el.style.left && el.style.top && getComputedStyle(el).position === 'absolute') break;
+  }
+  el.querySelector('button')?.click();
+});
+await hold(6); // fade-out runs while we keep capturing
+await animate(8, { cursorTo: { x: 620, y: 420 }, visualOnly: true }); // settle
+await hold(12);
 
 await browser.close();
 
