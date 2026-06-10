@@ -8,7 +8,7 @@
 
 自分で使いたくて作ったものですが、同じ悩みを持つ方の役に立てばと思い公開しています。
 
-![Gantt Chart Screenshot](docs/images/screenshot.png)
+![デモ：バーをドラッグすると依存タスクと表が連動して再計算される](docs/images/demo.gif)
 
 ## お試しページ
 
