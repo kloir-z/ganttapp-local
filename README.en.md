@@ -16,6 +16,19 @@ I originally built it for my own use, but I'm publishing it in case it helps oth
 
 (Open it in Chrome / Edge. See [System Requirements](#system-requirements) for details.)
 
+## Data Handling & Privacy
+
+**Your project data never leaves your machine.** There are no accounts, no telemetry, and the only place data is persisted is in files you download yourself (ZIP / HTML).
+
+This is verifiable, not just a promise:
+
+- The Content-Security-Policy embedded in the served HTML contains **no external domains**, so the **browser itself blocks** any attempt to send data out
+- Keep the DevTools Network tab open while you work — zero external requests after load
+- Everything works in airplane mode / offline (`file://`)
+- Deployment runs on GitHub Actions, so you can confirm from the public build logs that the served code matches this repository
+
+See [SECURITY.md](SECURITY.md) for the full verification guide, the complete list of network requests, and how to report vulnerabilities. If your workplace policy is strict, you can also build from source yourself (`npm run build:singlefile`).
+
 ## Key Features and Points
 
 ### Complete Table-Chart Integration
