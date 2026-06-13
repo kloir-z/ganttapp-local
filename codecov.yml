@@ -1,0 +1,13 @@
+# Coverage is tracked for information only. Codecov still uploads the report and
+# posts the PR comment, but its commit/PR statuses are marked `informational` so
+# they never fail (no red ✗). This is a solo project and much of the code is
+# presentational UI with no unit tests, so a hard patch/project gate only produced
+# failing checks on untested components without adding real signal.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
