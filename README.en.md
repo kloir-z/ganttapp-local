@@ -1,5 +1,11 @@
 # Excel-like Gantt Chart App
 
+[![CI](https://github.com/kloir-z/ganttapp-local/actions/workflows/ci.yml/badge.svg)](https://github.com/kloir-z/ganttapp-local/actions/workflows/ci.yml)
+[![Deploy to GitHub Pages](https://github.com/kloir-z/ganttapp-local/actions/workflows/deploy.yml/badge.svg)](https://github.com/kloir-z/ganttapp-local/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/github/license/kloir-z/ganttapp-local)](LICENSE)
+![GitHub stars](https://img.shields.io/github/stars/kloir-z/ganttapp-local?style=social)
+![Last commit](https://img.shields.io/github/last-commit/kloir-z/ganttapp-local)
+
 English | [日本語](README.md)
 
 A Gantt chart app that runs entirely in the browser, with nothing to install. It gives you Excel-like table editing and intuitive chart editing with the mouse.
@@ -14,7 +20,7 @@ I originally built it for my own use, but I'm publishing it in case it helps oth
 
 **[https://kloir-z.github.io/ganttapp-local/](https://kloir-z.github.io/ganttapp-local/)**
 
-(Open it in Chrome / Edge. See [System Requirements](#system-requirements) for details.)
+(Open it in Chrome / Edge / Firefox. See [System Requirements](#system-requirements) for details.)
 
 ## Data Handling & Privacy
 
@@ -117,9 +123,9 @@ When ChatGPT emerged in 2023, I learned about its high code generation capabilit
 
 ## System Requirements
 
-**Only works on PC Chromium-based browsers (Chrome / Edge).**
+**Works on modern PC browsers (Chrome / Edge / Firefox).**
 
-- Does not work on Firefox / Safari (no support planned)
+- Not verified on Safari
 - Cannot be used on mobile devices (no support planned)
 
 ---

@@ -134,6 +134,21 @@ const AutoWidthInputBox: React.FC<AutoWidthInputBoxProps> = memo(({
     e.stopPropagation();
   }, []);
 
+  // When not yet editing, this input overlays the draggable bar. Suppress the
+  // browser's default mousedown action so Firefox doesn't start a native
+  // text-selection drag (which captures the pointer and blocks the bar drag —
+  // Chrome lets the bar-drag overlay win, Firefox does not). preventDefault does
+  // NOT stop propagation, so StyledBar's onMouseDown still starts the drag; we
+  // re-focus manually since preventDefault also cancels the focus that "click to
+  // edit" relies on. Once editing, fall through to native handling so caret
+  // placement and in-text selection work normally.
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
+    if (!isEditingText) {
+      e.preventDefault();
+      e.currentTarget.focus();
+    }
+  }, [isEditingText]);
+
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       if (originalDisplayNameRef.current === localDisplayName) {
@@ -189,6 +204,7 @@ const AutoWidthInputBox: React.FC<AutoWidthInputBoxProps> = memo(({
           onChange={handleChange}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          onMouseDown={handleMouseDown}
           onDoubleClick={handleDoubleClick}
           onKeyDown={handleKeyDown}
           $isEditingText={isEditingText}

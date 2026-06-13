@@ -271,8 +271,13 @@ function Gantt() {
   }, [dispatch, isGridRefDragging, resetDragTimeout]);
 
   useEffect(() => {
-    const isChromiumBased = /Chrome/.test(navigator.userAgent) || /Chromium/.test(navigator.userAgent);
-    if (!isChromiumBased) {
+    const ua = navigator.userAgent;
+    // Mobile is unsupported regardless of browser. On desktop, Chrome/Edge (both
+    // carry "Chrome" in the UA), Chromium and Firefox are supported; anything else
+    // (Safari, etc.) still gets the compatibility alert.
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua);
+    const isSupportedDesktop = /Firefox\//.test(ua) || /Chrome\//.test(ua) || /Chromium\//.test(ua);
+    if (isMobile || !isSupportedDesktop) {
       alert(t('Browser Compatibility Alert'));
     }
   }, [t]);

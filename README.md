@@ -1,5 +1,11 @@
 # Excelライクなガントチャート
 
+[![CI](https://github.com/kloir-z/ganttapp-local/actions/workflows/ci.yml/badge.svg)](https://github.com/kloir-z/ganttapp-local/actions/workflows/ci.yml)
+[![Deploy to GitHub Pages](https://github.com/kloir-z/ganttapp-local/actions/workflows/deploy.yml/badge.svg)](https://github.com/kloir-z/ganttapp-local/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/github/license/kloir-z/ganttapp-local)](LICENSE)
+![GitHub stars](https://img.shields.io/github/stars/kloir-z/ganttapp-local?style=social)
+![Last commit](https://img.shields.io/github/last-commit/kloir-z/ganttapp-local)
+
 [English](README.en.md) | 日本語
 
 ブラウザだけで動く、インストール不要のガントチャートアプリです。Excelのような表操作と、マウスでの直感的なチャート編集ができます。
@@ -14,7 +20,7 @@
 
 **[https://kloir-z.github.io/ganttapp-local/](https://kloir-z.github.io/ganttapp-local/)**
 
-（Chrome / Edge で開いてください。詳しくは[動作環境](#動作環境)を参照）
+（Chrome / Edge / Firefox で開いてください。詳しくは[動作環境](#動作環境)を参照）
 
 ## データの扱い・プライバシー
 
@@ -112,9 +118,9 @@ Excelで条件付き書式と数式を組み合わせてガントチャートを
 
 ## 動作環境
 
-**PCのChromium系ブラウザ（Chrome / Edge）でのみ動作します。**
+**PCのモダンブラウザ（Chrome / Edge / Firefox）で動作します。**
 
-- Firefox / Safari では動作しません（対応予定なし）
+- Safari では未確認です
 - スマホなどモバイル端末では使えません（対応予定なし）
 
 ---
