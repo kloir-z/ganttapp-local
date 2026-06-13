@@ -7,7 +7,7 @@ import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import RowNoteButton from './RowNoteButton';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
-import { MdExpandMore, MdChevronRight } from 'react-icons/md';
+import { MdChevronRight } from 'react-icons/md';
 
 interface SeparatorRowProps {
   entry: SeparatorRow;
@@ -74,7 +74,12 @@ const SeparatorRowComponent: React.FC<SeparatorRowProps> = memo(({ entry, topPos
           }}
           onClick={() => dispatch(toggleSeparatorCollapsed({ id: entry.id }))}
         >
-          {isCollapsed ? <MdChevronRight /> : <MdExpandMore />}
+          <MdChevronRight
+            style={{
+              transition: 'transform 0.15s ease',
+              transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+            }}
+          />
         </span>
         <span style={{ position: 'sticky', left: `${36 + indentWidth}px`, color: '#000000ec', padding: '0px 6px', whiteSpace: 'nowrap' }}>{entry.displayName}</span>
       </GanttRow>
