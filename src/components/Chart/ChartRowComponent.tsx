@@ -11,6 +11,7 @@ import ContextMenu from '../ContextMenu/ContextMenu';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { ColorInfo } from '../../reduxStoreAndSlices/colorSlice';
 import { openDependencyBuilder } from '../../reduxStoreAndSlices/uiFlagSlice';
+import { useTranslation } from 'react-i18next';
 
 interface ChartRowProps {
   entry: ChartRow;
@@ -22,6 +23,7 @@ interface ChartRowProps {
 
 const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gridRef, topPosition, setCanGridRefDrag }) => {
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const calendarWidth = useSelector((state: RootState) => state.baseSettings.calendarWidth);
   const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
@@ -454,7 +456,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
                 background: isDependencyTarget ? 'rgba(229,57,53,0.95)' : 'rgba(53,121,248,0.95)',
               }}
             >
-              {isDependencyTarget ? '依存先' : '依存元'}
+              {isDependencyTarget ? t('Dependency target') : t('Dependency source')}
             </span>
           )}
         </div>
