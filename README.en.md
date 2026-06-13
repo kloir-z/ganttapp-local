@@ -14,7 +14,7 @@ It doesn't just lay out a schedule — it recalculates dependencies ("start 3 da
 
 I originally built it for my own use, but I'm publishing it in case it helps others with the same frustrations.
 
-![Demo: dragging a bar reschedules dependent tasks and the table in real time](docs/images/demo.gif)
+![Demo: dragging a bar reschedules dependent tasks and the table in real time](docs/images/demo.en.gif)
 
 ## Try It Out
 

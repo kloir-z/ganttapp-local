@@ -21,10 +21,20 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const rawDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gantt-raw-'));
 const camDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gantt-cam-'));
 
+// DEMO_LANG=en records the English demo (English UI + English sample served as
+// demo.en.html by gen-demo-page.mjs). All on-screen labels the storyboard reaches
+// for — the dragged bar, the Setting button, the Chart settings item — and the
+// output filename are switched here; the palette alias 'ABC' is the same in both
+// samples so the color scene needs no per-language label.
+const LANG = process.env.DEMO_LANG === 'en' ? 'en' : 'ja';
+const L = LANG === 'en'
+  ? { page: 'demo.en.html', barLabel: 'Conduct competitor analysis', settingBtn: 'Setting', chartItem: 'Chart', menuPat: 'Chart|Redo', out: 'demo.en.gif' }
+  : { page: 'demo.html', barLabel: 'クライアント要件整理', settingBtn: '設定', chartItem: 'チャート設定', menuPat: 'チャート設定|やり直す', out: 'demo.gif' };
+
 const browser = await puppeteer.launch({ headless: 'new' });
 const page = await browser.newPage();
 await page.setViewport({ width: VW, height: VH, deviceScaleFactor: DSF });
-await page.goto('http://localhost:5050/demo.html', { waitUntil: 'networkidle0', timeout: 60000 });
+await page.goto(`http://localhost:5050/${L.page}`, { waitUntil: 'networkidle0', timeout: 60000 });
 await new Promise((r) => setTimeout(r, 3500));
 
 // Fake cursor + manually-driven click ripple (CSS animations would run on
@@ -103,8 +113,9 @@ const parkRealMouse = () => page.mouse.move(1185, 40);
 
 // Diagnostic: timestamped trace of pointer events on top-bar buttons and
 // menu mount/unmount, dumped when a scene-2 step fails.
-await page.evaluate(() => {
+await page.evaluate((menuPat) => {
   window.__evlog = [];
+  const re = new RegExp(menuPat);
   const t0 = performance.now();
   const log = (m) => window.__evlog.push(`${Math.round(performance.now() - t0)}ms ${m}`);
   for (const type of ['mousedown', 'mouseup', 'mouseenter', 'click']) {
@@ -118,18 +129,18 @@ await page.evaluate(() => {
   new MutationObserver((muts) => {
     for (const m of muts) {
       for (const n of m.addedNodes) {
-        if (n.nodeType === 1 && n.textContent && /チャート設定|やり直す/.test(n.textContent)) {
+        if (n.nodeType === 1 && n.textContent && re.test(n.textContent)) {
           log(`MENU MOUNTED: "${n.textContent.trim().slice(0, 30)}"`);
         }
       }
       for (const n of m.removedNodes) {
-        if (n.nodeType === 1 && n.textContent && /チャート設定|やり直す/.test(n.textContent)) {
+        if (n.nodeType === 1 && n.textContent && re.test(n.textContent)) {
           log(`MENU REMOVED: "${n.textContent.trim().slice(0, 30)}"`);
         }
       }
     }
   }).observe(document.body, { childList: true, subtree: true });
-});
+}, L.menuPat);
 const dumpLog = async (why) => {
   console.log(`--- ${why} ---`);
   console.log((await page.evaluate(() => window.__evlog.slice(-60))).join('\n'));
@@ -137,19 +148,19 @@ const dumpLog = async (why) => {
 };
 
 // ---- locate the target bar --------------------------------------------
-const bar = await page.evaluate(() => {
+const bar = await page.evaluate((barLabel) => {
   for (const el of document.querySelectorAll('div')) {
     const s = el.style;
     if (s.height === '21px' && s.left && s.width && el.offsetParent !== null) {
       const input = el.querySelector('input');
-      if (input && input.value === 'クライアント要件整理') {
+      if (input && input.value === barLabel) {
         const r = el.getBoundingClientRect();
         return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
       }
     }
   }
   return null;
-});
+}, L.barLabel);
 if (!bar) throw new Error('target bar not found');
 
 // Focus point: between the dragged bar and its dependent rows below-right.
@@ -213,22 +224,22 @@ await hold(6);
 // visuals but the menu itself is driven by synthetic DOM events (reliable).
 const fakeClick = () => { rippleStart = frameNo; ripplePos = { x: cur.x, y: cur.y }; };
 await parkRealMouse();
-let p = await findRect('設定', { tag: 'button' });
+let p = await findRect(L.settingBtn, { tag: 'button' });
 await animate(10, { cursorTo: p, visualOnly: true });
 fakeClick();
-await page.evaluate(() => {
-  const btn = Array.from(document.querySelectorAll('button')).find((b) => b.textContent.trim() === '設定');
+await page.evaluate((settingBtn) => {
+  const btn = Array.from(document.querySelectorAll('button')).find((b) => b.textContent.trim() === settingBtn);
   btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-});
+}, L.settingBtn);
 await hold(3);
-p = await findRect('チャート設定');
+p = await findRect(L.chartItem);
 if (!p) { await dumpLog('menu item not found'); throw new Error('chart settings menu item not found'); }
 await animate(8, { cursorTo: p, visualOnly: true });
 fakeClick();
-await page.evaluate(() => {
-  const els = Array.from(document.querySelectorAll('div')).filter((e) => e.textContent.trim() === 'チャート設定');
+await page.evaluate((chartItem) => {
+  const els = Array.from(document.querySelectorAll('div')).filter((e) => e.textContent.trim() === chartItem);
   els[els.length - 1].click();
-});
+}, L.chartItem);
 await hold(4);
 
 // The settings modal opens over the chart; drag it to the bottom-left so the
@@ -342,7 +353,7 @@ for (let i = 0; i < frameNo; i++) {
     path.join(camDir, name)]);
 }
 
-const out = path.join(root, 'docs', 'images', 'demo.gif');
+const out = path.join(root, 'docs', 'images', L.out);
 execFileSync('ffmpeg', [
   '-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(camDir, 'f%04d.png'),
   '-vf', `fps=${FPS},split[a][b];[a]palettegen=max_colors=160[p];[b][p]paletteuse=dither=bayer:bayer_scale=5`,
