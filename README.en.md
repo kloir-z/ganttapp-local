@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/kloir-z/ganttapp-local/actions/workflows/ci.yml/badge.svg)](https://github.com/kloir-z/ganttapp-local/actions/workflows/ci.yml)
 [![Deploy to GitHub Pages](https://github.com/kloir-z/ganttapp-local/actions/workflows/deploy.yml/badge.svg)](https://github.com/kloir-z/ganttapp-local/actions/workflows/deploy.yml)
+[![codecov](https://codecov.io/gh/kloir-z/ganttapp-local/branch/master/graph/badge.svg)](https://codecov.io/gh/kloir-z/ganttapp-local)
 [![License: MIT](https://img.shields.io/github/license/kloir-z/ganttapp-local)](LICENSE)
 ![GitHub stars](https://img.shields.io/github/stars/kloir-z/ganttapp-local?style=social)
 ![Last commit](https://img.shields.io/github/last-commit/kloir-z/ganttapp-local)
