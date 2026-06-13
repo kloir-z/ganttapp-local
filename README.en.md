@@ -14,7 +14,11 @@ It doesn't just lay out a schedule — it recalculates dependencies ("start 3 da
 
 I originally built it for my own use, but I'm publishing it in case it helps others with the same frustrations.
 
-![Demo: dragging a bar reschedules dependent tasks and the table in real time](docs/images/demo.en.gif)
+<video src="https://github.com/kloir-z/ganttapp-local/raw/master/docs/images/demo.en.mp4" autoplay loop muted playsinline width="900" controls>
+  Demo: drag a bar to reschedule dependent tasks, edit bar colors live, shrink the columns for a bird's-eye view, edit a dependency to cascade the whole chain, change the days-off, and collapse/expand sections. (Your viewer can't play the video — see <a href="https://github.com/kloir-z/ganttapp-local/raw/master/docs/images/demo.en.mp4">docs/images/demo.en.mp4</a>.)
+</video>
+
+> Drag a bar to reschedule dependent tasks · edit bar colors live · shrink the columns for a bird's-eye view · edit a dependency to cascade the whole chain · change which days are days-off · collapse/expand sections.
 
 ## Try It Out
 

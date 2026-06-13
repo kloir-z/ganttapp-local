@@ -27,9 +27,14 @@ const camDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gantt-cam-'));
 // output filename are switched here; the palette alias 'ABC' is the same in both
 // samples so the color scene needs no per-language label.
 const LANG = process.env.DEMO_LANG === 'en' ? 'en' : 'ja';
+// depBarLabel / editDepItem / daysOffItem drive scenes 4 (dependency editing) and
+// 5 (days-off). The English values are verified against the Software-Launch sample;
+// the Japanese values are best-effort (the ja demo is not regenerated here, only en).
 const L = LANG === 'en'
-  ? { page: 'demo.en.html', barLabel: 'Conduct competitor analysis', settingBtn: 'Setting', chartItem: 'Chart', menuPat: 'Chart|Redo', out: 'demo.en.gif' }
-  : { page: 'demo.html', barLabel: 'クライアント要件整理', settingBtn: '設定', chartItem: 'チャート設定', menuPat: 'チャート設定|やり直す', out: 'demo.gif' };
+  ? { page: 'demo.en.html', barLabel: 'Conduct competitor analysis', settingBtn: 'Setting', chartItem: 'Chart', menuPat: 'Chart|Redo', out: 'demo.en.mp4',
+      depBarLabel: 'Define target audience', editDepItem: 'Edit dependency', daysOffItem: 'Days Off', collapseSep: 'Go-to-Market Planning' }
+  : { page: 'demo.html', barLabel: 'クライアント要件整理', settingBtn: '設定', chartItem: 'チャート設定', menuPat: 'チャート設定|やり直す', out: 'demo.mp4',
+      depBarLabel: 'クライアント要件整理', editDepItem: '依存関係を編集', daysOffItem: '休日設定', collapseSep: '' };
 
 const browser = await puppeteer.launch({ headless: 'new' });
 const page = await browser.newPage();
@@ -336,9 +341,245 @@ await hold(6); // fade-out runs while we keep capturing
 await animate(8, { cursorTo: { x: 620, y: 420 }, visualOnly: true }); // settle
 await hold(12);
 
+// Shared helpers for the remaining scenes. Discrete UI actions (menu items,
+// stepper buttons, checkboxes, chevrons) are driven by synthetic DOM events for
+// determinism — the fake cursor only GLIDES to them for the visuals — because at
+// deviceScaleFactor 2 a real click can be followed by a halved-coordinate
+// mousemove that lands on the wrong element (see the note on `animate`).
+const findBarRect = (label) => page.evaluate((barLabel) => {
+  for (const el of document.querySelectorAll('div')) {
+    const s = el.style;
+    if (s.height === '21px' && s.left && s.width && el.offsetParent !== null) {
+      const input = el.querySelector('input');
+      if (input && input.value === barLabel) {
+        const r = el.getBoundingClientRect();
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width };
+      }
+    }
+  }
+  return null;
+}, label);
+const clickItemByText = (text) => page.evaluate((t) => {
+  const els = Array.from(document.querySelectorAll('div, span, button, li'))
+    .filter((e) => e.offsetParent && e.textContent.trim() === t);
+  els[els.length - 1]?.click();
+}, text);
+// Park over the WBS table body instead of the calendar: the date header has a
+// followCursor "Current Column Width" tooltip that pops after ~500ms of hover,
+// and parkRealMouse() sits right on it — which would leave the tooltip floating
+// through the later (held) scenes. Both this point and its DSF2-halved echo land
+// on inert grid cells.
+const parkLow = () => page.mouse.move(200, 560);
+
+// ---- scene 3: shrink the columns for a bird's-eye overview --------------
+// Hover the date header and wheel: every day-column compresses, so half a year
+// of timeline fits on screen at once. Then wheel back to the working width. A
+// real hover is used (not synthetic) so the "Current Column Width" tooltip shows.
+const calCenter = await page.evaluate(() => {
+  const cell = document.querySelector('[data-index]');
+  if (!cell) return { x: 700, y: 40 };
+  let el = cell;
+  for (let i = 0; i < 6 && el.parentElement; i++) { el = el.parentElement; if (el.getBoundingClientRect().width > 1500) break; }
+  const r = el.getBoundingClientRect();
+  return { x: 700, y: Math.round(r.y + r.height / 2) };
+});
+await animate(12, { cursorTo: calCenter, visualOnly: true });
+await page.mouse.move(calCenter.x, calCenter.y); // real hover -> width tooltip
+await hold(10);
+for (let i = 0; i < 13; i++) { await page.mouse.wheel({ deltaY: 120 }); await sleep(30); await shot(); } // narrow to ~3.5px
+await hold(16); // dwell on the overview
+for (let i = 0; i < 13; i++) { await page.mouse.wheel({ deltaY: -120 }); await sleep(30); await shot(); } // restore to 10px
+await parkLow(); // off the calendar so the width tooltip fades before the next scenes
+await hold(8);
+
+// ---- scene 4: edit one dependency; the whole downstream chain reschedules --
+// Right-click a bar -> "Edit dependency" -> nudge the offset up; because every
+// task is chained to its predecessor, pushing this one cascades all the bars and
+// table dates below it in real time.
+const depBar = await findBarRect(L.depBarLabel);
+if (!depBar) throw new Error('dependency-edit bar not found');
+await animate(14, { cursorTo: { x: depBar.x, y: depBar.y }, camTo: { cx: depBar.x + 90, cy: depBar.y + 150, zoom: 1.3 }, visualOnly: true });
+await parkLow();
+fakeClick();
+await page.evaluate((label) => {
+  for (const el of document.querySelectorAll('div')) {
+    const s = el.style;
+    if (s.height === '21px' && s.left && s.width && el.offsetParent !== null) {
+      const input = el.querySelector('input');
+      if (input && input.value === label) {
+        const r = el.getBoundingClientRect();
+        el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 }));
+        return;
+      }
+    }
+  }
+}, L.depBarLabel);
+await hold(4);
+let p2 = await findRect(L.editDepItem);
+if (!p2) { await dumpLog('edit-dependency item not found'); throw new Error('Edit dependency menu item not found'); }
+await animate(8, { cursorTo: p2, visualOnly: true });
+fakeClick();
+await clickItemByText(L.editDepItem);
+await hold(5);
+// The Offset stepper is the LAST ▲ in the popover (a relative-target stepper
+// precedes it). Click it repeatedly; bars slide right between clicks.
+const upBtn = await page.evaluate(() => {
+  const pop = document.querySelector('.dependency-builder');
+  if (!pop) return null;
+  const ups = Array.from(pop.querySelectorAll('button')).filter((b) => b.textContent.trim() === '▲');
+  const up = ups[ups.length - 1];
+  if (!up) return null;
+  const r = up.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+});
+if (!upBtn) { await dumpLog('offset stepper not found'); throw new Error('offset ▲ not found'); }
+await animate(8, { cursorTo: upBtn, visualOnly: true });
+for (let i = 0; i < 7; i++) {
+  fakeClick();
+  await page.evaluate(() => {
+    const pop = document.querySelector('.dependency-builder');
+    const ups = Array.from(pop.querySelectorAll('button')).filter((b) => b.textContent.trim() === '▲');
+    ups[ups.length - 1].click();
+  });
+  await sleep(50);
+  await hold(3);
+}
+await hold(4);
+// Apply (the bold accent button), then zoom back out.
+const applyBtn = await page.evaluate(() => {
+  const pop = document.querySelector('.dependency-builder');
+  const b = Array.from(pop.querySelectorAll('button')).find((x) => x.style.fontWeight === 'bold');
+  const r = b.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+});
+await animate(8, { cursorTo: applyBtn, visualOnly: true });
+fakeClick();
+await page.evaluate(() => {
+  const pop = document.querySelector('.dependency-builder');
+  Array.from(pop.querySelectorAll('button')).find((x) => x.style.fontWeight === 'bold').click();
+});
+await hold(6);
+await animate(12, { camTo: { cx: VW / 2, cy: VH / 2, zoom: 1 } });
+await hold(6);
+
+// ---- scene 5: change the days-off; the chart reshades those columns -------
+await parkLow();
+let p3 = await findRect(L.settingBtn, { tag: 'button' });
+await animate(10, { cursorTo: p3, visualOnly: true });
+fakeClick();
+await page.evaluate((settingBtn) => {
+  const btn = Array.from(document.querySelectorAll('button')).find((b) => b.textContent.trim() === settingBtn);
+  btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+}, L.settingBtn);
+await hold(3);
+p3 = await findRect(L.daysOffItem);
+if (!p3) { await dumpLog('days-off item not found'); throw new Error('Days Off menu item not found'); }
+await animate(8, { cursorTo: p3, visualOnly: true });
+fakeClick();
+await clickItemByText(L.daysOffItem);
+await hold(4);
+// Locate the regular-days-off table (fixed 278px wide) and its modal wrapper.
+const findDaysModal = () => page.evaluate(() => {
+  const table = Array.from(document.querySelectorAll('table')).find((t) => (t.getAttribute('style') || '').includes('278px'));
+  if (!table) return null;
+  let el = table;
+  while (el.parentElement) { el = el.parentElement; if (el.style.left && el.style.top && getComputedStyle(el).position === 'absolute') break; }
+  const r = el.getBoundingClientRect();
+  return { x: r.x, y: r.y, w: r.width, h: r.height };
+});
+let dModal = null;
+for (let i = 0; i < 10 && !dModal; i++) { dModal = await findDaysModal(); if (!dModal) await sleep(300); }
+if (!dModal) { await dumpLog('days-off modal not found'); throw new Error('days-off modal not found'); }
+// Drag it to the top-left so the chart columns to the right stay visible.
+const dGrip = { x: dModal.x + dModal.w / 2, y: dModal.y + 10 };
+const dDest = { x: 12, y: 58 };
+await animate(8, { cursorTo: dGrip, visualOnly: true });
+await page.mouse.move(dGrip.x, dGrip.y);
+await press();
+await hold(2);
+await animate(12, { cursorTo: { x: dGrip.x + (dDest.x - dModal.x), y: dGrip.y + (dDest.y - dModal.y) } });
+await release();
+await parkLow();
+await hold(3);
+// Toggle Wednesday (column index 4: 0=swatch, 1=Sun … 7=Sat) on the 2nd
+// (red-tinted) day-off set — every Wednesday column turns red. Re-query after
+// the drag so coordinates are current.
+const wedCell = await page.evaluate(() => {
+  const table = Array.from(document.querySelectorAll('table')).find((t) => (t.getAttribute('style') || '').includes('278px'));
+  const tr = table.querySelectorAll('tbody tr')[1];
+  const td = tr.querySelectorAll('td')[4];
+  const r = td.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+});
+await animate(8, { cursorTo: wedCell, visualOnly: true });
+fakeClick();
+await page.evaluate(() => {
+  const table = Array.from(document.querySelectorAll('table')).find((t) => (t.getAttribute('style') || '').includes('278px'));
+  table.querySelectorAll('tbody tr')[1].querySelectorAll('td')[4].click();
+});
+await hold(14); // chart reshades every Wednesday
+// Close the days-off modal via its X.
+const dClose = await page.evaluate(() => {
+  const table = Array.from(document.querySelectorAll('table')).find((t) => (t.getAttribute('style') || '').includes('278px'));
+  let el = table;
+  while (el.parentElement) { el = el.parentElement; if (el.style.left && el.style.top && getComputedStyle(el).position === 'absolute') break; }
+  const r = el.getBoundingClientRect();
+  return { x: r.x + r.width - 13, y: r.y + 13 };
+});
+await animate(8, { cursorTo: dClose, visualOnly: true });
+fakeClick();
+await page.evaluate(() => {
+  const table = Array.from(document.querySelectorAll('table')).find((t) => (t.getAttribute('style') || '').includes('278px'));
+  let el = table;
+  while (el.parentElement) { el = el.parentElement; if (el.style.left && el.style.top && getComputedStyle(el).position === 'absolute') break; }
+  el.querySelector('button')?.click();
+});
+await hold(6);
+
+// ---- scene 6: collapse a section into a summary band, then expand it ------
+// Click the section's chevron in the table; its child rows fold away and a grey
+// summary bar spans the section's date range. Click again to expand.
+const findChevron = (sepName) => page.evaluate((name) => {
+  const spans = Array.from(document.querySelectorAll('span')).filter((s) => s.textContent.trim() === name && s.style.whiteSpace === 'nowrap');
+  for (const span of spans) {
+    const wrap = span.parentElement;
+    const chev = wrap && wrap.firstElementChild;
+    if (chev && chev !== span && chev.querySelector('svg')) {
+      const r = chev.getBoundingClientRect();
+      if (r.x < 420) return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; // table side only
+    }
+  }
+  return null;
+}, sepName);
+const clickChevron = (sepName) => page.evaluate((name) => {
+  const spans = Array.from(document.querySelectorAll('span')).filter((s) => s.textContent.trim() === name && s.style.whiteSpace === 'nowrap');
+  for (const span of spans) {
+    const wrap = span.parentElement;
+    const chev = wrap && wrap.firstElementChild;
+    if (chev && chev !== span && chev.querySelector('svg')) {
+      const r = chev.getBoundingClientRect();
+      if (r.x < 420) { chev.click(); return true; }
+    }
+  }
+  return false;
+}, sepName);
+if (L.collapseSep) {
+  const chev = await findChevron(L.collapseSep);
+  if (!chev) { await dumpLog('separator chevron not found'); throw new Error('separator chevron not found'); }
+  await animate(12, { cursorTo: chev, camTo: { cx: 470, cy: 250, zoom: 1.2 }, visualOnly: true });
+  fakeClick();
+  await clickChevron(L.collapseSep);
+  await hold(12); // section folds; grey summary band appears
+  fakeClick();
+  await clickChevron(L.collapseSep);
+  await hold(12); // section expands again
+  await animate(10, { camTo: { cx: VW / 2, cy: VH / 2, zoom: 1 } });
+  await hold(14);
+}
+
 await browser.close();
 
-// ---- apply the camera per frame, then assemble the GIF ------------------
+// ---- apply the camera per frame, then assemble the MP4 ------------------
 console.log(`captured ${frameNo} frames, applying camera...`);
 for (let i = 0; i < frameNo; i++) {
   const k = camTrack[i];
@@ -354,9 +595,12 @@ for (let i = 0; i < frameNo; i++) {
 }
 
 const out = path.join(root, 'docs', 'images', L.out);
+// H.264 MP4: yuv420p + even dimensions for universal playback (incl. GitHub's
+// inline <video>); +faststart moves the moov atom up so it streams immediately.
 execFileSync('ffmpeg', [
   '-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(camDir, 'f%04d.png'),
-  '-vf', `fps=${FPS},split[a][b];[a]palettegen=max_colors=160[p];[b][p]paletteuse=dither=bayer:bayer_scale=5`,
+  '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '23', '-preset', 'slow',
+  '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-movflags', '+faststart',
   out,
 ]);
 fs.rmSync(rawDir, { recursive: true, force: true });
