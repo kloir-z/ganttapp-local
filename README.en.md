@@ -117,7 +117,7 @@ The "File" → "Export" submenu writes the chart in three formats depending on y
 
 ## Why I Created This
 
-I was creating Gantt charts in Excel using conditional formatting and formulas, but when the number of rows increased (200+ rows), updates became cumbersome and felt like a typical example of "wrong way to use Excel." The performance was slow and lacked good overview capability.
+I was creating Gantt charts in Excel using conditional formatting and formulas, but when the number of rows increased (300+ rows), updates became cumbersome and felt like a typical example of "wrong way to use Excel." The performance was slow and lacked good overview capability.
 
 When ChatGPT emerged in 2023, I learned about its high code generation capabilities and thought "maybe I can create a Gantt chart app?" This was the catalyst for starting development.
 
@@ -164,13 +164,6 @@ npm run build:singlefile   # Inline all assets into one file (dist-single/index.
 - Distribute **just this one file** — it opens by **double-click (`file://`)**, no server required
 - Uses `HashRouter` for routing and bundled holiday data so both work under `file://`
 - Limitation: sample projects are not shown in the welcome screen under `file://` (ZIP fetch is blocked); manual import/export still works
-
-#### Other Commands
-```bash
-npm run lint       # Code quality check
-npm run test       # Run tests
-npm run preview    # Preview build results
-```
 
 ### Technology Stack
 
