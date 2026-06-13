@@ -493,31 +493,37 @@ if (!dModal) { await dumpLog('days-off modal not found'); throw new Error('days-
 // Drag it to the top-left so the chart columns to the right stay visible.
 const dGrip = { x: dModal.x + dModal.w / 2, y: dModal.y + 10 };
 const dDest = { x: 12, y: 58 };
-await animate(8, { cursorTo: dGrip, visualOnly: true });
+await animate(10, { cursorTo: dGrip, visualOnly: true });
 await page.mouse.move(dGrip.x, dGrip.y);
 await press();
-await hold(2);
-await animate(12, { cursorTo: { x: dGrip.x + (dDest.x - dModal.x), y: dGrip.y + (dDest.y - dModal.y) } });
+await hold(3);
+await animate(18, { cursorTo: { x: dGrip.x + (dDest.x - dModal.x), y: dGrip.y + (dDest.y - dModal.y) } }); // unhurried drag
 await release();
 await parkLow();
-await hold(3);
-// Toggle Wednesday (column index 4: 0=swatch, 1=Sun … 7=Sat) on the 2nd
-// (red-tinted) day-off set — every Wednesday column turns red. Re-query after
-// the drag so coordinates are current.
+await hold(6);
+// Add Wednesday to the weekend (grey #EFEFEF) day-off set, then remove it again
+// to show it reverting. Row index 2 is that set; column index 4 is Wednesday
+// (0=swatch, 1=Sun … 7=Sat). Grey (matching Sat/Sun) reads less jarring than a
+// new colour, and the off-toggle leaves the chart exactly as it started.
+const toggleWed = () => page.evaluate(() => {
+  const table = Array.from(document.querySelectorAll('table')).find((t) => (t.getAttribute('style') || '').includes('278px'));
+  table.querySelectorAll('tbody tr')[2].querySelectorAll('td')[4].click();
+});
 const wedCell = await page.evaluate(() => {
   const table = Array.from(document.querySelectorAll('table')).find((t) => (t.getAttribute('style') || '').includes('278px'));
-  const tr = table.querySelectorAll('tbody tr')[1];
-  const td = tr.querySelectorAll('td')[4];
+  const td = table.querySelectorAll('tbody tr')[2].querySelectorAll('td')[4];
   const r = td.getBoundingClientRect();
   return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
 });
-await animate(8, { cursorTo: wedCell, visualOnly: true });
+await animate(14, { cursorTo: wedCell, visualOnly: true }); // unhurried approach
+await hold(4);
 fakeClick();
-await page.evaluate(() => {
-  const table = Array.from(document.querySelectorAll('table')).find((t) => (t.getAttribute('style') || '').includes('278px'));
-  table.querySelectorAll('tbody tr')[1].querySelectorAll('td')[4].click();
-});
-await hold(14); // chart reshades every Wednesday
+await toggleWed();
+await hold(28); // dwell: every Wednesday column shades grey like the weekend
+fakeClick();
+await toggleWed();
+await hold(22); // toggled back off — the chart returns to its original shading
+await hold(6);
 // Close the days-off modal via its X.
 const dClose = await page.evaluate(() => {
   const table = Array.from(document.querySelectorAll('table')).find((t) => (t.getAttribute('style') || '').includes('278px'));
@@ -566,13 +572,14 @@ const clickChevron = (sepName) => page.evaluate((name) => {
 if (L.collapseSep) {
   const chev = await findChevron(L.collapseSep);
   if (!chev) { await dumpLog('separator chevron not found'); throw new Error('separator chevron not found'); }
-  await animate(12, { cursorTo: chev, camTo: { cx: 470, cy: 250, zoom: 1.2 }, visualOnly: true });
+  await animate(14, { cursorTo: chev, camTo: { cx: 470, cy: 250, zoom: 1.2 }, visualOnly: true });
+  await hold(3);
   fakeClick();
   await clickChevron(L.collapseSep);
-  await hold(12); // section folds; grey summary band appears
+  await hold(20); // section folds; grey summary band appears
   fakeClick();
   await clickChevron(L.collapseSep);
-  await hold(12); // section expands again
+  await hold(18); // section expands again
   await animate(10, { camTo: { cx: VW / 2, cy: VH / 2, zoom: 1 } });
   await hold(14);
 }
