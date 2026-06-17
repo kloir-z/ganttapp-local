@@ -37,7 +37,7 @@
     "@emotion/styled": "^11.11.3",
     "@mui/icons-material": "^5.18.0",
     "@mui/material": "^5.15.7",
-    "@mui/x-date-pickers": "^6.19.0",
+    "@mui/x-date-pickers": "^9.5.0",
     "@reduxjs/toolkit": "^2.0.1",
     "@silevis/reactgrid": "^4.1.7",
     "@tippyjs/react": "^4.2.6",
