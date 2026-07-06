@@ -21,6 +21,9 @@ interface UIFlagsState {
   // When set, the dependency builder is open as a floating popover on the chart
   // (opened from the chart's right-click menu) at the given viewport coordinates.
   dependencyBuilder: { rowId: string; x: number; y: number } | null;
+  // クリティカルパス(cpPredecessors ネットワークから算出)の強調表示トグル。
+  // 表示専用のフラグなので保存ファイルには含めない。
+  showCriticalPath: boolean;
 }
 
 const initialState: UIFlagsState = {
@@ -33,6 +36,7 @@ const initialState: UIFlagsState = {
   dependencySourceRowId: null,
   dependencyChainRowIds: [],
   dependencyBuilder: null,
+  showCriticalPath: false,
 };
 
 const uiFlagsSlice = createSlice({
@@ -73,8 +77,11 @@ const uiFlagsSlice = createSlice({
     closeDependencyBuilder(state) {
       state.dependencyBuilder = null;
     },
+    setShowCriticalPath(state, action: PayloadAction<boolean>) {
+      state.showCriticalPath = action.payload;
+    },
   },
 });
 
-export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder } = uiFlagsSlice.actions;
+export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath } = uiFlagsSlice.actions;
 export default uiFlagsSlice.reducer;

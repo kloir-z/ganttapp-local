@@ -18,6 +18,7 @@ import useInsertCopiedRow from '../../hooks/useInsertCopiedRow';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { useImeCellOverlay } from '../../hooks/useImeCellOverlay';
 import { buildWbsNumberMap } from '../../utils/wbsNumber';
+import { buildCpDisplayTextMap } from '../../utils/CriticalPath';
 
 const WBSInfo: React.FC = memo(() => {
   const activeModal = useSelector((state: RootState) => state.uiFlags.activeModal);
@@ -90,6 +91,11 @@ const WBSInfo: React.FC = memo(() => {
   const wbsNumberVisible = useMemo(() => visibleColumns.some(c => c.columnId === 'wbsNumber'), [visibleColumns]);
   const wbsNumberMap = useMemo(() => (wbsNumberVisible ? buildWbsNumberMap(data) : {}), [wbsNumberVisible, data]);
 
+  // クリティカルパス先行列("CP")の表示テキスト(行ID → 現在の行番号表記)。
+  // 列が表示されているときだけ計算する(wbsNumberMap と同じ方針)。
+  const cpColumnVisible = useMemo(() => visibleColumns.some(c => c.columnId === 'cpPredecessors'), [visibleColumns]);
+  const cpDisplayTextMap = useMemo(() => (cpColumnVisible ? buildCpDisplayTextMap(data) : {}), [cpColumnVisible, data]);
+
   const customDateCellTemplate = useMemo(() => new CustomDateCellTemplate(showYear, dateFormat), [showYear, dateFormat]);
   const customTextCellTemplate = useMemo(() => new CustomTextCellTemplate(), []);
   const customNumberCellTemplate = useMemo(() => new CustomNumberCellTemplate(), []);
@@ -116,7 +122,7 @@ const WBSInfo: React.FC = memo(() => {
           if (collapseStack.length > 0) {
             return [];
           }
-          return createChartRow(item, visibleColumns, rowHeight, wbsNumberMap[item.id]);
+          return createChartRow(item, visibleColumns, rowHeight, wbsNumberMap[item.id], cpDisplayTextMap[item.id] ?? '');
         } else if (isEventRow(item)) {
           if (collapseStack.length > 0) {
             return [];
@@ -127,7 +133,7 @@ const WBSInfo: React.FC = memo(() => {
         }
       })
     ];
-  }, [headerRow, visibleColumns, rowHeight, wbsNumberMap]);
+  }, [headerRow, visibleColumns, rowHeight, wbsNumberMap, cpDisplayTextMap]);
 
   const rows = useMemo(() => getRows(dataArray), [dataArray, getRows]);
 

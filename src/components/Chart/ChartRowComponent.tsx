@@ -11,6 +11,7 @@ import ContextMenu from '../ContextMenu/ContextMenu';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { ColorInfo } from '../../reduxStoreAndSlices/colorSlice';
 import { openDependencyBuilder } from '../../reduxStoreAndSlices/uiFlagSlice';
+import { selectCriticalPath } from '../../reduxStoreAndSlices/criticalPathSelectors';
 import { useTranslation } from 'react-i18next';
 
 interface ChartRowProps {
@@ -57,6 +58,17 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   // Row that moves together with the edited row (lighter frame). Only visible rows
   // are mounted (virtualization), so this includes() stays cheap.
   const isDependencyChain = useSelector((state: RootState) => state.uiFlags.dependencyChainRowIds.includes(entry.id));
+  // クリティカルパス表示。boolean を返すセレクタなので、判定が変わった行だけ再レンダーされる。
+  // selectCriticalPath はメモ化済みで、トグルOFF時は短絡評価により計算コストゼロ。
+  // 履歴プレビュー中は現在の data と表示がずれるため無効化する。
+  const isCpCritical = useSelector((state: RootState) =>
+    !isViewingPast && state.uiFlags.showCriticalPath && selectCriticalPath(state).criticalIds.has(entry.id)
+  );
+  const isCpDimmed = useSelector((state: RootState) => {
+    if (isViewingPast || !state.uiFlags.showCriticalPath) return false;
+    const { criticalIds } = selectCriticalPath(state);
+    return criticalIds.size > 0 && !criticalIds.has(entry.id);
+  });
   const regularDaysOff = useSelector((state: RootState) => state.wbsData.regularDaysOff);
   const [localPlannedStartDate, setLocalPlannedStartDate] = useState(entry.plannedStartDate ? entry.plannedStartDate : null);
   const [localPlannedEndDate, setLocalPlannedEndDate] = useState(entry.plannedEndDate ? entry.plannedEndDate : null);
@@ -478,6 +490,8 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
           entryId={entry.id}
           chartBarColor={plannedChartBarColor}
           isBarDragged={isPlannedBarDragged}
+          isCpCritical={isCpCritical}
+          isCpDimmed={isCpDimmed}
           isBarDragging={Boolean(isEditing === "planned" || isBarDragging === "planned" || isBarEndDragging === "planned" || isBarStartDragging === "planned")}
           onBarMouseDown={(e) => handleBarMouseDown(e, 'planned')}
           onBarEndMouseDown={(e) => handleBarEndMouseDown(e, 'planned')}
@@ -493,6 +507,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
           isActual={true}
           entryId={entry.id}
           chartBarColor={actualChartBarColor}
+          isCpDimmed={isCpDimmed}
           isBarDragging={Boolean(isEditing === "actual" || isBarDragging === "actual" || isBarEndDragging === "actual" || isBarStartDragging === "actual")}
           onBarMouseDown={(e) => handleBarMouseDown(e, 'actual')}
           onBarEndMouseDown={(e) => handleBarEndMouseDown(e, 'actual')}

@@ -21,6 +21,9 @@ interface StyledBarProps {
   $width?: number;
   $height?: number;
   $isBarDragging?: boolean;
+  // クリティカルパス表示中: クリティカルなバーは赤枠で強調、それ以外は淡色化する。
+  $isCpCritical?: boolean;
+  $isCpDimmed?: boolean;
 }
 
 export const StyledBar = styled.div.attrs<StyledBarProps>(({ $left, $width, $height }) => ({
@@ -38,9 +41,11 @@ export const StyledBar = styled.div.attrs<StyledBarProps>(({ $left, $width, $hei
   top: -0.5px;
   border: 0.2px solid transparent;
   background-color: ${props => props.$chartBarColor ? props.$chartBarColor : '#99ff937e'};
-  border: ${props => props.$isBarDragging ? '2px solid #0026ff9c' : '0.2px solid transparent'};
+  border: ${props => props.$isBarDragging ? '2px solid #0026ff9c' : props.$isCpCritical ? '2px solid rgba(229, 57, 53, 0.9)' : '0.2px solid transparent'};
+  box-shadow: ${props => props.$isCpCritical ? '0 0 4px 1px rgba(229, 57, 53, 0.35)' : 'none'};
+  opacity: ${props => props.$isCpDimmed ? 0.25 : 1};
   &:hover {
-    border: ${props => props.$chartBarColor ? '0.2px solid #000dff5f' : '0.2px solid transparent'};
+    border: ${props => props.$isCpCritical ? '2px solid rgba(229, 57, 53, 0.9)' : props.$chartBarColor ? '0.2px solid #000dff5f' : '0.2px solid transparent'};
   }
 `;
 

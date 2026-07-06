@@ -1,5 +1,5 @@
 import { AppDispatch, ExtendedColumn, RootState, setColumns, setDateFormat, setIsSavedChangesStore, setShowYear, updateEntireRegularDaysOffSetting, updateHolidayColor } from "../reduxStoreAndSlices/store";
-import { ensureWbsNumberColumn } from "../reduxStoreAndSlices/initialColumns";
+import { ensureCpPredecessorsColumn, ensureWbsNumberColumn } from "../reduxStoreAndSlices/initialColumns";
 import { ColorInfo, setIsSavedChangesColor } from "../reduxStoreAndSlices/colorSlice";
 import { WBSData, DateFormatType, RegularDaysOffSettingsType, HolidayColor } from "../types/DataTypes";
 import { updateEntireColorSettings } from "../reduxStoreAndSlices/colorSlice";
@@ -168,9 +168,10 @@ export const handleImport = createAsyncThunk<void, { file: Blob; skipHistoryImpo
       }));
     }
     if (parsedData.columns && Array.isArray(parsedData.columns)) {
-      // Older projects predate the optional "WBS" column; inject it (hidden) so
-      // it can be turned on from the column settings.
-      dispatch(setColumns(ensureWbsNumberColumn(parsedData.columns)));
+      // Older projects predate the optional "WBS" column and the critical-path
+      // "CP" column; inject them (hidden) so they can be turned on from the
+      // column settings.
+      dispatch(setColumns(ensureCpPredecessorsColumn(ensureWbsNumberColumn(parsedData.columns))));
     }
     if (parsedData.regularDaysOffSetting) {
       dispatch(updateEntireRegularDaysOffSetting(parsedData.regularDaysOffSetting));

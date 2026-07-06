@@ -171,7 +171,15 @@ export const wbsDataSlice = createSlice({
     },
     deleteRows: (state, action: PayloadAction<string[]>) => {
       const idsToDelete = action.payload;
-      const filteredData = Object.values(state.data).filter(row => !idsToDelete.includes(row.id));
+      const filteredData = Object.values(state.data)
+        .filter(row => !idsToDelete.includes(row.id))
+        .map(row => {
+          // 削除行を参照しているクリティカルパス先行(cpPredecessors)を掃除する。
+          if (isChartRow(row) && row.cpPredecessors?.some(pred => idsToDelete.includes(pred.predecessorId))) {
+            return { ...row, cpPredecessors: row.cpPredecessors.filter(pred => !idsToDelete.includes(pred.predecessorId)) };
+          }
+          return row;
+        });
       const data = assignIds(filteredData);
       const { updatedData, newDependencyMap } = resolveDependencies(data, state.holidays, state.regularDaysOff);
       state.dependencyMap = newDependencyMap;

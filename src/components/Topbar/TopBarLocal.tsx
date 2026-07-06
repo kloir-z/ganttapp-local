@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import React from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -6,7 +6,8 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import TextField from '@mui/material/TextField';
 import { useDispatch, useSelector } from 'react-redux';
-import { setActiveModal, setIsLoading } from '../../reduxStoreAndSlices/uiFlagSlice';
+import { setActiveModal, setIsLoading, setShowCriticalPath } from '../../reduxStoreAndSlices/uiFlagSlice';
+import { selectCriticalPath } from '../../reduxStoreAndSlices/criticalPathSelectors';
 import { RootState, undo, redo, setMessageInfo, removePastState } from '../../reduxStoreAndSlices/store';
 import { setTitle } from '../../reduxStoreAndSlices/baseSettingsSlice';
 import { handleExport, handleImport, buildProjectData } from '../../utils/ExportImportHandler'; // handleImportを追加
@@ -102,6 +103,9 @@ const TopBarLocal: React.FC = memo(() => {
   const historySnapshots = useSelector((state: RootState) => state.history?.snapshots || []);
   const pastLength = useSelector((state: RootState) => state.wbsData.past.length);
   const futureLength = useSelector((state: RootState) => state.wbsData.future.length);
+  const showCriticalPath = useSelector((state: RootState) => state.uiFlags.showCriticalPath);
+  // トグルON中のみ評価される(短絡)。循環リンクを検出したら警告を出す。
+  const cpHasCycle = useSelector((state: RootState) => state.uiFlags.showCriticalPath && selectCriticalPath(state).hasCycle);
 
   const [visibleMenu, setVisibleMenu] = useState<string | null>(null);
   const fileButtonRef = useRef<HTMLButtonElement>(null);
@@ -373,11 +377,26 @@ const TopBarLocal: React.FC = memo(() => {
         children: t('Days Off'),
         onClick: () => dispatch(setActiveModal('settingsdaysoff')),
         path: '3'
+      },
+      {
+        children: `${showCriticalPath ? '✓ ' : ''}${t('Show Critical Path')}`,
+        onClick: () => dispatch(setShowCriticalPath(!showCriticalPath)),
+        path: '4'
       }
       // 'Manage Access'は除外（認証が必要なため）
     ];
     return options;
-  }, [dispatch, t]);
+  }, [dispatch, t, showCriticalPath]);
+
+  // クリティカルパス表示中に循環リンクが見つかったら知らせる(循環部分は判定から除外される)。
+  useEffect(() => {
+    if (cpHasCycle) {
+      dispatch(setMessageInfo({
+        message: t('Critical path: circular links detected. Cyclic tasks are excluded.'),
+        severity: 'warning'
+      }));
+    }
+  }, [cpHasCycle, dispatch, t]);
 
   const handleResetWelcome = useCallback(() => {
     WelcomeUtils.resetWelcomeFlag();

@@ -17,13 +17,15 @@ interface ChartBarProps {
   chartBarColor: string;
   isBarDragged?: boolean;
   isBarDragging?: boolean;
+  isCpCritical?: boolean;
+  isCpDimmed?: boolean;
   onBarMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   onBarEndMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   onBarStartMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   onContextMenu?: (event: React.MouseEvent<HTMLDivElement>) => void;
 }
 
-const MemoedChartBar: React.FC<ChartBarProps> = ({ startDate, endDate, dateArray, isActual, entryId, eventIndex, chartBarColor, isBarDragging, isBarDragged, onBarMouseDown, onBarEndMouseDown, onBarStartMouseDown, onContextMenu }) => {
+const MemoedChartBar: React.FC<ChartBarProps> = ({ startDate, endDate, dateArray, isActual, entryId, eventIndex, chartBarColor, isBarDragging, isBarDragged, isCpCritical, isCpDimmed, onBarMouseDown, onBarEndMouseDown, onBarStartMouseDown, onContextMenu }) => {
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const startCDate = useMemo(() => cdate(startDate ? startDate : ''), [startDate]);
   const endCDate = useMemo(() => cdate(endDate ? endDate : ''), [endDate]);
@@ -58,6 +60,8 @@ const MemoedChartBar: React.FC<ChartBarProps> = ({ startDate, endDate, dateArray
           $width={width}
           $left={leftPosition}
           $isBarDragging={isBarDragging}
+          $isCpCritical={isCpCritical}
+          $isCpDimmed={isCpDimmed}
           {...{ onMouseDown: onBarMouseDown, onContextMenu: onContextMenu }}
         >
           {(!isActual && entryId) && (

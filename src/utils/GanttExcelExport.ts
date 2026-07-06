@@ -23,6 +23,7 @@ import {
 import { ColorInfo } from '../reduxStoreAndSlices/colorSlice';
 import { ExtendedColumn } from '../reduxStoreAndSlices/store';
 import { generateDates, isHoliday } from './CommonUtils';
+import { formatCpPredecessorsText } from './CriticalPath';
 import { collectVisibleRows, computeWbsNumbers } from './wbsNumber';
 import { standardizeLongDateFormat, standardizeShortDateFormat } from '../components/Table/utils/wbsHelpers';
 
@@ -125,6 +126,7 @@ const cellTextFor = (
   row: WBSData,
   dateFormat: DateFormatType,
   showYear: boolean,
+  data?: { [id: string]: WBSData },
 ): string => {
   const formatDate = (v: string) =>
     (showYear ? standardizeLongDateFormat(v, dateFormat) : standardizeShortDateFormat(v, dateFormat)) || '';
@@ -155,6 +157,9 @@ const cellTextFor = (
         return r.progress || '';
       case 'dependency':
         return isChartRow(row) ? row.dependency || '' : '';
+      case 'cpPredecessors':
+        // クリティカルパス先行列: 画面と同じく現在の行番号表記で出力する。
+        return isChartRow(row) && data ? formatCpPredecessorsText(row, data) : '';
       case 'textColumn1':
         return r.textColumn1 || '';
       case 'textColumn2':
@@ -386,7 +391,7 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
         ? wbsNo
         : isSep && !keepOnSep
           ? ''
-          : cellTextFor(c.columnId, row, dateFormat, showYear);
+          : cellTextFor(c.columnId, row, dateFormat, showYear, data);
       // Size 9 matches the chart-side bar/separator labels so the two panes read
       // at one consistent type size.
       cell.font = { name: FONT, size: 9, bold: isSep };

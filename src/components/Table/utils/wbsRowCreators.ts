@@ -12,7 +12,7 @@ const wbsNumberCell = (wbsNo: string, background = 'rgba(128, 128, 128, 0.1)'): 
   type: "text", text: wbsNo, nonEditable: true, style: { background, color: '#555' }
 });
 
-export const createChartRow = (chartRow: ChartRow, columns: Column[], rowHeight: number, wbsNo = ''): Row<DefaultCellTypes | CustomTextCell | CustomDateCell | CustomNumberCell | CustomDependencyCell> => {
+export const createChartRow = (chartRow: ChartRow, columns: Column[], rowHeight: number, wbsNo = '', cpPredecessorsText = ''): Row<DefaultCellTypes | CustomTextCell | CustomDateCell | CustomNumberCell | CustomDependencyCell> => {
   const rowCells: (NumberCell | TextCell | CustomTextCell | CustomDateCell | CustomNumberCell | CheckboxCell | CustomDependencyCell)[] = columns.map(column => {
     const columnId = column.columnId as string;
      
@@ -36,6 +36,9 @@ export const createChartRow = (chartRow: ChartRow, columns: Column[], rowHeight:
       return { type: "customNumber", text: cellValue, value: NaN, columnWidth };
     } else if (columnId === "dependency") {
       return { type: "customDependency", text: cellValue, value: NaN, columnWidth, rowId: chartRow.id };
+    } else if (columnId === "cpPredecessors") {
+      // 内部は行IDで保持し、表示は現在の行番号に変換したテキスト(呼び出し側で算出)。
+      return { type: "customText", text: cpPredecessorsText, value: NaN, columnWidth };
     } else {
       return { type: "customText", text: cellValue, value: NaN, columnWidth };
     }

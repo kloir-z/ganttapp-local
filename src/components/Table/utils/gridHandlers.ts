@@ -6,6 +6,7 @@ import { setEntireData, setPlannedDate, updateSeparatorDates, pushPastState, Ext
 import { CustomDateCell } from './CustomDateCell';
 import { CustomTextCell } from "./CustomTextCell";
 import { addPlannedDays, validateDateString } from "../../../utils/CommonUtils";
+import { parseCpPredecessorsText } from "../../../utils/CriticalPath";
 import { SeparatorCell } from "./SeparatorCell";
 import { CustomNumberCell } from './CustomNumberCell';
 import { CustomDependencyCell } from './CustomDependencyCell';
@@ -79,6 +80,10 @@ export const handleGridChanges = (dispatch: AppDispatch, data: { [id: string]: W
     if (isEventRow(rowData)) {
       const fieldName = change.columnId;
       const newCell = change.newCell;
+      if (fieldName === 'cpPredecessors') {
+        // CP先行は ChartRow 専用。イベント行のセルに入力されても無視する。
+        return;
+      }
       if (newCell.type === 'customDate') {
         const customDateCell = newCell as CustomDateCell;
         updatedData[rowId] = {
@@ -180,6 +185,15 @@ export const handleGridChanges = (dispatch: AppDispatch, data: { [id: string]: W
           const errorMessage = i18next.t('Too long text.', { maxLength, inputLength: updatedText.length });
           dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
         }
+      } else if (fieldName === "cpPredecessors") {
+        // クリティカルパス先行列: 行番号(+/-lag)のテキストを行ID配列にパースして保持。
+        // 既存の dependency とは独立しており、日付の再計算は発生しない。
+        const customTextCell = newCell as CustomTextCell;
+        const updatedText = typeof customTextCell.text === 'string' ? customTextCell.text.trim() : '';
+        updatedData[rowId] = {
+          ...rowData,
+          cpPredecessors: parseCpPredecessorsText(updatedText, updatedData, rowId)
+        };
       } else if (newCell.type === 'customText') {
         const customTextCell = newCell as CustomTextCell;
         const updatedText = typeof customTextCell.text === 'string' ? customTextCell.text.trim() : customTextCell.text;

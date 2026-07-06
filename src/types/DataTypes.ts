@@ -10,6 +10,14 @@ export interface BaseRow {
   displayName: string;
 }
 
+// クリティカルパス用の論理先行タスク(FS)。既存の dependency/dependentId(日付の
+// 自動計算)とは完全に独立した注釈で、これを張っても日付は変化しない。
+// lag は先行タスク終了から自タスク開始までに追加で空ける稼働日数(省略時 0)。
+export interface CpPredecessor {
+  predecessorId: string;
+  lag?: number;
+}
+
 export interface ChartRow extends BaseRow {
   rowType: "Chart";
   color: string;
@@ -25,6 +33,7 @@ export interface ChartRow extends BaseRow {
   textColumn2: string;
   textColumn3: string;
   isIncludeHolidays: boolean;
+  cpPredecessors?: CpPredecessor[];
 }
 
 export interface SeparatorRow extends BaseRow {
