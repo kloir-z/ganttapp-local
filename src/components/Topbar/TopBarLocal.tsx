@@ -480,6 +480,9 @@ const TopBarLocal: React.FC = memo(() => {
         <MenuButton onClick={() => dispatch(setActiveModal('history'))}>
           {t('History')}
         </MenuButton>
+        <MenuButton onClick={() => dispatch(setActiveModal('help'))}>
+          {t('Help')}
+        </MenuButton>
         {isViewingPast && (
           <ReturnButton onClick={handleReturnToPresent}>
             {t('Return to Latest')}

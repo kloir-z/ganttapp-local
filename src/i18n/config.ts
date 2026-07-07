@@ -1,6 +1,7 @@
 // src/i18n/config.ts
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { helpEn, helpJa } from './helpResources';
 
 const config = {
   resources: {
@@ -286,8 +287,15 @@ const config = {
           "largeScaleSystemDevelopment": {
             "title": "Large-scale System Development Project",
             "description": "Comprehensive large-scale system development project covering requirements analysis, design, development, testing, and deployment phases with multiple stakeholders and complex coordination."
+          },
+          "tutorial": {
+            "title": "Tutorial: How to Use Gantty",
+            "description": "A hands-on tutorial project. The chart itself walks you through dragging bars, editing rows, dependencies, the critical path and more."
           }
         },
+        "help": helpEn,
+        "Help": "Help",
+        "How to use": "How to use",
         "Back to Login": "Back to Login",
         "File downloaded successfully.": "File downloaded successfully.",
         "Download failed: ": "Download failed: ",
@@ -763,8 +771,15 @@ const config = {
           "largeScaleSystemDevelopment": {
             "title": "大規模システム開発プロジェクト",
             "description": "大規模なシステム開発プロジェクト。要件定義から設計、開発、テスト、運用開始まで、複数のフェーズと多くのステークホルダーが関わる包括的な開発計画です。"
+          },
+          "tutorial": {
+            "title": "チュートリアル：Ganttyの使い方",
+            "description": "実際に触りながら学べるチュートリアルプロジェクト。バーのドラッグ、行の編集、依存関係、クリティカルパスなどをチャート上の手順に沿って体験できます。"
           }
         },
+        "help": helpJa,
+        "Help": "ヘルプ",
+        "How to use": "使い方を見る",
         "Back to Login": "ログインに戻る",
         "File downloaded successfully.": "ファイルのダウンロードが完了しました。",
         "Download failed: ": "ダウンロードに失敗しました: ",

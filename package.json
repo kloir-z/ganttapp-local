@@ -28,6 +28,7 @@
     "preview": "vite preview",
     "serve": "npm run build && serve -s dist",
     "generate-holidays": "node scripts/generateHolidays.js",
+    "generate-tutorial-sample": "node scripts/gen-tutorial-sample.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"

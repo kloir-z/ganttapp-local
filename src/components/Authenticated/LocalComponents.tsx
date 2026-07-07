@@ -10,6 +10,7 @@ import SettingsModalDaysOff from '../Setting/DaysOff/SettingsModalDaysOff';
 import NotesModal from '../Topbar/Notes/NotesModal';
 import WelcomeModal from '../Welcome/WelcomeModal';
 import HistoryModal from '../History/HistoryModal';
+import HelpModal from '../Help/HelpModal';
 
 const LocalComponents: React.FC = () => {
     const { exportAndCopyJson } = useJsonExport();
@@ -33,6 +34,7 @@ const LocalComponents: React.FC = () => {
             <NotesModal />
             <WelcomeModal />
             <HistoryModal />
+            <HelpModal />
         </>
     );
 };

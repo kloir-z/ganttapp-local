@@ -20,13 +20,7 @@ import {
     Paper,
     Alert
 } from '@mui/material';
-
-interface SampleDefinition {
-    id: string;
-    titleKey: string;
-    descriptionKey: string;
-    filename: string;
-}
+import { getSampleDefinitions, SampleDefinition } from './sampleDefinitions';
 
 const WelcomeModal: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -38,63 +32,22 @@ const WelcomeModal: React.FC = () => {
     const [isCheckingSamples, setIsCheckingSamples] = useState(true);
     const { t } = useTranslation();
 
-    const sampleDefinitions = useMemo<SampleDefinition[]>(() => {
-        if (language === 'ja') {
-            return [
-                {
-                    id: "corporate-site-renewal",
-                    titleKey: "samples.corporateSiteRenewal.title",
-                    descriptionKey: "samples.corporateSiteRenewal.description",
-                    filename: "[サンプル]コーポレートサイトリニューアルプロジェクト.zip"
-                },
-                {
-                    id: "mobile-app-development",
-                    titleKey: "samples.mobileAppDevelopment.title",
-                    descriptionKey: "samples.mobileAppDevelopment.description",
-                    filename: "[サンプル]スマートフォンアプリ開発プロジェクト.zip"
-                },
-                {
-                    id: "autumn-food-exhibition",
-                    titleKey: "samples.autumnFoodExhibition.title",
-                    descriptionKey: "samples.autumnFoodExhibition.description",
-                    filename: "[サンプル]秋の食品見本市出展プロジェクト.zip"
-                },
-                {
-                    id: "large-scale-system-development",
-                    titleKey: "samples.largeScaleSystemDevelopment.title",
-                    descriptionKey: "samples.largeScaleSystemDevelopment.description",
-                    filename: "[サンプル]大規模システム開発プロジェクト.zip"
-                }
-            ];
-        } else {
-            return [
-                {
-                    id: "restaurant-opening",
-                    titleKey: "samples.restaurantOpening.title",
-                    descriptionKey: "samples.restaurantOpening.description",
-                    filename: "[Sample]Restaurant Opening Project.zip"
-                },
-                {
-                    id: "software-product-launch",
-                    titleKey: "samples.softwareProductLaunch.title",
-                    descriptionKey: "samples.softwareProductLaunch.description",
-                    filename: "[Sample]Software Product Launch.zip"
-                },
-                {
-                    id: "wedding-planning",
-                    titleKey: "samples.weddingPlanning.title",
-                    descriptionKey: "samples.weddingPlanning.description",
-                    filename: "[Sample]Wedding Planning Project.zip"
-                }
-            ];
-        }
-    }, [language]);
+    const sampleDefinitions = useMemo<SampleDefinition[]>(() => getSampleDefinitions(language), [language]);
 
     const handleClose = useCallback(() => {
         if (dontShowAgain) {
             WelcomeUtils.markWelcomeCompleted();
         }
         dispatch(setActiveModal(null));
+    }, [dispatch, dontShowAgain]);
+
+    // activeModal は単一値なので 'help' をセットすると welcome は自動で閉じる。
+    // 「次回から表示しない」チェックは Close と同様にここでも尊重する。
+    const handleOpenHelp = useCallback(() => {
+        if (dontShowAgain) {
+            WelcomeUtils.markWelcomeCompleted();
+        }
+        dispatch(setActiveModal('help'));
     }, [dispatch, dontShowAgain]);
 
     const checkSampleAvailability = useCallback(async () => {
@@ -286,9 +239,14 @@ const WelcomeModal: React.FC = () => {
                             </Typography>
                         }
                     />
-                    <Button onClick={handleClose} disabled={loading}>
-                        {t('Close')}
-                    </Button>
+                    <Box>
+                        <Button variant="outlined" onClick={handleOpenHelp} disabled={loading} sx={{ mr: 1 }}>
+                            {t('How to use')}
+                        </Button>
+                        <Button onClick={handleClose} disabled={loading}>
+                            {t('Close')}
+                        </Button>
+                    </Box>
                 </DialogActions>
             </Dialog>
         )
