@@ -40,6 +40,30 @@ export const helpTopics: HelpTopic[] = [
     ],
   },
   {
+    id: 'tableColumns',
+    titleKey: 'help.topics.tableColumns.title',
+    blocks: [
+      { type: 'paragraph', key: 'help.topics.tableColumns.p1' },
+      { type: 'paragraph', key: 'help.topics.tableColumns.p2' },
+      { type: 'paragraph', key: 'help.topics.tableColumns.p3' },
+      { type: 'paragraph', key: 'help.topics.tableColumns.p4' },
+      { type: 'paragraph', key: 'help.topics.tableColumns.p5' },
+    ],
+  },
+  {
+    id: 'rowOperations',
+    titleKey: 'help.topics.rowOperations.title',
+    blocks: [
+      { type: 'paragraph', key: 'help.topics.rowOperations.p1' },
+      { type: 'paragraph', key: 'help.topics.rowOperations.p2' },
+      { type: 'paragraph', key: 'help.topics.rowOperations.p3' },
+      { type: 'paragraph', key: 'help.topics.rowOperations.p4' },
+      { type: 'paragraph', key: 'help.topics.rowOperations.p5' },
+      { type: 'paragraph', key: 'help.topics.rowOperations.p6' },
+      { type: 'note', keys: ['help.topics.rowOperations.note1'] },
+    ],
+  },
+  {
     id: 'chartBars',
     titleKey: 'help.topics.chartBars.title',
     blocks: [
@@ -47,7 +71,16 @@ export const helpTopics: HelpTopic[] = [
       { type: 'paragraph', key: 'help.topics.chartBars.p2' },
       { type: 'paragraph', key: 'help.topics.chartBars.p3' },
       { type: 'paragraph', key: 'help.topics.chartBars.p4' },
+      { type: 'paragraph', key: 'help.topics.chartBars.p5' },
       { type: 'note', keys: ['help.topics.chartBars.note1'] },
+    ],
+  },
+  {
+    id: 'eventRows',
+    titleKey: 'help.topics.eventRows.title',
+    blocks: [
+      { type: 'paragraph', key: 'help.topics.eventRows.p1' },
+      { type: 'paragraph', key: 'help.topics.eventRows.p2' },
     ],
   },
   {
@@ -68,6 +101,7 @@ export const helpTopics: HelpTopic[] = [
       { type: 'example', code: 'sameas, 5', descKey: 'example_3' },
       { type: 'example', code: 'after, -1, -2', descKey: 'example_4' },
       { type: 'paragraph', key: 'help.topics.dependencies.p2' },
+      { type: 'paragraph', key: 'help.topics.dependencies.p3' },
       { type: 'note', keys: ['note_1', 'note_2', 'note_3'] },
     ],
   },
@@ -84,6 +118,7 @@ export const helpTopics: HelpTopic[] = [
       { type: 'example', code: '5+2', descKey: 'cp_example_3' },
       { type: 'example', code: '5-1', descKey: 'cp_example_4' },
       { type: 'paragraph', key: 'help.topics.criticalPath.p2' },
+      { type: 'paragraph', key: 'help.topics.criticalPath.p3' },
       { type: 'note', keys: ['cp_note_1', 'cp_note_2', 'cp_note_3'] },
     ],
   },
@@ -94,6 +129,7 @@ export const helpTopics: HelpTopic[] = [
       { type: 'paragraph', key: 'help.topics.daysOff.p1' },
       { type: 'paragraph', key: 'help.topics.daysOff.p2' },
       { type: 'paragraph', key: 'help.topics.daysOff.p3' },
+      { type: 'paragraph', key: 'help.topics.daysOff.p4' },
     ],
   },
   {
@@ -102,6 +138,7 @@ export const helpTopics: HelpTopic[] = [
     blocks: [
       { type: 'paragraph', key: 'help.topics.colors.p1' },
       { type: 'paragraph', key: 'help.topics.colors.p2' },
+      { type: 'paragraph', key: 'help.topics.colors.p3' },
     ],
   },
   {
@@ -110,6 +147,7 @@ export const helpTopics: HelpTopic[] = [
     blocks: [
       { type: 'paragraph', key: 'help.topics.notes.p1' },
       { type: 'paragraph', key: 'help.topics.notes.p2' },
+      { type: 'paragraph', key: 'help.topics.notes.p3' },
     ],
   },
   {
