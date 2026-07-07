@@ -45,6 +45,7 @@ export const useContextMenuOptions = ({
     const addRow = useAddRow();
     const insertCopiedRow = useInsertCopiedRow();
     const copiedRows = useSelector((state: RootState) => state.copiedRows.rows);
+    const showCriticalPath = useSelector((state: RootState) => state.uiFlags.showCriticalPath);
     const storeDataArray = useSelector(selectWbsDataArray);
     const colorState = useSelector((state: RootState) => state.color);
     const finalDataArray = useMemo(() => {
@@ -412,6 +413,15 @@ export const useContextMenuOptions = ({
             });
         }
 
+        // クリティカルパス表示のトグル。テーブル・チャートどちらの右クリックからも
+        // 切り替えられるようにトップレベルに置く(設定メニューのトグルと同じ状態)。
+        baseOptions.push({
+            children: t("Show Critical Path"),
+            onClick: () => dispatch(setShowCriticalPath(!showCriticalPath)),
+            checked: showCriticalPath,
+            path: String(pathCounter++)
+        });
+
         baseOptions.push({
             children: t("Functions"),
             items: [
@@ -479,7 +489,7 @@ export const useContextMenuOptions = ({
         });
 
         return baseOptions;
-    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting]);
+    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting, showCriticalPath]);
 
     return menuOptions;
 };
