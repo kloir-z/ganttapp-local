@@ -19,6 +19,7 @@ import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { useImeCellOverlay } from '../../hooks/useImeCellOverlay';
 import { buildWbsNumberMap } from '../../utils/wbsNumber';
 import { buildCpDisplayTextMap } from '../../utils/CriticalPath';
+import CpHelp from './CpHelp';
 
 const WBSInfo: React.FC = memo(() => {
   const activeModal = useSelector((state: RootState) => state.uiFlags.activeModal);
@@ -53,6 +54,10 @@ const WBSInfo: React.FC = memo(() => {
     selectedRowIds: [],
     selectedColumnIds: []
   });
+
+  const isCpColumnSelected = useMemo(() => {
+    return selectedRanges.selectedColumnIds.includes('cpPredecessors');
+  }, [selectedRanges.selectedColumnIds]);
 
   const { visibleColumns, visibleColumnIds } = useMemo(() => {
     let filteredColumns = columns.filter(column => column.visible);
@@ -282,6 +287,10 @@ const WBSInfo: React.FC = memo(() => {
       <ContextMenu
         targetRef={wbsRef}
         items={menuOptions}
+      />
+      <CpHelp
+        show={isCpColumnSelected}
+        wbsWidth={wbsWidth}
       />
     </div>
   );

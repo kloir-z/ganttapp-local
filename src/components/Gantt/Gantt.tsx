@@ -9,6 +9,7 @@ import GridVertical from '../Chart/GridVertical';
 import ChartRowComponent from '../Chart/ChartRowComponent';
 import EventRowComponent from '../Chart/EventRowComponent';
 import SeparatorRowComponent from '../Chart/SeparatorRowComponent';
+import CpArrowsOverlay from '../Chart/CpArrowsOverlay';
 import ResizeBar from '../WbsWidthResizer';
 import WBSInfo from '../Table/WBSInfo';
 import SeparatorRowLabelComponent from '../Table/SeparatorRowLabel';
@@ -553,6 +554,7 @@ function Gantt() {
                 return null;
               }
             })}
+            <CpArrowsOverlay filteredData={filteredData} dateArray={dateArray} />
           </div>
         </div>
       </div>

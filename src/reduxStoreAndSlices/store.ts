@@ -14,6 +14,7 @@ import { initializedEmptyData } from './initialData';
 import { initialRegularDaysOffSetting } from './initialHolidays';
 import { initialColumns } from './initialColumns';
 import { assignIds } from '../components/Table/utils/wbsHelpers';
+import { sanitizeCpPredecessors } from '../utils/CriticalPath';
 import { cdate } from 'cdate';
 
 export interface ExtendedColumn extends Column {
@@ -482,6 +483,26 @@ export const wbsDataSlice = createSlice({
         state.isSavedChanges = false;
       }
     },
+    // 選択行のうち表示順で最後の ChartRow を後続、それ以外を先行として、
+    // 後続の cpPredecessors に「追記」する(合流を作る)。createCpChain と違い上書きしない。
+    addCpPredecessors: (state, action: PayloadAction<string[]>) => {
+      const selectedRowIds = action.payload;
+      if (selectedRowIds.length < 2) return;
+      const chartRows = Object.values(state.data)
+        .filter(row => selectedRowIds.includes(row.id))
+        .filter(isChartRow);
+      if (chartRows.length < 2) return;
+      const successor = chartRows[chartRows.length - 1];
+      const existing = successor.cpPredecessors ?? [];
+      const merged = sanitizeCpPredecessors(
+        [...existing, ...chartRows.slice(0, -1).map(row => ({ predecessorId: row.id }))],
+        successor.id
+      );
+      if (JSON.stringify(merged) !== JSON.stringify(existing)) {
+        successor.cpPredecessors = merged;
+        state.isSavedChanges = false;
+      }
+    },
     // cpPredecessors を除去する。payload 省略時は全行が対象。
     clearCpPredecessors: (state, action: PayloadAction<string[] | undefined>) => {
       const targetIds = action.payload;
@@ -655,6 +676,7 @@ export const {
   redo,
   setIsSavedChangesStore,
   createCpChain,
+  addCpPredecessors,
   clearCpPredecessors,
   createTaskChain,
 } = wbsDataSlice.actions;

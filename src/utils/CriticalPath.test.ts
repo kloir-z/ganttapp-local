@@ -4,6 +4,7 @@ import {
   sanitizeCpPredecessors,
   parseCpPredecessorsText,
   formatCpPredecessorsText,
+  cpLinkKey,
 } from './CriticalPath';
 import { ChartRow, CpPredecessor, WBSData } from '../types/DataTypes';
 
@@ -214,6 +215,42 @@ describe('computeCriticalPath', () => {
     ]);
     const result = computeCriticalPath(data, NO_HOLIDAYS, ALL_WORKDAYS);
     expect(result.criticalIds).toEqual(new Set(['a', 'b', 'c', 'd']));
+  });
+
+  it('should mark tight links between critical tasks as critical links', () => {
+    const data = toData([
+      makeChartRow('a', 1, '2024/01/01', '2024/01/03'),
+      makeChartRow('b', 2, '2024/01/04', '2024/01/06', [{ predecessorId: 'a' }]),
+      makeChartRow('c', 3, '2024/01/04', '2024/01/05', [{ predecessorId: 'a' }]),
+    ]);
+    const result = computeCriticalPath(data, NO_HOLIDAYS, ALL_WORKDAYS);
+    expect(result.criticalLinkKeys.has(cpLinkKey('a', 'b'))).toBe(true);
+    // c は早く終わる(フロートあり)ので a→c はクリティカルリンクではない。
+    expect(result.criticalLinkKeys.has(cpLinkKey('a', 'c'))).toBe(false);
+  });
+
+  it('should not mark a slack link critical even when both endpoints are critical', () => {
+    // a(1/1-1/3) は b(1/4-1/10, 密着) 経由でクリティカル。
+    // d(1/8-1/10) も a を先行に持つがリンクには空きがあるため、a→d は灰色扱い。
+    const data = toData([
+      makeChartRow('a', 1, '2024/01/01', '2024/01/03'),
+      makeChartRow('b', 2, '2024/01/04', '2024/01/10', [{ predecessorId: 'a' }]),
+      makeChartRow('d', 3, '2024/01/08', '2024/01/10', [{ predecessorId: 'a' }]),
+    ]);
+    const result = computeCriticalPath(data, NO_HOLIDAYS, ALL_WORKDAYS);
+    expect(result.criticalIds).toEqual(new Set(['a', 'b', 'd']));
+    expect(result.criticalLinkKeys.has(cpLinkKey('a', 'b'))).toBe(true);
+    expect(result.criticalLinkKeys.has(cpLinkKey('a', 'd'))).toBe(false);
+  });
+
+  it('should treat lag as consuming link slack for critical links', () => {
+    // 2日の空きだが lag 2 が指定されているのでリンクに余裕はない。
+    const data = toData([
+      makeChartRow('a', 1, '2024/01/01', '2024/01/02'),
+      makeChartRow('b', 2, '2024/01/05', '2024/01/06', [{ predecessorId: 'a', lag: 2 }]),
+    ]);
+    const result = computeCriticalPath(data, NO_HOLIDAYS, ALL_WORKDAYS);
+    expect(result.criticalLinkKeys.has(cpLinkKey('a', 'b'))).toBe(true);
   });
 });
 

@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState, deleteRows, convertDisplayNameOnlyRowsToSeparator, toggleColumnVisibility, hideColumns, ExtendedColumn, createTaskChain, createCpChain, clearCpPredecessors, pushPastState, setSeparatorLevel, setMessageInfo } from '../reduxStoreAndSlices/store';
+import { RootState, deleteRows, convertDisplayNameOnlyRowsToSeparator, toggleColumnVisibility, hideColumns, ExtendedColumn, createTaskChain, createCpChain, addCpPredecessors, clearCpPredecessors, pushPastState, setSeparatorLevel, setMessageInfo } from '../reduxStoreAndSlices/store';
 import { setShowCriticalPath } from '../reduxStoreAndSlices/uiFlagSlice';
 import { setCopiedRows } from '../reduxStoreAndSlices/copiedRowsSlice';
 import { openRowDialog } from '../reduxStoreAndSlices/rowDialogSlice';
@@ -472,6 +472,20 @@ export const useContextMenuOptions = ({
                     path: `${pathCounter}.4`
                 },
                 {
+                    // 選択行のうち最後の行を後続、それ以外を先行として追記する(合流を作る)。
+                    // createCpChain と違い既存の CP 先行を上書きしない。
+                    children: t("Add critical path predecessors"),
+                    onClick: () => {
+                        if (selectedRowIds && selectedRowIds.length >= 2) {
+                            dispatch(pushPastState());
+                            dispatch(addCpPredecessors(selectedRowIds));
+                            dispatch(setShowCriticalPath(true));
+                        }
+                    },
+                    disabled: !selectedRowIds || selectedRowIds.length < 2,
+                    path: `${pathCounter}.5`
+                },
+                {
                     children: (selectedRowIds && selectedRowIds.length > 0) || entry
                         ? t("Clear critical path links for selected rows")
                         : t("Clear critical path links for all rows"),
@@ -482,7 +496,7 @@ export const useContextMenuOptions = ({
                         dispatch(pushPastState());
                         dispatch(clearCpPredecessors(targetIds));
                     },
-                    path: `${pathCounter}.5`
+                    path: `${pathCounter}.6`
                 }
             ],
             path: String(pathCounter++)

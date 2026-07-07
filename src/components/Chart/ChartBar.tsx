@@ -6,6 +6,7 @@ import { BarLabel, StyledBar } from '../../styles/GanttStyles';
 import AutoWidthInputBox from './AutoWidthInputBox';
 import { cdate } from 'cdate';
 import ProgressTag from './ProgressTag';
+import CpFloatTag from './CpFloatTag';
 
 interface ChartBarProps {
   startDate: string | null;
@@ -72,6 +73,9 @@ const MemoedChartBar: React.FC<ChartBarProps> = ({ startDate, endDate, dateArray
                 isBarDragged={isBarDragged}
               />
               <ProgressTag
+                entryId={entryId}
+              />
+              <CpFloatTag
                 entryId={entryId}
               />
             </BarLabel>

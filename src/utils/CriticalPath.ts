@@ -17,13 +17,18 @@ export interface CriticalPathResult {
   // ネットワーク参加タスクのトータルフロート(稼働日)。0 以下がクリティカル。
   floatByTaskId: { [id: string]: number };
   hasCycle: boolean;
+  // クリティカルなリンク(cpLinkKey 形式)。両端がクリティカルかつリンクスラック 0 以下。
+  criticalLinkKeys: Set<string>;
 }
 
 export const EMPTY_CRITICAL_PATH_RESULT: CriticalPathResult = {
   criticalIds: new Set<string>(),
   floatByTaskId: {},
   hasCycle: false,
+  criticalLinkKeys: new Set<string>(),
 };
+
+export const cpLinkKey = (predId: string, succId: string): string => `${predId}->${succId}`;
 
 const MAX_LAG = 999;
 // gapWorkdays の暴走ガード(日付異常時に無限走査しないため)。10年相当。
@@ -166,7 +171,18 @@ export const computeCriticalPath = (
   order.forEach(id => {
     if (floatByTaskId[id] <= 0) criticalIds.add(id);
   });
-  return { criticalIds, floatByTaskId, hasCycle };
+
+  // リンクのクリティカル判定: 両端がクリティカルで、かつリンク自体に余裕がない
+  // (先行を1日遅らせると後続が遅れる)リンクだけを赤矢印にする。
+  const criticalLinkKeys = new Set<string>();
+  links.forEach(link => {
+    const predFloat = floatByTaskId[link.predId];
+    const succFloat = floatByTaskId[link.succId];
+    if (predFloat === undefined || succFloat === undefined || predFloat > 0 || succFloat > 0) return;
+    const linkSlack = gapWorkdays(endOf(link.predId), startOf(link.succId), holidays, regularDaysOff) - 1 - link.lag;
+    if (linkSlack <= 0) criticalLinkKeys.add(cpLinkKey(link.predId, link.succId));
+  });
+  return { criticalIds, floatByTaskId, hasCycle, criticalLinkKeys };
 };
 
 // セル表示用テキスト: 先行タスクの現在の行番号(No)で表す。"3, 5+2, 7-1" 形式。
