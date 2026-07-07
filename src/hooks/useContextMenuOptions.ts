@@ -1,7 +1,8 @@
 import { useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState, deleteRows, convertDisplayNameOnlyRowsToSeparator, toggleColumnVisibility, hideColumns, ExtendedColumn, createTaskChain, pushPastState, setSeparatorLevel, setMessageInfo } from '../reduxStoreAndSlices/store';
+import { RootState, deleteRows, convertDisplayNameOnlyRowsToSeparator, toggleColumnVisibility, hideColumns, ExtendedColumn, createTaskChain, createCpChain, clearCpPredecessors, pushPastState, setSeparatorLevel, setMessageInfo } from '../reduxStoreAndSlices/store';
+import { setShowCriticalPath } from '../reduxStoreAndSlices/uiFlagSlice';
 import { setCopiedRows } from '../reduxStoreAndSlices/copiedRowsSlice';
 import { openRowDialog } from '../reduxStoreAndSlices/rowDialogSlice';
 import { updateAlias } from '../reduxStoreAndSlices/colorSlice';
@@ -389,7 +390,7 @@ export const useContextMenuOptions = ({
             const initialColumnOrder = [
                 'no', 'wbsNumber', 'displayName', 'color', 'plannedStartDate', 'plannedEndDate',
                 'plannedDays', 'actualStartDate', 'actualEndDate', 'progress', 'dependency',
-                'textColumn1', 'textColumn2', 'textColumn3', 'isIncludeHolidays'
+                'cpPredecessors', 'textColumn1', 'textColumn2', 'textColumn3', 'isIncludeHolidays'
             ];
 
             const columnSettingsItems: MenuItemProps[] = initialColumnOrder.reduce((acc: MenuItemProps[], columnId) => {
@@ -445,6 +446,33 @@ export const useContextMenuOptions = ({
                         (row.rowType === 'Chart' || row.rowType === 'Event')
                     ).length === 0,
                     path: `${pathCounter}.3`
+                },
+                {
+                    // 選択行を表示順に cpPredecessors で接続する(タスクチェーン作成のCP版)。
+                    // 完了後は結果がすぐ見えるようクリティカルパス表示も ON にする。
+                    children: t("Create critical path chain"),
+                    onClick: () => {
+                        if (selectedRowIds && selectedRowIds.length >= 2) {
+                            dispatch(pushPastState());
+                            dispatch(createCpChain(selectedRowIds));
+                            dispatch(setShowCriticalPath(true));
+                        }
+                    },
+                    disabled: !selectedRowIds || selectedRowIds.length < 2,
+                    path: `${pathCounter}.4`
+                },
+                {
+                    children: (selectedRowIds && selectedRowIds.length > 0) || entry
+                        ? t("Clear critical path links for selected rows")
+                        : t("Clear critical path links for all rows"),
+                    onClick: () => {
+                        const targetIds = selectedRowIds && selectedRowIds.length > 0
+                            ? selectedRowIds
+                            : entry ? [entry.id] : undefined;
+                        dispatch(pushPastState());
+                        dispatch(clearCpPredecessors(targetIds));
+                    },
+                    path: `${pathCounter}.5`
                 }
             ],
             path: String(pathCounter++)

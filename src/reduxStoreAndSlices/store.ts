@@ -457,6 +457,46 @@ export const wbsDataSlice = createSlice({
     setIsSavedChangesStore(state, action: PayloadAction<boolean>) {
       state.isSavedChanges = action.payload;
     },
+    // 選択行(表示順)の ChartRow を順に cpPredecessors で接続する。
+    // 既存の createTaskChain(日付連動の依存)とは独立で、日付は一切変更しない。
+    // 各行の CP 先行は「直前の選択 ChartRow 1件」で上書きされる。
+    createCpChain: (state, action: PayloadAction<string[]>) => {
+      const selectedRowIds = action.payload;
+      if (selectedRowIds.length < 2) return;
+      const chartRows = Object.values(state.data)
+        .filter(row => selectedRowIds.includes(row.id))
+        .filter(isChartRow);
+      if (chartRows.length < 2) return;
+      let hasChanges = false;
+      for (let i = 1; i < chartRows.length; i++) {
+        const current = chartRows[i];
+        const prev = chartRows[i - 1];
+        const existing = current.cpPredecessors ?? [];
+        const alreadyLinked = existing.length === 1 && existing[0].predecessorId === prev.id && !existing[0].lag;
+        if (!alreadyLinked) {
+          current.cpPredecessors = [{ predecessorId: prev.id }];
+          hasChanges = true;
+        }
+      }
+      if (hasChanges) {
+        state.isSavedChanges = false;
+      }
+    },
+    // cpPredecessors を除去する。payload 省略時は全行が対象。
+    clearCpPredecessors: (state, action: PayloadAction<string[] | undefined>) => {
+      const targetIds = action.payload;
+      let hasChanges = false;
+      Object.values(state.data).forEach(row => {
+        if (isChartRow(row) && row.cpPredecessors && row.cpPredecessors.length > 0
+          && (!targetIds || targetIds.includes(row.id))) {
+          row.cpPredecessors = [];
+          hasChanges = true;
+        }
+      });
+      if (hasChanges) {
+        state.isSavedChanges = false;
+      }
+    },
     createTaskChain: (state, action: PayloadAction<string[]>) => {
       const selectedRowIds = action.payload;
       if (selectedRowIds.length < 2) return;
@@ -614,6 +654,8 @@ export const {
   undo,
   redo,
   setIsSavedChangesStore,
+  createCpChain,
+  clearCpPredecessors,
   createTaskChain,
 } = wbsDataSlice.actions;
 
