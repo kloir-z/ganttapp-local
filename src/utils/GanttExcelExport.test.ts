@@ -368,6 +368,17 @@ describe('buildGanttWorkbook', () => {
     expect(wb.worksheets[0].name).toBe('A B Plan v2');
   });
 
+  it('also strips the full-width CJK variants of forbidden chars (Excel rejects them too)', async () => {
+    // A Japanese title like "…チュートリアル：Gantty…" carries a full-width colon
+    // (U+FF1A); Excel treats it like ":" and flags the file for repair if it
+    // survives into a sheet name. All of ：＼／？＊［］ must be stripped.
+    const data: { [id: string]: WBSData } = { r1: chartRow({}) };
+    const wb = await buildGanttWorkbook({ ...baseParams(data), title: 'レポート：A／B［v2］' });
+    const name = wb.worksheets[0].name;
+    expect(name).toBe('レポート A B v2');
+    expect(/[：＼／？＊［］:\\/?*[\]]/.test(name)).toBe(false);
+  });
+
   it('clamps a note body longer than Excel\'s 32,767-char cell limit', async () => {
     const data: { [id: string]: WBSData } = { r1: chartRow({}) };
     const notes: NotesExportData = {

@@ -145,11 +145,22 @@ const EXCEL_MAX_CELL_CHARS = 32767;
 const clampCellText = (s: string): string =>
   s.length > EXCEL_MAX_CELL_CHARS ? `${s.slice(0, EXCEL_MAX_CELL_CHARS - 1)}…` : s;
 
-// Turn an arbitrary string into a legal Excel worksheet name: strip the
-// characters Excel forbids ( : \ / ? * [ ] ), collapse whitespace and cap at 31
-// chars. Falls back when nothing legal remains (e.g. a title made only of slashes).
+// Turn an arbitrary string into a legal Excel worksheet name. Excel forbids
+// : \ / ? * [ ] — AND their full-width CJK variants ： ＼ ／ ？ ＊ ［ ］, which
+// it normalizes to the ASCII forms and rejects. A Japanese project title like
+// "…チュートリアル：Gantty…" carries a full-width colon (U+FF1A) into the sheet
+// name; leaving it in is exactly what made Excel flag the exported file for
+// repair. Also strip a leading/trailing apostrophe (also forbidden) and cap at
+// 31 chars. Falls back when nothing legal remains.
 const sanitizeSheetName = (raw: string, fallback: string): string => {
-  const cleaned = raw.replace(/[\\/?*[\]:]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31);
+  const cleaned = raw
+    // ASCII forbidden set, then their full-width variants ＼ ／ ？ ＊ ［ ］ ：.
+    .replace(/[\\/?*[\]:＼／？＊［］：]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 31)
+    .replace(/^'+|'+$/g, '')
+    .trim();
   return cleaned || fallback;
 };
 
