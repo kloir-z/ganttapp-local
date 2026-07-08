@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
-import { buildGanttWorkbook, buildGanttXlsxBuffer } from './GanttExcelExport';
-import { ChartRow, SeparatorRow, WBSData } from '../types/DataTypes';
+import { buildGanttWorkbook, buildGanttXlsxBuffer, htmlToPlainText, NotesExportData } from './GanttExcelExport';
+import { ChartRow, EventRow, SeparatorRow, WBSData } from '../types/DataTypes';
 import { ExtendedColumn } from '../reduxStoreAndSlices/store';
 
 const t = ((key: string) => key) as any;
@@ -24,6 +24,13 @@ const chartRow = (overrides: Partial<ChartRow>): ChartRow => ({
 const sepRow = (overrides: Partial<SeparatorRow>): SeparatorRow => ({
   no: 2, id: 's1', rowType: 'Separator', displayName: 'Phase 1', isCollapsed: false,
   level: 0, minStartDate: '2024/06/03', maxEndDate: '2024/06/10', ...overrides,
+});
+
+const eventRow = (overrides: Partial<EventRow>): EventRow => ({
+  no: 1, id: 'e1', rowType: 'Event', displayName: 'Milestones', color: '',
+  plannedStartDate: '', plannedEndDate: '', plannedDays: null,
+  actualStartDate: '', actualEndDate: '', progress: '',
+  textColumn1: '', textColumn2: '', textColumn3: '', eventData: [], ...overrides,
 });
 
 const baseParams = (data: { [id: string]: WBSData }) => ({
@@ -238,5 +245,163 @@ describe('buildGanttWorkbook', () => {
     // Only the separator should be rendered (row 3); row 4 must be empty.
     expect(ws.getRow(3).getCell(2).value).toBe('Phase 1');
     expect(ws.getRow(4).getCell(2).value ?? '').toBe('');
+  });
+
+  it('labels planned event bars with their per-event name but leaves actual ones unlabeled', async () => {
+    const data: { [id: string]: WBSData } = {
+      e1: eventRow({
+        eventData: [
+          { isPlanned: true, eachDisplayName: 'Kickoff', startDate: '2024/06/05', endDate: '2024/06/05' },
+          { isPlanned: false, eachDisplayName: 'Delivered', startDate: '2024/06/12', endDate: '2024/06/12' },
+        ],
+      }),
+    };
+    const wb = await buildGanttWorkbook(baseParams(data));
+    const ws = wb.worksheets[0];
+    // 4 visible WBS cols; date grid starts at col 5 (06/01). 06/05 -> col 9, 06/12 -> col 16.
+    expect(ws.getRow(3).getCell(9).value).toBe('Kickoff');       // planned event -> labeled
+    expect(ws.getRow(3).getCell(16).value ?? '').toBe('');        // actual event -> no label
+    // The actual event's bar cell is still painted even though it carries no label.
+    expect((ws.getRow(3).getCell(16).fill as any)?.fgColor?.argb).toBeTruthy();
+  });
+
+  it('does not append a Notes worksheet when no notes are provided', async () => {
+    const data: { [id: string]: WBSData } = { r1: chartRow({}) };
+    const wb = await buildGanttWorkbook(baseParams(data));
+    expect(wb.worksheets).toHaveLength(1);
+  });
+
+  it('appends a Notes worksheet with the notepad tree and per-row notes', async () => {
+    const data: { [id: string]: WBSData } = { r1: chartRow({ id: 'r1', displayName: 'Task A' }) };
+    const notes: NotesExportData = {
+      treeData: [
+        {
+          key: 'n1', title: 'Parent', updatedAt: '2024/06/01T10:00:00',
+          children: [{ key: 'n2', title: 'Child' }],
+        },
+      ],
+      noteData: {
+        n1: '<p>Hello <strong>world</strong></p><p>line2</p>',
+        n2: '<ul><li>a</li><li>b</li></ul>',
+      },
+      rowNoteData: { r1: '<p>row note body</p>', missing: '   ' },
+    };
+    const wb = await buildGanttWorkbook({ ...baseParams(data), notes });
+    expect(wb.worksheets).toHaveLength(2);
+    const nws = wb.worksheets[1];
+
+    // Tree section: title + header + two nodes (Parent, indented Child).
+    expect(nws.getRow(1).getCell(1).value).toBe('Notes');
+    expect(nws.getRow(3).getCell(1).value).toBe('Parent');
+    expect(nws.getRow(3).getCell(2).value).toBe('Hello world\nline2');
+    expect(nws.getRow(4).getCell(1).value).toBe('Child');
+    expect((nws.getRow(4).getCell(1).alignment as any)?.indent).toBe(1);
+    expect(nws.getRow(4).getCell(2).value).toBe('• a\n• b');
+
+    // Row-notes section: blank-only entries are dropped; the real one is labeled
+    // with its WBS number + task name.
+    expect(nws.getRow(6).getCell(1).value).toBe('Row Notes');
+    expect(nws.getRow(8).getCell(1).value).toBe('1  Task A');
+    expect(nws.getRow(8).getCell(2).value).toBe('row note body');
+  });
+
+  it('gives the Notes sheet its own ignoredErrors range covering its used cells', async () => {
+    const data: { [id: string]: WBSData } = { r1: chartRow({}) };
+    const notes: NotesExportData = {
+      treeData: [{ key: 'n1', title: 'Note' }],
+      noteData: { n1: '<p>body</p>' },
+      rowNoteData: {},
+    };
+    const buffer = await buildGanttXlsxBuffer({ ...baseParams(data), notes });
+    const zip = await JSZip.loadAsync(buffer);
+    const xml = await zip.file('xl/worksheets/sheet2.xml')!.async('string');
+    expect(xml).toContain('<ignoredErrors>');
+    expect(xml.trimEnd().endsWith('</ignoredErrors></worksheet>')).toBe(true);
+  });
+
+  it('joins two planned event labels that start in the same cell instead of dropping one', async () => {
+    const data: { [id: string]: WBSData } = {
+      e1: eventRow({
+        eventData: [
+          { isPlanned: true, eachDisplayName: 'Design', startDate: '2024/06/05', endDate: '2024/06/05' },
+          { isPlanned: true, eachDisplayName: 'Review', startDate: '2024/06/05', endDate: '2024/06/07' },
+        ],
+      }),
+    };
+    const wb = await buildGanttWorkbook(baseParams(data));
+    // Both events start 06/05 -> col 9; the label must carry both names.
+    expect(wb.worksheets[0].getRow(3).getCell(9).value).toBe('Design / Review');
+  });
+
+  it("does not paint an event row's own planned/actual dates as bars (chart shows only eventData)", async () => {
+    const data: { [id: string]: WBSData } = {
+      e1: eventRow({
+        plannedStartDate: '2024/06/05', plannedEndDate: '2024/06/07',
+        actualStartDate: '2024/06/05', actualEndDate: '2024/06/07',
+        eventData: [],
+      }),
+    };
+    const wb = await buildGanttWorkbook(baseParams(data));
+    const ws = wb.worksheets[0];
+    // 06/05 -> col 9 (a plain weekday). With empty eventData nothing should fill it.
+    expect((ws.getRow(3).getCell(9).fill as any)?.fgColor?.argb).toBeFalsy();
+    // The left WBS table still shows the typed planned start date, as on screen.
+    expect(ws.getRow(3).getCell(3).value).toBeTruthy();
+  });
+
+  it('renames the Notes sheet case-insensitively so a "notes"-titled project still exports', async () => {
+    const data: { [id: string]: WBSData } = { r1: chartRow({}) };
+    const notes: NotesExportData = {
+      treeData: [{ key: 'n1', title: 'Note' }], noteData: { n1: '<p>x</p>' }, rowNoteData: {},
+    };
+    // Gantt sheet becomes "notes"; the Notes sheet ("Notes") collides case-insensitively.
+    const wb = await buildGanttWorkbook({ ...baseParams(data), title: 'notes', notes });
+    expect(wb.worksheets).toHaveLength(2);
+    expect(wb.worksheets[0].name).toBe('notes');
+    expect(wb.worksheets[1].name).toBe('Notes (2)');
+  });
+
+  it('sanitizes Excel-forbidden characters out of the sheet name derived from the title', async () => {
+    const data: { [id: string]: WBSData } = { r1: chartRow({}) };
+    const wb = await buildGanttWorkbook({ ...baseParams(data), title: 'A/B: Plan [v2]' });
+    // : \ / ? * [ ] are illegal in sheet names; they are replaced with spaces.
+    expect(wb.worksheets[0].name).toBe('A B Plan v2');
+  });
+
+  it('clamps a note body longer than Excel\'s 32,767-char cell limit', async () => {
+    const data: { [id: string]: WBSData } = { r1: chartRow({}) };
+    const notes: NotesExportData = {
+      treeData: [{ key: 'n1', title: 'Big' }],
+      noteData: { n1: `<p>${'x'.repeat(40000)}</p>` },
+      rowNoteData: {},
+    };
+    const wb = await buildGanttWorkbook({ ...baseParams(data), notes });
+    const content = wb.worksheets[1].getRow(3).getCell(2).value as string;
+    expect(content.length).toBe(32767);
+    expect(content.endsWith('…')).toBe(true);
+  });
+});
+
+describe('htmlToPlainText', () => {
+  it('turns <br> and block-closing tags into newlines', () => {
+    expect(htmlToPlainText('<p>a</p><p>b</p>')).toBe('a\nb');
+    expect(htmlToPlainText('a<br>b')).toBe('a\nb');
+    expect(htmlToPlainText('a<br/>b')).toBe('a\nb');
+  });
+
+  it('renders list items as bullet lines', () => {
+    expect(htmlToPlainText('<ul><li>x</li><li>y</li></ul>')).toBe('• x\n• y');
+  });
+
+  it('strips inline tags and decodes entities (with &amp; resolved last)', () => {
+    expect(htmlToPlainText('<p><strong>Bold</strong> &amp; <em>it</em></p>')).toBe('Bold & it');
+    expect(htmlToPlainText('&lt;tag&gt;&nbsp;end')).toBe('<tag> end');
+    expect(htmlToPlainText('&amp;lt;')).toBe('&lt;');
+  });
+
+  it('returns an empty string for empty or content-free markup', () => {
+    expect(htmlToPlainText('')).toBe('');
+    expect(htmlToPlainText(undefined)).toBe('');
+    expect(htmlToPlainText('<p><br></p>')).toBe('');
   });
 });

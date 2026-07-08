@@ -27,6 +27,23 @@ import { formatCpPredecessorsText } from './CriticalPath';
 import { collectVisibleRows, computeWbsNumbers } from './wbsNumber';
 import { standardizeLongDateFormat, standardizeShortDateFormat } from '../components/Table/utils/wbsHelpers';
 
+// Minimal shape of a notes-tree node needed for the export. Structurally
+// compatible with notesSlice's ExtendedTreeDataNode, but declared locally so this
+// module keeps no antd/DOM dependency and stays independently unit-testable.
+export interface ExcelNoteNode {
+  key: string | number | bigint;
+  title?: unknown;
+  children?: ExcelNoteNode[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface NotesExportData {
+  treeData: ExcelNoteNode[];
+  noteData: { [key: string]: string };
+  rowNoteData: { [rowId: string]: string };
+}
+
 export interface BuildGanttWorkbookParams {
   data: { [id: string]: WBSData };
   columns: ExtendedColumn[];
@@ -41,6 +58,8 @@ export interface BuildGanttWorkbookParams {
   title: string;
   cellWidth: number;
   t: TFunction;
+  // Optional notes payload; when present a second "Notes" worksheet is appended.
+  notes?: NotesExportData;
 }
 
 type RGB = { r: number; g: number; b: number };
@@ -120,6 +139,213 @@ const toKey = (dateStr: string | undefined | null): string => {
   }
 };
 
+// Excel's hard per-cell character limit; longer strings make Excel show a
+// "repaired records" dialog on open, so note bodies/titles are clamped to it.
+const EXCEL_MAX_CELL_CHARS = 32767;
+const clampCellText = (s: string): string =>
+  s.length > EXCEL_MAX_CELL_CHARS ? `${s.slice(0, EXCEL_MAX_CELL_CHARS - 1)}…` : s;
+
+// Turn an arbitrary string into a legal Excel worksheet name: strip the
+// characters Excel forbids ( : \ / ? * [ ] ), collapse whitespace and cap at 31
+// chars. Falls back when nothing legal remains (e.g. a title made only of slashes).
+const sanitizeSheetName = (raw: string, fallback: string): string => {
+  const cleaned = raw.replace(/[\\/?*[\]:]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31);
+  return cleaned || fallback;
+};
+
+// Decode the handful of HTML entities Quill emits. &amp; is handled LAST so an
+// input like "&amp;lt;" round-trips to the literal "&lt;" rather than to "<".
+const decodeHtmlEntities = (s: string): string =>
+  s
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;/g, "'")
+    .replace(/&apos;/gi, "'")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_m, h: string) => {
+      const code = parseInt(h, 16);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : '';
+    })
+    .replace(/&#(\d+);/g, (_m, d: string) => {
+      const code = parseInt(d, 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : '';
+    })
+    .replace(/&amp;/gi, '&');
+
+// Convert Quill's stored rich-text HTML into readable plain text for a spreadsheet
+// cell: <br> and block-closing tags become newlines, list items get a bullet, all
+// remaining tags are stripped and entities decoded. Pure (no DOM) so it stays
+// unit-testable and this module keeps no browser dependency.
+export const htmlToPlainText = (html: string | undefined | null): string => {
+  if (!html) return '';
+  let s = String(html);
+  s = s.replace(/<br\s*\/?>/gi, '\n');
+  s = s.replace(/<li[^>]*>/gi, '\n• ');
+  s = s.replace(/<\/(p|div|ul|ol|h[1-6]|blockquote|pre|tr|table)>/gi, '\n');
+  s = s.replace(/<[^>]+>/g, '');
+  s = decodeHtmlEntities(s);
+  s = s.replace(/\r\n?/g, '\n');
+  s = s.split('\n').map((line) => line.replace(/[ \t]+$/g, '')).join('\n');
+  s = s.replace(/\n{3,}/g, '\n\n');
+  return s.trim();
+};
+
+// Depth-first flatten of the notes tree into render order, carrying each node's
+// nesting depth so the export can indent titles like the on-screen tree.
+const flattenNoteTree = (
+  nodes: ExcelNoteNode[],
+  depth = 0,
+  out: { node: ExcelNoteNode; depth: number }[] = [],
+): { node: ExcelNoteNode; depth: number }[] => {
+  for (const node of nodes) {
+    out.push({ node, depth });
+    if (node.children && node.children.length > 0) {
+      flattenNoteTree(node.children, depth + 1, out);
+    }
+  }
+  return out;
+};
+
+// Format a stored ISO-ish note timestamp for display; falls back to the raw
+// string if it can't be parsed.
+const formatNoteTimestamp = (s: string | undefined): string => {
+  if (!s) return '';
+  try {
+    return cdate(s).format('YYYY/MM/DD HH:mm');
+  } catch {
+    return s;
+  }
+};
+
+// Roughly how many wrapped lines a string occupies in a column `chars` wide, so
+// the row height can grow to reveal wrapped note bodies (exceljs has no auto-fit).
+// CJK text is wider than this assumes, but over-estimating height is harmless.
+const estimateWrappedLines = (text: string, chars: number): number => {
+  if (!text) return 1;
+  let lines = 0;
+  for (const seg of text.split('\n')) {
+    lines += Math.max(1, Math.ceil((seg.length || 1) / Math.max(1, chars)));
+  }
+  return Math.max(1, lines);
+};
+
+const NOTE_TITLE_COL_CHARS = 30;
+const NOTE_CONTENT_COL_CHARS = 88;
+
+// Append a "Notes" worksheet: the hierarchical notepad tree (title + plain-text
+// body + last-updated) followed by an optional per-row (task-attached) notes
+// section. Skips entirely when there is no note content to show.
+const addNotesWorksheet = (
+  wb: Workbook,
+  notes: NotesExportData,
+  data: { [id: string]: WBSData },
+  rows: WBSData[],
+  wbsNumbers: string[],
+  t: TFunction,
+): void => {
+  const treeNodes = flattenNoteTree(notes.treeData || []);
+  const rowNoteEntries = Object.keys(notes.rowNoteData || {})
+    .map((id) => ({ id, text: htmlToPlainText(notes.rowNoteData[id]) }))
+    .filter((e) => e.text.trim() !== '');
+  const hasTree = treeNodes.length > 0;
+  const hasRowNotes = rowNoteEntries.length > 0;
+  if (!hasTree && !hasRowNotes) return;
+
+  // exceljs rejects duplicate sheet names case-insensitively, so the collision
+  // check must be case-insensitive too (a project titled "notes" would otherwise
+  // slip past and make addWorksheet throw, aborting the whole export).
+  let name = sanitizeSheetName(t('Notes'), 'Notes');
+  if (wb.worksheets.some((w) => w.name.toLowerCase() === name.toLowerCase())) {
+    name = sanitizeSheetName(`${name} (2)`, 'Notes (2)');
+  }
+  const ws = wb.addWorksheet(name, { views: [{ showGridLines: false }] });
+  ws.columns = [{ width: 34 }, { width: 92 }, { width: 20 }];
+
+  const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFEDF1F5' } };
+  const writeSectionTitle = (rowIdx: number, text: string) => {
+    const cell = ws.getRow(rowIdx).getCell(1);
+    cell.value = text;
+    cell.font = { name: FONT, bold: true, size: 12, color: { argb: 'FF333333' } };
+  };
+  const writeHeader = (rowIdx: number, labels: string[]) => {
+    const row = ws.getRow(rowIdx);
+    labels.forEach((label, i) => {
+      const cell = row.getCell(i + 1);
+      cell.value = label;
+      cell.font = { name: FONT, bold: true, size: 10, color: { argb: 'FF333333' } };
+      cell.alignment = { horizontal: 'left', vertical: 'middle' };
+      cell.fill = headerFill;
+      cell.border = { bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } } };
+    });
+  };
+
+  let r = 1;
+  if (hasTree) {
+    writeSectionTitle(r, t('Notes'));
+    r += 1;
+    writeHeader(r, [t('Note Title'), t('Note Content'), t('Note Updated')]);
+    r += 1;
+    treeNodes.forEach(({ node, depth }) => {
+      const title = typeof node.title === 'string' ? node.title : '';
+      const content = htmlToPlainText(notes.noteData[String(node.key)] || '');
+      const displayTitle = title || content.split('\n')[0].slice(0, 40) || '-';
+      const row = ws.getRow(r);
+      const titleCell = row.getCell(1);
+      titleCell.value = clampCellText(displayTitle);
+      titleCell.font = { name: FONT, size: 10, bold: depth === 0 };
+      titleCell.alignment = {
+        horizontal: 'left', vertical: 'top', wrapText: true, ...(depth > 0 ? { indent: depth } : {}),
+      };
+      const contentCell = row.getCell(2);
+      contentCell.value = clampCellText(content);
+      contentCell.font = { name: FONT, size: 9 };
+      contentCell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+      const updCell = row.getCell(3);
+      updCell.value = formatNoteTimestamp(node.updatedAt);
+      updCell.font = { name: FONT, size: 9, color: { argb: 'FF666666' } };
+      updCell.alignment = { horizontal: 'left', vertical: 'top' };
+      const lineCount = Math.max(
+        estimateWrappedLines(displayTitle, Math.max(6, NOTE_TITLE_COL_CHARS - depth * 2)),
+        estimateWrappedLines(content, NOTE_CONTENT_COL_CHARS),
+      );
+      row.height = Math.min(409, Math.max(15, lineCount * 13.5));
+      r += 1;
+    });
+  }
+
+  if (hasRowNotes) {
+    if (hasTree) r += 1; // blank spacer row between the two sections
+    writeSectionTitle(r, t('Row Notes'));
+    r += 1;
+    writeHeader(r, [t('Note Row'), t('Note Content')]);
+    r += 1;
+    const rowIdToWbs: { [id: string]: string } = {};
+    rows.forEach((row, i) => { rowIdToWbs[row.id] = wbsNumbers[i] || ''; });
+    rowNoteEntries.forEach(({ id, text }) => {
+      const target = data[id];
+      const targetName = target ? target.displayName || '' : '';
+      const wbsNo = rowIdToWbs[id] || '';
+      const label = [wbsNo, targetName].filter(Boolean).join('  ') || id;
+      const row = ws.getRow(r);
+      const labelCell = row.getCell(1);
+      labelCell.value = clampCellText(label);
+      labelCell.font = { name: FONT, size: 10 };
+      labelCell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+      const contentCell = row.getCell(2);
+      contentCell.value = clampCellText(text);
+      contentCell.font = { name: FONT, size: 9 };
+      contentCell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+      const lineCount = Math.max(
+        estimateWrappedLines(label, NOTE_TITLE_COL_CHARS),
+        estimateWrappedLines(text, NOTE_CONTENT_COL_CHARS),
+      );
+      row.height = Math.min(409, Math.max(15, lineCount * 13.5));
+      r += 1;
+    });
+  }
+};
+
 // Map a stored WBS column id to its display text for a given row.
 const cellTextFor = (
   columnId: string,
@@ -184,21 +410,20 @@ const croppedDateCount = (
   data: { [id: string]: WBSData },
 ): number => {
   let maxKey = '';
+  const fold = (d: string | undefined) => {
+    const k = toKey(d);
+    if (k > maxKey) maxKey = k;
+  };
   Object.values(data).forEach((row) => {
-    if (isChartRow(row) || isEventRow(row)) {
-      [row.plannedEndDate, row.actualEndDate].forEach((d) => {
-        const k = toKey(d);
-        if (k > maxKey) maxKey = k;
-      });
-      if (isEventRow(row)) {
-        row.eventData?.forEach((e) => {
-          const k = toKey(e.endDate);
-          if (k > maxKey) maxKey = k;
-        });
-      }
+    if (isChartRow(row)) {
+      fold(row.plannedEndDate);
+      fold(row.actualEndDate);
+    } else if (isEventRow(row)) {
+      // Only eventData bars appear on the chart for event rows, so the crop must
+      // key off those end dates — not the row's own (unrendered) planned/actual.
+      row.eventData?.forEach((e) => fold(e.endDate));
     } else if (isSeparatorRow(row)) {
-      const k = toKey(row.maxEndDate);
-      if (k > maxKey) maxKey = k;
+      fold(row.maxEndDate);
     }
   });
   if (!maxKey) return dateArray.length;
@@ -281,7 +506,7 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
 
   const wb = new Workbook();
   wb.creator = 'Gantty';
-  const ws = wb.addWorksheet(title ? title.slice(0, 28) : 'Gantt', {
+  const ws = wb.addWorksheet(sanitizeSheetName(title, 'Gantt'), {
     // Hide Excel's default gridlines (they read darker than the chart's faint
     // day lines); every visible line below is drawn explicitly instead.
     views: [{ state: 'frozen', xSplit: wbsColumns.length, ySplit: 2, showGridLines: false }],
@@ -431,11 +656,10 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
       aStart = toKey(row.actualStartDate);
       aEnd = toKey(row.actualEndDate);
     } else if (isEventRow(row)) {
+      // Event rows render ONLY their eventData bars on the chart — never the row's
+      // own planned/actual date fields — so leave pStart/pEnd/aStart/aEnd empty and
+      // paint just the per-event ranges, matching the on-screen chart exactly.
       plannedColor = parseColor(resolvePlannedColor(row.color, colors, fallbackColor));
-      pStart = toKey(row.plannedStartDate);
-      pEnd = toKey(row.plannedEndDate);
-      aStart = toKey(row.actualStartDate);
-      aEnd = toKey(row.actualEndDate);
       (row.eventData || []).forEach((e) => {
         eventRanges.push({ start: toKey(e.startDate), end: toKey(e.endDate), planned: e.isPlanned });
       });
@@ -497,6 +721,27 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
       }
     }
 
+    // Label each planned event bar with its per-event name, mirroring the chart:
+    // on screen only planned event bars show a label (actual ones never do), and
+    // each event's name is written into the first cell of its own date span.
+    if (isEventRow(row)) {
+      (row.eventData || []).forEach((e) => {
+        if (!e.isPlanned || !e.eachDisplayName) return;
+        const eStart = toKey(e.startDate);
+        const eEnd = toKey(e.endDate);
+        if (eStart === '' || eEnd === '') return;
+        const firstIdx = dayInfos.findIndex((info) => info.key >= eStart && info.key <= eEnd);
+        if (firstIdx === -1) return;
+        const labelCell = excelRow.getCell(wbsColCount + firstIdx + 1);
+        // Two planned events that start in the same cell would collide; a cell
+        // holds one value, so join their names rather than silently dropping one.
+        const existing = typeof labelCell.value === 'string' ? labelCell.value : '';
+        labelCell.value = existing ? `${existing} / ${e.eachDisplayName}` : e.eachDisplayName;
+        labelCell.font = { name: FONT, size: 9, color: { argb: 'FF000000' } };
+        labelCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: false, indent: 0 };
+      });
+    }
+
     // Echo the separator name onto the chart side too (the live chart shows it at
     // the left of the band). Kept understated in gray so it doesn't compete with
     // the table-side name. It overflows right across the light-blue band.
@@ -530,34 +775,23 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
     }
   });
 
+  // Append the notes worksheet (notepad tree + per-row notes) when provided.
+  if (params.notes) {
+    addNotesWorksheet(wb, params.notes, data, rows, wbsNumbers, t);
+  }
+
   return wb;
 };
 
-// 1-based column index -> spreadsheet letter (1 -> A, 27 -> AA).
-const colLetter = (n: number): string => {
-  let s = '';
-  let num = n;
-  while (num > 0) {
-    const rem = (num - 1) % 26;
-    s = String.fromCharCode(65 + rem) + s;
-    num = Math.floor((num - 1) / 26);
-  }
-  return s || 'A';
-};
-
 // Build the workbook and serialize it to xlsx bytes, then inject an <ignoredErrors>
-// block into the sheet XML. exceljs (4.x) has no API for this, so we patch the zip
-// directly. This suppresses Excel's green-triangle warnings for the cells we
+// block into every sheet's XML. exceljs (4.x) has no API for this, so we patch the
+// zip directly. This suppresses Excel's green-triangle warnings for the cells we
 // intentionally store as text: numeric strings (WBS no., days, progress, day
-// headers) and short date strings Excel reads as two-digit-year dates.
+// headers) and short date strings Excel reads as two-digit-year dates. The sqref
+// is taken from each sheet's own <dimension> so it always covers exactly that
+// sheet's used range (the notes sheet is a different size from the Gantt sheet).
 export const buildGanttXlsxBuffer = async (params: BuildGanttWorkbookParams): Promise<Uint8Array> => {
   const wb = await buildGanttWorkbook(params);
-  const ws = wb.worksheets[0];
-  const lastCol = colLetter(Math.max(1, ws.columnCount));
-  const lastRow = Math.max(1, ws.rowCount);
-  const sqref = `A1:${lastCol}${lastRow}`;
-  const ignored = `<ignoredErrors><ignoredError sqref="${sqref}" numberStoredAsText="1" twoDigitTextYear="1"/></ignoredErrors>`;
-
   const raw = await wb.xlsx.writeBuffer();
   const zip = await JSZip.loadAsync(raw as ArrayBuffer);
   const sheetPaths = Object.keys(zip.files).filter((p) => /^xl\/worksheets\/sheet\d+\.xml$/.test(p));
@@ -565,12 +799,14 @@ export const buildGanttXlsxBuffer = async (params: BuildGanttWorkbookParams): Pr
     const file = zip.file(path);
     if (!file) continue;
     let xml = await file.async('string');
-    if (!xml.includes('<ignoredErrors')) {
-      // <ignoredErrors> must be the last child group before </worksheet> in our
-      // output (no drawing/tableParts are emitted), so this placement is valid.
-      xml = xml.replace('</worksheet>', `${ignored}</worksheet>`);
-      zip.file(path, xml);
-    }
+    if (xml.includes('<ignoredErrors')) continue;
+    const dimMatch = xml.match(/<dimension ref="([^"]+)"\s*\/>/);
+    const sqref = dimMatch ? dimMatch[1] : 'A1';
+    const ignored = `<ignoredErrors><ignoredError sqref="${sqref}" numberStoredAsText="1" twoDigitTextYear="1"/></ignoredErrors>`;
+    // <ignoredErrors> must be the last child group before </worksheet> in our
+    // output (no drawing/tableParts are emitted), so this placement is valid.
+    xml = xml.replace('</worksheet>', `${ignored}</worksheet>`);
+    zip.file(path, xml);
   }
   return zip.generateAsync({ type: 'uint8array' });
 };
