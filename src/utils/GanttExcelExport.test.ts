@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { buildGanttWorkbook, buildGanttXlsxBuffer, htmlToPlainText, NotesExportData } from './GanttExcelExport';
+import { buildGanttWorkbook, buildGanttXlsxBuffer, htmlToPlainText, noteContentToPlainText, NotesExportData } from './GanttExcelExport';
 import { ChartRow, EventRow, SeparatorRow, WBSData } from '../types/DataTypes';
 import { ExtendedColumn } from '../reduxStoreAndSlices/store';
 
@@ -379,6 +379,23 @@ describe('buildGanttWorkbook', () => {
     expect(/[：＼／？＊［］:\\/?*[\]]/.test(name)).toBe(false);
   });
 
+  it('renders Quill-Delta-stored note bodies as plain text, not raw JSON', async () => {
+    // QuillEditor saves note bodies as JSON.stringify(editor.getContents()) —
+    // a Delta document — so the export must decode it (raw {"ops":[...]} text
+    // in a cell is the bug this guards against). HTML remains as a legacy form.
+    const data: { [id: string]: WBSData } = { r1: chartRow({ id: 'r1', displayName: 'Task A' }) };
+    const notes: NotesExportData = {
+      treeData: [{ key: 'n1', title: 'Delta note' }],
+      noteData: { n1: '{"ops":[{"insert":"tree body\\n"}]}' },
+      rowNoteData: { r1: '{"ops":[{"insert":"テストテスト\\n"}]}' },
+    };
+    const wb = await buildGanttWorkbook({ ...baseParams(data), notes });
+    const nws = wb.worksheets[1];
+    // Tree: title row 1, header 2, node 3. Row notes: spacer 4, title 5, header 6, entry 7.
+    expect(nws.getRow(3).getCell(2).value).toBe('tree body');
+    expect(nws.getRow(7).getCell(2).value).toBe('テストテスト');
+  });
+
   it('clamps a note body longer than Excel\'s 32,767-char cell limit', async () => {
     const data: { [id: string]: WBSData } = { r1: chartRow({}) };
     const notes: NotesExportData = {
@@ -414,5 +431,58 @@ describe('htmlToPlainText', () => {
     expect(htmlToPlainText('')).toBe('');
     expect(htmlToPlainText(undefined)).toBe('');
     expect(htmlToPlainText('<p><br></p>')).toBe('');
+  });
+});
+
+describe('noteContentToPlainText', () => {
+  const delta = (ops: unknown[]) => JSON.stringify({ ops });
+
+  it('decodes a simple Delta document', () => {
+    expect(noteContentToPlainText(delta([{ insert: 'テストテスト\n' }]))).toBe('テストテスト');
+    expect(noteContentToPlainText(delta([{ insert: 'line1\nline2\n' }]))).toBe('line1\nline2');
+  });
+
+  it('drops inline formatting attributes but keeps the text', () => {
+    expect(noteContentToPlainText(delta([
+      { insert: 'bold', attributes: { bold: true } },
+      { insert: ' and ' },
+      { insert: 'red', attributes: { color: '#ff0000' } },
+      { insert: '\n' },
+    ]))).toBe('bold and red');
+  });
+
+  it('renders list lines with markers (block attributes live on the newline)', () => {
+    expect(noteContentToPlainText(delta([
+      { insert: 'item1' }, { insert: '\n', attributes: { list: 'bullet' } },
+      { insert: 'done' }, { insert: '\n', attributes: { list: 'checked' } },
+      { insert: 'todo' }, { insert: '\n', attributes: { list: 'unchecked' } },
+    ]))).toBe('• item1\n☑ done\n☐ todo');
+  });
+
+  it('indents lines by their indent attribute', () => {
+    expect(noteContentToPlainText(delta([
+      { insert: 'child' }, { insert: '\n', attributes: { list: 'bullet', indent: 1 } },
+    ]))).toBe('  • child');
+  });
+
+  it('renders the divider embed as a horizontal line', () => {
+    expect(noteContentToPlainText(delta([
+      { insert: 'above\n' },
+      { insert: { divider: true } },
+      { insert: 'below\n' },
+    ]))).toBe('above\n──────────\nbelow');
+  });
+
+  it('falls back to HTML conversion for legacy non-Delta content', () => {
+    expect(noteContentToPlainText('<p>Hello <strong>world</strong></p>')).toBe('Hello world');
+    expect(noteContentToPlainText('plain text')).toBe('plain text');
+    expect(noteContentToPlainText('')).toBe('');
+    expect(noteContentToPlainText(undefined)).toBe('');
+    // JSON that isn't a Delta (no ops array) is treated as literal text.
+    expect(noteContentToPlainText('{"foo":1}')).toBe('{"foo":1}');
+  });
+
+  it('treats an empty Delta document as empty content', () => {
+    expect(noteContentToPlainText(delta([{ insert: '\n' }]))).toBe('');
   });
 });

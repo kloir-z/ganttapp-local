@@ -202,6 +202,73 @@ export const htmlToPlainText = (html: string | undefined | null): string => {
   return s.trim();
 };
 
+// One op of a Quill Delta document: a text run or an embed, with optional
+// formatting attributes (block attributes ride on the '\n' that ends a line).
+type DeltaOp = { insert?: unknown; attributes?: { [key: string]: unknown } };
+
+// Convert a Quill Delta op list to plain text. Inline formatting is dropped;
+// block formatting on each line-ending '\n' is rendered as a text prefix:
+// bullet/ordered lists get "• " (this app's toolbar has no ordered lists, so
+// numbering isn't reconstructed), checklists get "☑ "/"☐ ", and indent levels
+// become two leading spaces each. The only block embed the app registers is the
+// <hr> divider, rendered as a dashed line.
+const deltaToPlainText = (ops: DeltaOp[]): string => {
+  const lines: string[] = [];
+  let current = '';
+  const endLine = (attrs?: { [key: string]: unknown }) => {
+    const indent = typeof attrs?.indent === 'number' ? attrs.indent : 0;
+    const list = attrs?.list;
+    const marker =
+      list === 'bullet' || list === 'ordered' ? '• '
+        : list === 'checked' ? '☑ '
+          : list === 'unchecked' ? '☐ '
+            : '';
+    lines.push('  '.repeat(Math.max(0, indent)) + marker + current);
+    current = '';
+  };
+  for (const op of ops) {
+    const ins = op?.insert;
+    if (typeof ins === 'string') {
+      const parts = ins.split('\n');
+      for (let i = 0; i < parts.length; i += 1) {
+        current += parts[i];
+        if (i < parts.length - 1) endLine(op.attributes);
+      }
+    } else if (ins && typeof ins === 'object' && 'divider' in ins) {
+      if (current) endLine();
+      lines.push('──────────');
+    }
+  }
+  if (current) endLine();
+  // Trim only blank edge lines (not .trim(): a first line's leading spaces are
+  // meaningful indentation).
+  return lines
+    .map((line) => line.replace(/[ \t]+$/g, ''))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^\n+|\n+$/g, '');
+};
+
+// Convert a stored note body to plain text. QuillEditor persists note bodies as
+// a JSON-stringified Delta ({"ops":[...]}), while legacy/migrated projects (and
+// the generated tutorial sample) hold raw HTML — mirror the editor's own load
+// path (JSON.parse first, HTML fallback) so both render as readable text.
+export const noteContentToPlainText = (raw: string | undefined | null): string => {
+  if (!raw) return '';
+  const s = String(raw);
+  if (s.trimStart().startsWith('{')) {
+    try {
+      const parsed: unknown = JSON.parse(s);
+      if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { ops?: unknown }).ops)) {
+        return deltaToPlainText((parsed as { ops: DeltaOp[] }).ops);
+      }
+    } catch {
+      // Not valid JSON — treat as HTML below.
+    }
+  }
+  return htmlToPlainText(s);
+};
+
 // Depth-first flatten of the notes tree into render order, carrying each node's
 // nesting depth so the export can indent titles like the on-screen tree.
 const flattenNoteTree = (
@@ -257,7 +324,7 @@ const addNotesWorksheet = (
 ): void => {
   const treeNodes = flattenNoteTree(notes.treeData || []);
   const rowNoteEntries = Object.keys(notes.rowNoteData || {})
-    .map((id) => ({ id, text: htmlToPlainText(notes.rowNoteData[id]) }))
+    .map((id) => ({ id, text: noteContentToPlainText(notes.rowNoteData[id]) }))
     .filter((e) => e.text.trim() !== '');
   const hasTree = treeNodes.length > 0;
   const hasRowNotes = rowNoteEntries.length > 0;
@@ -299,7 +366,7 @@ const addNotesWorksheet = (
     r += 1;
     treeNodes.forEach(({ node, depth }) => {
       const title = typeof node.title === 'string' ? node.title : '';
-      const content = htmlToPlainText(notes.noteData[String(node.key)] || '');
+      const content = noteContentToPlainText(notes.noteData[String(node.key)] || '');
       const displayTitle = title || content.split('\n')[0].slice(0, 40) || '-';
       const row = ws.getRow(r);
       const titleCell = row.getCell(1);
