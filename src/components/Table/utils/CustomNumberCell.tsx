@@ -12,7 +12,8 @@ export interface CustomNumberCell extends Cell {
 export class CustomNumberCellTemplate implements CellTemplate<CustomNumberCell> {
   private wasEscKeyPressed = false;
   getCompatibleCell(uncertainCell: Uncertain<CustomNumberCell>): Compatible<CustomNumberCell> {
-    const text = uncertainCell.text || '';
+    // 日数列のように text へ数値が乗ったセルのコピー/ペーストも通るため、必ず文字列へ正規化する
+    const text = String(uncertainCell.text ?? '');
     const value = text.length;
     return { ...uncertainCell, text, value };
   }

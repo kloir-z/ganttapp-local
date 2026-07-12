@@ -33,14 +33,15 @@ export const createChartRow = (chartRow: ChartRow, columns: Column[], rowHeight:
       }
       return { type: "checkbox", checked: cellValue };
     } else if (columnId === "progress") {
-      return { type: "customNumber", text: cellValue, value: NaN, columnWidth };
+      return { type: "customNumber", text: String(cellValue), value: NaN, columnWidth };
     } else if (columnId === "dependency") {
       return { type: "customDependency", text: cellValue, value: NaN, columnWidth, rowId: chartRow.id };
     } else if (columnId === "cpPredecessors") {
       // 内部は行IDで保持し、表示は現在の行番号に変換したテキスト(呼び出し側で算出)。
       return { type: "customText", text: cpPredecessorsText, value: NaN, columnWidth };
     } else {
-      return { type: "customText", text: cellValue, value: NaN, columnWidth };
+      // plannedDays は数値で保持されているため、セルの text は必ず文字列に揃える
+      return { type: "customText", text: String(cellValue), value: NaN, columnWidth };
     }
   });
   return { rowId: chartRow.id, height: rowHeight, cells: rowCells, reorderable: true };

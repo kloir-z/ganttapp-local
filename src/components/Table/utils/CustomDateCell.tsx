@@ -26,7 +26,8 @@ export class CustomDateCellTemplate implements CellTemplate<CustomDateCell> {
     this.dateFormat = dateFormat;
   }
   getCompatibleCell(uncertainCell: Uncertain<CustomDateCell>): Compatible<CustomDateCell> {
-    let text = uncertainCell.text || '';
+    // 日数列のように text へ数値が乗ったセルのコピー/ペーストも通るため、必ず文字列へ正規化する
+    let text = String(uncertainCell.text ?? '');
     let longDate = ''
     let shortDate = ''
     text = standardizeLongDateFormatText(text, this.dateFormat) || '';

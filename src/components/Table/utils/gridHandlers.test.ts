@@ -144,6 +144,28 @@ describe('handleGridChanges (range paste)', () => {
     expect(types.filter(t => t === 'wbsData/pushPastState')).toHaveLength(0);
   });
 
+  test('数値textのセル(日数列のコピー等)をテキスト列に貼っても Too long エラーにならない', () => {
+    const dispatched: { type: string; payload?: unknown }[] = [];
+    const dispatch = ((action: { type: string }) => { dispatched.push(action); }) as never;
+
+    // 日数列のセルは text に数値が乗ったままコピーされることがある(旧データ形式)。
+    // それをテキスト列へペーストしたときの CellChange を再現する。
+    const numericTextChange = {
+      rowId: 'row0',
+      columnId: 'textColumn1',
+      type: 'customText',
+      previousCell: { type: 'customText', text: '', value: NaN },
+      newCell: { type: 'customText', text: 5 as unknown as string, value: NaN },
+    } as CellChange<CustomTextCell>;
+
+    handleGridChanges(dispatch, buildData(), [numericTextChange], columns, [], []);
+
+    const errorActions = dispatched.filter(a => a.type === 'wbsData/setMessageInfo');
+    expect(errorActions).toHaveLength(0);
+    const entire = dispatched.find(a => a.type === 'wbsData/setEntireData') as { payload: { [id: string]: ChartRow } };
+    expect(entire.payload.row0.textColumn1).toBe('5');
+  });
+
   test('予定日のみの変更では pushPastState が1回だけ dispatch される', () => {
     const dispatched: { type: string; payload?: unknown }[] = [];
     const dispatch = ((action: { type: string }) => { dispatched.push(action); }) as never;

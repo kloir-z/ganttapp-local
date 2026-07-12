@@ -85,7 +85,8 @@ const applyOtherChanges = (dispatch: AppDispatch, updatedData: { [id: string]: W
       const newCell = change.newCell;
       if (newCell.type === 'separator') {
         const separatorCell = newCell as SeparatorCell;
-        const updatedText = typeof separatorCell.text === 'string' ? separatorCell.text.trim() : separatorCell.text;
+        // text は数値textセル(日数列など)のペースト経由で非文字列になり得るため文字列へ正規化
+        const updatedText = String(separatorCell.text ?? '').trim();
         if (validateTextLength(updatedText, maxLength)) {
           updatedData[rowId] = {
             ...rowData,
@@ -115,7 +116,7 @@ const applyOtherChanges = (dispatch: AppDispatch, updatedData: { [id: string]: W
         };
       } else if (newCell.type === 'customText') {
         const customTextCell = newCell as CustomTextCell;
-        const updatedText = typeof customTextCell.text === 'string' ? customTextCell.text.trim() : customTextCell.text;
+        const updatedText = String(customTextCell.text ?? '').trim();
         if (validateTextLength(updatedText, maxLength)) {
           updatedData[rowId] = {
             ...rowData,
@@ -166,7 +167,7 @@ const applyOtherChanges = (dispatch: AppDispatch, updatedData: { [id: string]: W
         }
       } else if (fieldName === "plannedDays") {
         const customTextCell = newCell as CustomTextCell;
-        const updatedText = typeof customTextCell.text === 'string' ? customTextCell.text.trim() : customTextCell.text;
+        const updatedText = String(customTextCell.text ?? '').trim();
         const plannedDaysRaw = parseInt(updatedText, 10);
         if (isNaN(plannedDaysRaw) || plannedDaysRaw <= 0) {
           updatedData[rowId] = {
@@ -219,7 +220,7 @@ const applyOtherChanges = (dispatch: AppDispatch, updatedData: { [id: string]: W
         };
       } else if (newCell.type === 'customText') {
         const customTextCell = newCell as CustomTextCell;
-        const updatedText = typeof customTextCell.text === 'string' ? customTextCell.text.trim() : customTextCell.text;
+        const updatedText = String(customTextCell.text ?? '').trim();
         if (validateTextLength(updatedText, maxLength)) {
           updatedData[rowId] = {
             ...rowData,
