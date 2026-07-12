@@ -6,8 +6,9 @@ import { setTitle } from '../../reduxStoreAndSlices/baseSettingsSlice';
 import { useTranslation } from 'react-i18next';
 
 const TitleWrapper = styled.div`
-  position: absolute;
+  position: relative;
   display: inline-block;
+  max-width: 100%;
 `;
 
 const AutoWidthDiv = styled.div`
@@ -16,6 +17,7 @@ const AutoWidthDiv = styled.div`
   box-sizing: border-box;
   overflow: hidden;
   min-width: 2em;
+  max-width: 100%;
   padding: 2px 5px;
   white-space: nowrap;
   opacity: 0;
@@ -29,6 +31,7 @@ const AutoWidthDiv = styled.div`
 
 const StyledInput = styled.input`
   position: absolute;
+  top: 0;
   left: 0;
   font-size: 14px;
   color: #000000ed;

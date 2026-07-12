@@ -587,10 +587,12 @@ const TopBarLocal: React.FC = memo(() => {
           onClose={handleJsonModalClose}
         />
       </div>
-      <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', height: '100%', display: 'flex', justifyContent: 'center' }}>
+      {/* タイトルはメニューと右端ボタンの間の可変領域に置く(絶対配置で中央固定にすると
+          画面が狭いときメニューに重なるため、flexで縮んでクリップされるようにする) */}
+      <div style={{ flex: '1 1 auto', minWidth: 0, height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
         <TitleSetting />
       </div>
-      <div style={{ height: '100%' }}>
+      <div style={{ height: '100%', flex: '0 0 auto' }}>
         <MenuButton ref={userButtonRef}>
           {t('Local Mode')}
         </MenuButton>
