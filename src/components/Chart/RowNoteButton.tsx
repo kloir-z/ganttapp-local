@@ -199,6 +199,9 @@ const RowNoteButton: React.FC<RowNoteButtonProps> = ({ rowId, displayName, rowNo
         ref={btnRef}
         className={hasNote ? 'row-note-icon row-note-icon--has' : 'row-note-icon'}
         data-row-note-anchor={rowId}
+        // バー始点(行左端からのpx)。メモ帳側のコネクタ(RowNoteConnector)が
+        // このウィンドウのコネクタと同じ位置(バーの始まり)から矢印を引くために使う。
+        data-row-note-bar-left={barRect ? barRect.left : undefined}
         title={hasNote ? t('Edit note') : t('Add note')}
         onClick={handleOpen}
         onMouseDown={stop}

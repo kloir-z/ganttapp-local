@@ -31,8 +31,18 @@ const RowNoteConnector: React.FC<RowNoteConnectorProps> = ({ rowId }) => {
 
   const a = anchorEl.getBoundingClientRect();
   const m = modalEl.getBoundingClientRect();
-  const x1 = a.left + a.width / 2;
-  const y1 = a.top + a.height / 2;
+  // RowNoteButton のコネクタと同じく、バーがある行はバーの始点(行の垂直中央)を
+  // 起点にする。バー位置はアイコンの data-row-note-bar-left(行左端からのpx)から
+  // 行要素の矩形に足し込んで求める。バーのない行はアイコン中心へフォールバック。
+  const barLeftAttr = anchorEl.getAttribute('data-row-note-bar-left');
+  const rowEl = anchorEl.parentElement;
+  let x1 = a.left + a.width / 2;
+  let y1 = a.top + a.height / 2;
+  if (barLeftAttr !== null && rowEl) {
+    const r = rowEl.getBoundingClientRect();
+    x1 = r.left + parseFloat(barLeftAttr);
+    y1 = r.top + r.height / 2;
+  }
   // モーダル矩形上の最近点へ向けて線を引く(アンカーがモーダル内なら描かない)。
   const x2 = Math.max(m.left, Math.min(x1, m.right));
   const y2 = Math.max(m.top, Math.min(y1, m.bottom));
