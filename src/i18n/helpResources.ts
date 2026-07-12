@@ -24,7 +24,7 @@ export const helpEn = {
     },
     tableColumns: {
       title: "Customizing Columns",
-      p1: "Setting > Table lists every column with a visibility checkbox and a rename field — rename columns to fit your project (e.g., Text1 → Owner). The free-text columns Text1–3 are general-purpose.",
+      p1: "Setting > Table lists every column with a visibility checkbox and a rename field — rename columns to fit your project (e.g., Text1 → Owner). The free-text columns Text1–7 are general-purpose (Text4–7 are hidden by default; turn them on here when you need them).",
       p2: "Drag a column header's border to resize it, or drag the header itself to reorder columns (No and WBS stay pinned to the front).",
       p3: "The table's right-click menu offers \"Hide Column(s)\" to quickly hide the selected columns, and a \"Show/Hide Column\" submenu to turn columns back on. The CP column can only be toggled from this submenu.",
       p4: "Turn on the hidden \"WBS\" column to get automatic outline numbers such as 1, 1-1, 1-1-2 derived from the separator hierarchy (read-only).",
@@ -76,21 +76,22 @@ export const helpEn = {
     },
     colors: {
       title: "Bar Colors",
-      p1: "Setting > Chart Setting offers seven color slots, each with a color swatch and its aliases (meanings). Aliases are comma-separated, so one slot can match several words (e.g., \"Team A, Sato\").",
+      p1: "Setting > Chart Setting holds the color palette: each entry pairs a color swatch with its aliases (matching values). Aliases are comma-separated, so one entry can match several words (e.g., \"Team A, Sato\"), and entries can be added or removed freely.",
       p2: "Type an alias into a row's Color column to recolor its planned bar. Values that match no alias fall back to the default color. The actual-bar color is configured on the same screen.",
-      p3: "Right-click > Functions > \"Auto color setting\" collects the colors currently in use (for the selected rows or all rows) and registers them into the alias slots automatically.",
+      p3: "The coloring basis can be switched from the Color column to any text column — color by company, assignee or work type, for example. Switch it from the \"Coloring\" menu in the top bar, from right-click > \"Color Basis\", or from the selector in Chart Setting. Each basis column keeps its own palette, so switching back and forth loses nothing.",
+      p4: "When you switch to a column, its values are registered into that palette and colored automatically; adjust individual colors afterwards as you like. Right-click > Functions > \"Auto color setting\" (or \"Auto Assign Colors\" in Chart Setting) re-runs this auto-assignment for new values.",
     },
     notes: {
       title: "Notes",
       p1: "Click Notes in the top bar to open the notes window: a tree of notes on the left and a rich-text editor on the right. Use it for meeting minutes and background information — notes are saved into the project file.",
       p2: "Add, rename and delete notes from the tree pane. Notes can be nested freely, and the window can be moved and resized.",
-      p3: "Rows can carry their own notes too: hover over a row on the chart and click the sticky-note icon to open a draggable, resizable note window (several can be open at once). Row notes are also listed under \"Task Notes\" in the notes window.",
+      p3: "Rows can carry their own notes too: hover over a row on the chart and click the sticky-note icon to open a draggable, resizable note window (several can be open at once). Row notes are also listed under \"Task Notes\" in the notes window, and an arrow points from the task's position on the chart to the note being viewed. Esc closes the frontmost note window.",
     },
     saveExport: {
       title: "Save & Export",
       p1: "File > Download saves the whole project (chart, settings, notes and history) as a single ZIP file, and File > Upload loads it back. Everything runs inside your browser — no data ever leaves your machine.",
       p2: "File > JSON Data lets you view, copy and import the raw project data as JSON. Ctrl+Shift+J copies the same JSON straight to the clipboard.",
-      p3: "File > Export offers three formats: PDF (the full chart as an image), Excel (a styled workbook that reproduces the table and chart), and Standalone HTML (a single self-contained file that shows the finished chart in any browser).",
+      p3: "File > Export offers three formats: PDF (the full chart as an image), Excel (a styled workbook that reproduces the table and chart), and Standalone HTML (a single self-contained file that shows the finished chart in any browser). When the project has notes, the Excel export first asks whether to include the notes sheet.",
       note1: "Nothing is saved automatically. Download your project before closing the tab.",
     },
     historyUndo: {
@@ -120,7 +121,7 @@ export const helpJa: typeof helpEn = {
     },
     tableColumns: {
       title: "列のカスタマイズ",
-      p1: "「設定 > 表設定」に全列の表示チェックボックスと列名の入力欄があり、プロジェクトに合わせて列名を自由に変更できます(例: Text1 → 担当者)。Text1〜3は自由に使えるフリーテキスト列です。",
+      p1: "「設定 > 表設定」に全列の表示チェックボックスと列名の入力欄があり、プロジェクトに合わせて列名を自由に変更できます(例: Text1 → 担当者)。Text1〜7は自由に使えるフリーテキスト列です(Text4〜7は既定で非表示なので、必要になったらここで表示してください)。",
       p2: "列幅は列ヘッダの境界をドラッグして変更できます。列ヘッダ自体をドラッグすると列の並び替えができます(No列とWBS列は先頭に固定)。",
       p3: "テーブルの右クリックメニューの「列を非表示」で選択中の列をすばやく隠せます。再表示は「列表示」サブメニューから。CP列の表示/非表示はこのサブメニューでのみ切り替えられます。",
       p4: "既定で非表示の「WBS」列を表示すると、セパレータの階層から 1、1-1、1-1-2 のようなアウトライン番号が自動で振られます(読み取り専用)。",
@@ -172,21 +173,22 @@ export const helpJa: typeof helpEn = {
     },
     colors: {
       title: "バーの色",
-      p1: "「設定 > チャート設定」には7つの色スロットがあり、それぞれに色とその意味(エイリアス)を設定できます。エイリアスはカンマ区切りで複数登録でき、1つのスロットに複数の語を対応させられます(例:「チームA, 佐藤」)。",
+      p1: "「設定 > チャート設定」にはカラーパレットがあり、各エントリに色とその意味(エイリアス)を設定できます。エイリアスはカンマ区切りで複数登録でき、1つのエントリに複数の語を対応させられます(例:「チームA, 佐藤」)。エントリは自由に追加・削除できます。",
       p2: "行の色列にエイリアス名を入力すると、その行の予定バーの色が変わります。どのエイリアスにも一致しない値はデフォルト色になります。実績バーの色も同じ画面で設定できます。",
-      p3: "右クリック >「機能」>「自動カラー設定」を使うと、現在使われている色(選択行または全行)を集めてエイリアススロットに自動登録できます。",
+      p3: "色分けの基準は色列だけでなく任意のテキスト列に切り替えられます。担当会社・担当者・作業種別などで色分けしたいときは、トップバーの「色分け」メニュー、右クリック >「色分け基準」、またはチャート設定のセレクタから切り替えてください。基準列ごとに独立したパレットが保持されるので、切り替えても設定は失われません。",
+      p4: "基準列を切り替えると、その列の値がパレットへ自動登録されて色が割り当てられます。個々の色は後から自由に調整できます。値が増えたときは右クリック >「機能」>「自動カラー設定」(チャート設定の「値から自動割り当て」でも同じ)で再割り当てできます。",
     },
     notes: {
       title: "メモ帳",
       p1: "トップバーの「メモ帳」をクリックすると、左にメモのツリー、右にリッチテキストエディタを備えたメモウィンドウが開きます。議事録や補足情報の記録に使え、メモはプロジェクトファイルと一緒に保存されます。",
       p2: "ツリーペインでメモの追加・名前変更・削除ができます。メモは自由に階層化でき、ウィンドウは移動やサイズ変更が可能です。",
-      p3: "行ごとのメモも書けます。チャート側で行にマウスを乗せると付箋アイコンが表示され、クリックするとドラッグ移動・リサイズ可能なメモウィンドウが開きます(同時に複数開けます)。行メモはメモ帳の「タスクメモ」一覧からも開けます。",
+      p3: "行ごとのメモも書けます。チャート側で行にマウスを乗せると付箋アイコンが表示され、クリックするとドラッグ移動・リサイズ可能なメモウィンドウが開きます(同時に複数開けます)。行メモはメモ帳の「タスクメモ」一覧からも開け、表示中はチャート上のタスク位置からメモへ矢印が表示されます。最前面のメモウィンドウはEscキーで閉じられます。",
     },
     saveExport: {
       title: "保存とエクスポート",
       p1: "「ファイル > プロジェクトZIPファイルをダウンロード」でプロジェクト全体(チャート・設定・メモ・履歴)を1つのZIPファイルとして保存し、「プロジェクトZIPファイルをアップロード」で読み込みます。処理はすべてブラウザ内で行われ、データが外部に送信されることはありません。",
       p2: "「ファイル > JSONデータ」ではプロジェクトの生データをJSON形式で表示・コピー・読み込みできます。Ctrl+Shift+J で同じJSONを直接クリップボードにコピーすることもできます。",
-      p3: "「ファイル > エクスポート」からPDF(チャート全体を画像化)、Excel(表とチャートを再現したワークブック)、単体HTML(どのブラウザでも完成形のチャートを表示できる自己完結型ファイル)の3形式で出力できます。",
+      p3: "「ファイル > エクスポート」からPDF(チャート全体を画像化)、Excel(表とチャートを再現したワークブック)、単体HTML(どのブラウザでも完成形のチャートを表示できる自己完結型ファイル)の3形式で出力できます。メモがあるプロジェクトでは、Excel出力時にメモシートを含めるかどうかを選択できます。",
       note1: "データは自動保存されません。タブを閉じる前にプロジェクトをダウンロードしてください。",
     },
     historyUndo: {

@@ -139,6 +139,7 @@ export const helpTopics: HelpTopic[] = [
       { type: 'paragraph', key: 'help.topics.colors.p1' },
       { type: 'paragraph', key: 'help.topics.colors.p2' },
       { type: 'paragraph', key: 'help.topics.colors.p3' },
+      { type: 'paragraph', key: 'help.topics.colors.p4' },
     ],
   },
   {
