@@ -24,13 +24,15 @@ export const useGanttExcelExport = () => {
   const noteData = useSelector((state: RootState) => state.notes.noteData);
   const rowNoteData = useSelector((state: RootState) => state.notes.rowNoteData);
 
-  const exportExcel = useCallback(async () => {
+  // includeNotes=false でメモ(Notes)シートを出力せずGanttシートのみとする。
+  const exportExcel = useCallback(async (options?: { includeNotes?: boolean }) => {
+    const includeNotes = options?.includeNotes !== false;
     try {
       const buffer = await buildGanttXlsxBuffer({
         data, columns, colors, fallbackColor, dateRange, holidays, holidayColor,
         regularDaysOffSetting, dateFormat, showYear, title, cellWidth, t,
         colorBasisColumn,
-        notes: { treeData, noteData, rowNoteData },
+        ...(includeNotes ? { notes: { treeData, noteData, rowNoteData } } : {}),
       });
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

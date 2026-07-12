@@ -1,9 +1,12 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import React from 'react';
 import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import TextField from '@mui/material/TextField';
 import { useDispatch, useSelector } from 'react-redux';
 import { setActiveModal, setIsLoading, setShowCriticalPath } from '../../reduxStoreAndSlices/uiFlagSlice';
@@ -65,6 +68,9 @@ const TopBarLocal: React.FC = memo(() => {
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [jsonModalOpen, setJsonModalOpen] = useState(false);
+  // Excelエクスポート時のメモシート出力確認ダイアログ(メモがある時だけ開く)
+  const [excelDialogOpen, setExcelDialogOpen] = useState(false);
+  const [includeNotesInExcel, setIncludeNotesInExcel] = useState(true);
 
   // Redux state
   const currentRegularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
@@ -335,7 +341,17 @@ const TopBarLocal: React.FC = memo(() => {
           },
           {
             children: t('Export Excel'),
-            onClick: () => exportExcel(),
+            onClick: () => {
+              // メモがあるプロジェクトだけ「メモシートを含めるか」を確認する。
+              const hasRowNotes = Object.values(rowNoteData || {}).some(
+                v => typeof v === 'string' && v.trim() !== ''
+              );
+              if ((treeData && treeData.length > 0) || hasRowNotes) {
+                setExcelDialogOpen(true);
+              } else {
+                exportExcel();
+              }
+            },
             path: '5.1'
           },
           {
@@ -347,7 +363,7 @@ const TopBarLocal: React.FC = memo(() => {
       }
     ];
     return options;
-  }, [t, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, exportExcel, handleExportHtml]);
+  }, [t, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, exportExcel, handleExportHtml, treeData, rowNoteData]);
 
   // 色分け基準列のクイック切替メニュー。列名はユーザーのリネームをそのまま表示する。
   const coloringMenuOptions = useMemo(() => {
@@ -538,6 +554,32 @@ const TopBarLocal: React.FC = memo(() => {
           <DialogActions>
             <Button onClick={handleSaveAsSubmit} color="primary">OK</Button>
             <Button onClick={handleClose}>{t('Cancel')}</Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={excelDialogOpen} onClose={() => setExcelDialogOpen(false)}>
+          <DialogTitle>{t('Export Excel')}</DialogTitle>
+          <DialogContent>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={includeNotesInExcel}
+                  onChange={(e) => setIncludeNotesInExcel(e.target.checked)}
+                />
+              }
+              label={t('Include notes sheet')}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              color="primary"
+              onClick={() => {
+                setExcelDialogOpen(false);
+                exportExcel({ includeNotes: includeNotesInExcel });
+              }}
+            >
+              OK
+            </Button>
+            <Button onClick={() => setExcelDialogOpen(false)}>{t('Cancel')}</Button>
           </DialogActions>
         </Dialog>
         <JsonDataModal
