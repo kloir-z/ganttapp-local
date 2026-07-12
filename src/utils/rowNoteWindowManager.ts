@@ -30,6 +30,10 @@ export const rowNoteWindows = {
   indexOf(id: string): number {
     return openIds.indexOf(id);
   },
+  // アクティブ(最前面)のウィンドウかどうか。Escキーで閉じる対象の判定に使う。
+  isTop(id: string): boolean {
+    return openIds.length > 0 && openIds[openIds.length - 1] === id;
+  },
   // Returns false when the window cap is reached (and this id is not already open).
   open(id: string): boolean {
     if (openIds.includes(id)) {

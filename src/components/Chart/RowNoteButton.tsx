@@ -110,6 +110,20 @@ const RowNoteButton: React.FC<RowNoteButtonProps> = ({ rowId, displayName, rowNo
   // of the virtualized range) so it doesn't linger toward the window cap.
   useEffect(() => () => { rowNoteWindows.close(rowId); }, [rowId]);
 
+  // Escキーでアクティブ(最前面)のメモウィンドウを閉じる。複数開いている場合は
+  // 押すたびに手前から順に閉じる。エディタ編集中でも効く(document で捕捉)。
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && rowNoteWindows.isTop(rowId)) {
+        e.stopPropagation();
+        rowNoteWindows.close(rowId);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [open, rowId]);
+
   // --- Connector line: track the chart anchor's viewport position while open ---
   const updateAnchor = useCallback(() => {
     // Prefer anchoring to the start of the bar (on the bar color) when present.
@@ -184,6 +198,7 @@ const RowNoteButton: React.FC<RowNoteButtonProps> = ({ rowId, displayName, rowNo
       <div
         ref={btnRef}
         className={hasNote ? 'row-note-icon row-note-icon--has' : 'row-note-icon'}
+        data-row-note-anchor={rowId}
         title={hasNote ? t('Edit note') : t('Add note')}
         onClick={handleOpen}
         onMouseDown={stop}

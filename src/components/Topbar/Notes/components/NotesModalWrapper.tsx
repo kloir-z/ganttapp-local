@@ -29,6 +29,7 @@ const NotesModalWrapper: React.FC<NotesModalWrapperProps> = memo(({ children, po
 
   return (
     <ModalContainer
+      id="notes-modal"
       $fadeStatus={fadeStatus}
       onMouseDown={e => e.stopPropagation()}
       style={{

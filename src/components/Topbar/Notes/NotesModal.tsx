@@ -10,6 +10,7 @@ import { migrateLegacyNoteData } from './utils/notesDataMigration';
 import NotesModalWrapper from './components/NotesModalWrapper';
 import NotesTree from './components/NotesTree';
 import NotesEditor from './components/NotesEditor';
+import RowNoteConnector from './components/RowNoteConnector';
 import TreePaneResizer from './TreePaneResizer';
 import ModalResizer from './ModalResizer';
 
@@ -83,6 +84,8 @@ const NotesModal: React.FC = memo(() => {
 
   return (
     <NotesModalWrapper position={position} isViewingPast={isViewingPast} onPositionChange={handlePositionChange}>
+      {/* 行メモ表示中は、対象タスク(チャート側)からメモ帳へ向かう矢印を描く。 */}
+      {selectedRowNoteId && <RowNoteConnector rowId={selectedRowNoteId} />}
       <StyledContainer style={{ width: `${noteWidth}px`, height: `${noteHeight}px` }}>
         <NotesTree 
           treeWidth={treeWidth}
