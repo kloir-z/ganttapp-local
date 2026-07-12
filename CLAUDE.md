@@ -75,7 +75,7 @@ This is an offline-first Gantt chart application built with React 18, TypeScript
   - **SeparatorCell.tsx**: Section header cells
   - **CustomDatePicker.tsx**: Date selection component
 - **Grid Utilities** (`src/components/Table/utils/`):
-  - **gridHandlers.ts**: ReactGrid change handlers
+  - **gridHandlers.ts**: ReactGrid change handlers. Planned start/end changes arriving together (Excel-like range paste) are merged into one `setPlannedDate` per row — dispatching them separately would revert the first date with stale data — and are applied *after* `setEntireData` so a mixed paste (dates + other columns) doesn't clobber them; `pushPastState` is skipped when `setEntireData` already pushed the undo snapshot (unit-tested in `gridHandlers.test.ts`)
   - **wbsHelpers.ts**: WBS data manipulation utilities
   - **wbsRowCreators.ts**: Row creation functions
 

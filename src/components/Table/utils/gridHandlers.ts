@@ -37,23 +37,46 @@ export const handleGridChanges = (dispatch: AppDispatch, data: { [id: string]: W
   const plannedDateChanges = changes.filter(isPlannedDateChange);
   const otherChanges = changes.filter(change => !isPlannedDateChange(change));
 
+  if (otherChanges.length > 0) {
+    applyOtherChanges(dispatch, updatedData, otherChanges, secondVisibleColumnId, maxLength, holidays, regularDaysOff);
+    dispatch(setEntireData(updatedData));
+  }
+
+  // 予定日は setEntireData の後に適用する(範囲ペーストで予定日と他列が同時に来たとき、
+  // 古いデータ起点の setEntireData に上書きされないように)。setEntireData 自身が
+  // undo スナップショットを積むので、pushPastState は単独時のみ。
   if (plannedDateChanges.length > 0) {
-    dispatch(pushPastState());
+    if (otherChanges.length === 0) {
+      dispatch(pushPastState());
+    }
+    // 同一行の開始日・終了日が同時に届く範囲ペーストでは、行ごとに1回の
+    // setPlannedDate にまとめる(別々に dispatch すると、後の dispatch が
+    // もう片方の日付をペースト前の値で戻してしまう)。
+    const plannedByRow = new Map<string, { startDate?: string; endDate?: string }>();
     plannedDateChanges.forEach((change) => {
       const rowId = change.rowId.toString();
-      const chartRow = data[rowId] as ChartRow;
+      const entry = plannedByRow.get(rowId) ?? {};
       const newDate = validateDateString((change.newCell as CustomDateCell).text);
-      const startDate = change.columnId === 'plannedStartDate' ? newDate : validateDateString(chartRow.plannedStartDate);
-      const endDate = change.columnId === 'plannedEndDate' ? newDate : validateDateString(chartRow.plannedEndDate);
-      dispatch(setPlannedDate({ id: rowId, startDate, endDate }));
+      if (change.columnId === 'plannedStartDate') {
+        entry.startDate = newDate;
+      } else {
+        entry.endDate = newDate;
+      }
+      plannedByRow.set(rowId, entry);
+    });
+    plannedByRow.forEach((entry, rowId) => {
+      const chartRow = data[rowId] as ChartRow;
+      dispatch(setPlannedDate({
+        id: rowId,
+        startDate: entry.startDate ?? validateDateString(chartRow.plannedStartDate),
+        endDate: entry.endDate ?? validateDateString(chartRow.plannedEndDate),
+      }));
     });
     dispatch(updateSeparatorDates());
   }
+};
 
-  if (otherChanges.length === 0) {
-    return;
-  }
-
+const applyOtherChanges = (dispatch: AppDispatch, updatedData: { [id: string]: WBSData }, otherChanges: CellChange<AllCellTypes>[], secondVisibleColumnId: string | null, maxLength: number, holidays: string[], regularDaysOff: number[]) => {
   otherChanges.forEach((change) => {
     const rowId = change.rowId.toString();
     const rowData = updatedData[rowId];
@@ -218,6 +241,4 @@ export const handleGridChanges = (dispatch: AppDispatch, data: { [id: string]: W
       }
     }
   });
-
-  dispatch(setEntireData(updatedData));
 };
