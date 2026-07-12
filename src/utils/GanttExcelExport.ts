@@ -20,7 +20,7 @@ import {
   isEventRow,
   isSeparatorRow,
 } from '../types/DataTypes';
-import { ColorInfo } from '../reduxStoreAndSlices/colorSlice';
+import { ColorInfo, getColorSourceValue } from '../reduxStoreAndSlices/colorSlice';
 import { ExtendedColumn } from '../reduxStoreAndSlices/store';
 import { generateDates, isHoliday } from './CommonUtils';
 import { formatCpPredecessorsText } from './CriticalPath';
@@ -58,6 +58,8 @@ export interface BuildGanttWorkbookParams {
   title: string;
   cellWidth: number;
   t: TFunction;
+  // 色分け基準列('color' | 'textColumn1'〜'textColumn7')。省略時は従来どおり Color 列。
+  colorBasisColumn?: string;
   // Optional notes payload; when present a second "Notes" worksheet is appended.
   notes?: NotesExportData;
 }
@@ -117,17 +119,19 @@ const toHex2 = (v: number) => Math.round(Math.max(0, Math.min(255, v))).toString
 const toARGB = (rgb: RGB) => `FF${toHex2(rgb.r)}${toHex2(rgb.g)}${toHex2(rgb.b)}`.toUpperCase();
 
 // Resolve a chart/event row's planned bar color the same way the chart does:
-// blank color -> fallback; otherwise match the alias against the color palette.
+// blank source value -> fallback; otherwise match the color-basis column's value
+// (Color column or a text column) against the palette aliases.
 const resolvePlannedColor = (
-  entryColor: string,
+  sourceValue: string,
   colors: { [id: number]: ColorInfo },
   fallbackColor: string,
 ): string => {
-  if (entryColor === '') return fallbackColor;
-  const colorInfo = Object.values(colors).find((info) =>
-    info.alias.split(',').map((alias) => alias.trim()).includes(entryColor),
+  if (sourceValue === '') return fallbackColor;
+  const colorInfo = Object.entries(colors).find(([id, info]) =>
+    Number(id) !== 999 &&
+    info.alias.split(',').map((alias) => alias.trim()).includes(sourceValue),
   );
-  return colorInfo ? colorInfo.color : fallbackColor;
+  return colorInfo ? colorInfo[1].color : fallbackColor;
 };
 
 const toKey = (dateStr: string | undefined | null): string => {
@@ -470,6 +474,14 @@ const cellTextFor = (
         return r.textColumn2 || '';
       case 'textColumn3':
         return r.textColumn3 || '';
+      case 'textColumn4':
+        return r.textColumn4 || '';
+      case 'textColumn5':
+        return r.textColumn5 || '';
+      case 'textColumn6':
+        return r.textColumn6 || '';
+      case 'textColumn7':
+        return r.textColumn7 || '';
       case 'isIncludeHolidays':
         return isChartRow(row) && row.isIncludeHolidays ? '✓' : '';
       default:
@@ -517,6 +529,10 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
     data, columns, colors, fallbackColor, dateRange, holidays, holidayColor,
     regularDaysOffSetting, dateFormat, showYear, title, cellWidth, t,
   } = params;
+  // 色分け基準列。バー色は Color 列の値ではなく、この列の値をパレットへ照合する。
+  const colorBasisColumn = params.colorBasisColumn || 'color';
+  const basisValueOf = (row: ChartRow | EventRow): string =>
+    getColorSourceValue(row, colorBasisColumn);
 
   // Drop the on-screen 'No' column (Excel's own row numbers replace it). Always
   // emit the mechanical WBS-number column up front, even when it's hidden on
@@ -712,7 +728,7 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
       } else if (c.columnId === 'color' && wbsNo !== '' && (isChartRow(row) || isEventRow(row))) {
         // Paint the color cell with the planned bar color, like the swatch — but
         // skip wholly-empty rows so blank placeholders stay uncolored.
-        const planned = parseColor(resolvePlannedColor((row as ChartRow).color, colors, fallbackColor));
+        const planned = parseColor(resolvePlannedColor(basisValueOf(row), colors, fallbackColor));
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: toARGB(composite(WHITE, planned)) } };
       }
     });
@@ -728,7 +744,7 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
     const eventRanges: { start: string; end: string; planned: boolean }[] = [];
 
     if (isChartRow(row)) {
-      plannedColor = parseColor(resolvePlannedColor(row.color, colors, fallbackColor));
+      plannedColor = parseColor(resolvePlannedColor(basisValueOf(row), colors, fallbackColor));
       pStart = toKey(row.plannedStartDate);
       pEnd = toKey(row.plannedEndDate);
       aStart = toKey(row.actualStartDate);
@@ -737,7 +753,7 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
       // Event rows render ONLY their eventData bars on the chart — never the row's
       // own planned/actual date fields — so leave pStart/pEnd/aStart/aEnd empty and
       // paint just the per-event ranges, matching the on-screen chart exactly.
-      plannedColor = parseColor(resolvePlannedColor(row.color, colors, fallbackColor));
+      plannedColor = parseColor(resolvePlannedColor(basisValueOf(row), colors, fallbackColor));
       (row.eventData || []).forEach((e) => {
         eventRanges.push({ start: toKey(e.startDate), end: toKey(e.endDate), planned: e.isPlanned });
       });

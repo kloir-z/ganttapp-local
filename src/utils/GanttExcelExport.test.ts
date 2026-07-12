@@ -93,6 +93,34 @@ describe('buildGanttWorkbook', () => {
     expect(argb).not.toBe('FFFFFFFF'); // not white -> a real (composited blue) fill
   });
 
+  it('colors bars by the selected basis column (colorBasisColumn) instead of the Color column', async () => {
+    // 色分け基準列を textColumn1 にすると、Color列ではなくその列の値がパレットの
+    // エイリアスと照合される(画面側の色分け切替と同じ挙動)。
+    const data: { [id: string]: WBSData } = {
+      r1: chartRow({ color: '', textColumn1: 'A社' }),
+    };
+    const params = {
+      ...baseParams(data),
+      colors: {
+        1: { alias: 'A社', color: '#ff000080' },
+        999: { alias: '', color: '#0000003d' },
+      },
+      colorBasisColumn: 'textColumn1',
+    };
+    const wb = await buildGanttWorkbook(params);
+    const withBasis = (wb.worksheets[0].getRow(3).getCell(7).fill as any)?.fgColor?.argb;
+
+    // 基準列を指定しない場合(従来どおりColor列)は color='' なのでフォールバック色。
+    const wbDefault = await buildGanttWorkbook({ ...params, colorBasisColumn: undefined });
+    const withoutBasis = (wbDefault.worksheets[0].getRow(3).getCell(7).fill as any)?.fgColor?.argb;
+
+    expect(withBasis).toBeTruthy();
+    expect(withoutBasis).toBeTruthy();
+    expect(withBasis).not.toBe(withoutBasis);
+    // #ff000080 を白に合成すると赤成分が最大になる
+    expect(withBasis.startsWith('FFFF')).toBe(true);
+  });
+
   it('fills separator rows with the light-blue band across both panes and labels chart bars', async () => {
     const data: { [id: string]: WBSData } = { s1: sepRow({ no: 1 }), r1: chartRow({ no: 2 }) };
     const wb = await buildGanttWorkbook(baseParams(data));

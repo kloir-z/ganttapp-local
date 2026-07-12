@@ -9,7 +9,7 @@ import { GanttRow } from '../../styles/GanttStyles';
 import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
-import { ColorInfo } from '../../reduxStoreAndSlices/colorSlice';
+import { ColorInfo, getColorSourceValue, resolveColorFromPalette } from '../../reduxStoreAndSlices/colorSlice';
 import { openDependencyBuilder } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { selectCriticalPath } from '../../reduxStoreAndSlices/criticalPathSelectors';
 import { useTranslation } from 'react-i18next';
@@ -35,15 +35,13 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   const colors: { [id: number]: ColorInfo } = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
   const currentFallbackColor = useSelector((state: RootState) => state.color.fallbackColor);
   const fallbackColor = isViewingPast && previewData?.fallbackColor ? previewData.fallbackColor : currentFallbackColor;
+  // 色分け基準列(Color列/テキスト列)。基準列の値をパレットと照合して色を決める。
+  const basisColumnId = useSelector((state: RootState) => state.color.basisColumnId);
 
-
+  const colorSourceValue = getColorSourceValue(entry, basisColumnId);
   const plannedChartBarColor = useMemo(() => {
-    if (entry.color === '') { return fallbackColor; }
-    const colorInfo = Object.values(colors).find(colorInfo =>
-      colorInfo.alias.split(',').map(alias => alias.trim()).includes(entry.color)
-    );
-    return colorInfo ? colorInfo.color : fallbackColor;
-  }, [entry.color, colors, fallbackColor]);
+    return resolveColorFromPalette(colorSourceValue, colors, fallbackColor);
+  }, [colorSourceValue, colors, fallbackColor]);
   const actualChartBarColor = useMemo(() => {
     const colorInfo = colors[999];
     return colorInfo ? colorInfo.color : '#0000003d';

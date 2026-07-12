@@ -9,7 +9,7 @@ import { GanttRow } from '../../styles/GanttStyles';
 import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
-import { ColorInfo } from '../../reduxStoreAndSlices/colorSlice';
+import { ColorInfo, getColorSourceValue, resolveColorFromPalette } from '../../reduxStoreAndSlices/colorSlice';
 
 type Action =
   | { type: 'INIT'; payload: EventType[] }
@@ -79,13 +79,12 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
   const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
   const previewData = useSelector((state: RootState) => state.history?.previewData);
   const colors: { [id: number]: ColorInfo } = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
+  // 色分け基準列(Color列/テキスト列)。基準列の値をパレットと照合して色を決める。
+  const basisColumnId = useSelector((state: RootState) => state.color.basisColumnId);
+  const colorSourceValue = getColorSourceValue(entry, basisColumnId);
   const plannedChartBarColor = useMemo(() => {
-    if (entry.color === '') { return '#76ff7051'; }
-    const colorInfo = Object.values(colors).find(colorInfo =>
-      colorInfo.alias.split(',').map(alias => alias.trim()).includes(entry.color)
-    );
-    return colorInfo ? colorInfo.color : '#76ff7051';
-  }, [entry.color, colors]);
+    return resolveColorFromPalette(colorSourceValue, colors, '#76ff7051');
+  }, [colorSourceValue, colors]);
   const actualChartBarColor = useMemo(() => {
     const colorInfo = colors[999];
     return colorInfo ? colorInfo.color : '#0000003d';

@@ -19,6 +19,7 @@ export const useGanttExcelExport = () => {
   const showYear = useSelector((state: RootState) => state.wbsData.showYear);
   const title = useSelector((state: RootState) => state.baseSettings.title);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
+  const colorBasisColumn = useSelector((state: RootState) => state.color.basisColumnId);
   const treeData = useSelector((state: RootState) => state.notes.treeData);
   const noteData = useSelector((state: RootState) => state.notes.noteData);
   const rowNoteData = useSelector((state: RootState) => state.notes.rowNoteData);
@@ -28,6 +29,7 @@ export const useGanttExcelExport = () => {
       const buffer = await buildGanttXlsxBuffer({
         data, columns, colors, fallbackColor, dateRange, holidays, holidayColor,
         regularDaysOffSetting, dateFormat, showYear, title, cellWidth, t,
+        colorBasisColumn,
         notes: { treeData, noteData, rowNoteData },
       });
       const blob = new Blob([buffer], {
@@ -48,7 +50,7 @@ export const useGanttExcelExport = () => {
         : t('Excel export failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message, severity: 'error' }));
     }
-  }, [data, columns, colors, fallbackColor, dateRange, holidays, holidayColor, regularDaysOffSetting, dateFormat, showYear, title, cellWidth, treeData, noteData, rowNoteData, t, dispatch]);
+  }, [data, columns, colors, fallbackColor, dateRange, holidays, holidayColor, regularDaysOffSetting, dateFormat, showYear, title, cellWidth, colorBasisColumn, treeData, noteData, rowNoteData, t, dispatch]);
 
   return { exportExcel };
 };

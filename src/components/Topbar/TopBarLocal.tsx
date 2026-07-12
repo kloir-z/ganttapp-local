@@ -20,6 +20,7 @@ import styled from 'styled-components';
 import { v4 as uuidv4 } from 'uuid';
 import { useGanttPdfExport } from '../../hooks/useGanttPdfExport';
 import { useGanttExcelExport } from '../../hooks/useGanttExcelExport';
+import { useColorBasis } from '../../hooks/useColorBasis';
 import useWarnIfUnsavedChanges from '../../hooks/useWarnIfUnsavedChanges';
 import useResetIsSavedChangesFlags from '../../hooks/useResetIsSavedChangesFlags';
 import useResetReduxStates from '../../hooks/useResetReduxStates';
@@ -68,6 +69,8 @@ const TopBarLocal: React.FC = memo(() => {
   // Redux state
   const currentRegularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
   const currentColors = useSelector((state: RootState) => state.color.colors);
+  const colorSchemes = useSelector((state: RootState) => state.color.schemes);
+  const colorBasisColumn = useSelector((state: RootState) => state.color.basisColumnId);
   const isSavedStore = useSelector((state: RootState) => state.wbsData.isSavedChanges);
   const isSavedColor = useSelector((state: RootState) => state.color.isSavedChanges);
   const isSavedSettings = useSelector((state: RootState) => state.baseSettings.isSavedChanges);
@@ -111,7 +114,9 @@ const TopBarLocal: React.FC = memo(() => {
   const fileButtonRef = useRef<HTMLButtonElement>(null);
   const editButtonRef = useRef<HTMLButtonElement>(null);
   const settingButtonRef = useRef<HTMLButtonElement>(null);
+  const coloringButtonRef = useRef<HTMLButtonElement>(null);
   const userButtonRef = useRef<HTMLButtonElement>(null);
+  const { basisColumnId, candidates, switchTo } = useColorBasis();
   const resetIsSavedChangesFlags = useResetIsSavedChangesFlags();
   const resetReduxStates = useResetReduxStates();
   const { exportPdf } = useGanttPdfExport();
@@ -157,6 +162,8 @@ const TopBarLocal: React.FC = memo(() => {
       const zipData = await handleExport({
         fileId: uuidv4(),
         colors,
+        colorSchemes,
+        colorBasisColumn,
         dateRange,
         columns,
         data,
@@ -201,7 +208,7 @@ const TopBarLocal: React.FC = memo(() => {
         : t('Download failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
     }
-  }, [colors, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, notesModalState, historySnapshots, resetIsSavedChangesFlags, handleClose, dispatch, t]);
+  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, notesModalState, historySnapshots, resetIsSavedChangesFlags, handleClose, dispatch, t]);
 
   const handleSaveAsSubmit = useCallback(async () => {
     if (!newTitle) return;
@@ -214,6 +221,8 @@ const TopBarLocal: React.FC = memo(() => {
       const projectData = buildProjectData({
         fileId: uuidv4(),
         colors,
+        colorSchemes,
+        colorBasisColumn,
         dateRange,
         columns,
         data,
@@ -247,7 +256,7 @@ const TopBarLocal: React.FC = memo(() => {
         : t('HTML export failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
     }
-  }, [colors, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey, historySnapshots, handleClose, dispatch, t]);
+  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey, historySnapshots, handleClose, dispatch, t]);
 
   const handleLocalOpen = useCallback(() => {
     const input = document.createElement('input');
@@ -339,6 +348,16 @@ const TopBarLocal: React.FC = memo(() => {
     ];
     return options;
   }, [t, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, exportExcel, handleExportHtml]);
+
+  // 色分け基準列のクイック切替メニュー。列名はユーザーのリネームをそのまま表示する。
+  const coloringMenuOptions = useMemo(() => {
+    return candidates.map((candidate, index) => ({
+      children: candidate.label,
+      onClick: () => switchTo(candidate.columnId),
+      checked: candidate.columnId === basisColumnId,
+      path: String(index),
+    }));
+  }, [candidates, basisColumnId, switchTo]);
 
   const editMenuOptions = useMemo(() => {
     const options = [
@@ -474,6 +493,18 @@ const TopBarLocal: React.FC = memo(() => {
             visibleMenu={visibleMenu}
             setVisibleMenu={setVisibleMenu}
           />
+        <MenuButton ref={coloringButtonRef} disabled={isViewingPast}>
+          {t('Coloring')}
+        </MenuButton>
+        {!isViewingPast && (
+          <TopMenu
+            menuType='coloring'
+            targetRef={coloringButtonRef}
+            items={coloringMenuOptions}
+            visibleMenu={visibleMenu}
+            setVisibleMenu={setVisibleMenu}
+          />
+        )}
         <MenuButton onClick={handleNotesClick}>
           {t('Notes')}
         </MenuButton>

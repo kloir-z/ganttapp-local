@@ -3,7 +3,7 @@ import { useCallback, memo, useState, useRef, useEffect } from 'react';
 import { ChromePicker, ColorResult } from 'react-color';
 import { useTranslation } from 'react-i18next';
 import { useDispatch } from 'react-redux';
-import { updateAlias, updateColor } from '../../../reduxStoreAndSlices/colorSlice';
+import { updateAlias, updateColor, removeColorInfo } from '../../../reduxStoreAndSlices/colorSlice';
 import { clearMessageInfo, setMessageInfo } from '../../../reduxStoreAndSlices/store';
 
 type ColorInfoItemProps = {
@@ -13,6 +13,8 @@ type ColorInfoItemProps = {
   handleColorClick: (id: number) => void;
   handleColorClose: (id: number) => void;
   displayColorPicker: boolean;
+  // パレットからこのエントリを削除できるようにする(実績色999には付けない)。
+  removable?: boolean;
 };
 
 const ColorInfoItem: React.FC<ColorInfoItemProps> = memo(({
@@ -21,7 +23,8 @@ const ColorInfoItem: React.FC<ColorInfoItemProps> = memo(({
   color,
   handleColorClick,
   handleColorClose,
-  displayColorPicker
+  displayColorPicker,
+  removable
 }) => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
@@ -131,6 +134,27 @@ const ColorInfoItem: React.FC<ColorInfoItemProps> = memo(({
             e.target.style.boxShadow = 'none';
           }}
         />
+      )}
+      {removable && id !== 999 && (
+        <button
+          onClick={() => dispatch(removeColorInfo(id))}
+          title={t('Remove Color')}
+          style={{
+            marginLeft: '4px',
+            width: '22px',
+            height: '22px',
+            lineHeight: '18px',
+            border: '1px solid #e0e0e0',
+            borderRadius: '4px',
+            background: '#fafafa',
+            color: '#888',
+            cursor: 'pointer',
+            fontSize: '12px',
+            padding: 0,
+          }}
+        >
+          ×
+        </button>
       )}
     </div>
   );

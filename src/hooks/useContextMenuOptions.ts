@@ -5,10 +5,10 @@ import { RootState, deleteRows, convertDisplayNameOnlyRowsToSeparator, toggleCol
 import { setShowCriticalPath } from '../reduxStoreAndSlices/uiFlagSlice';
 import { setCopiedRows } from '../reduxStoreAndSlices/copiedRowsSlice';
 import { openRowDialog } from '../reduxStoreAndSlices/rowDialogSlice';
-import { updateAlias } from '../reduxStoreAndSlices/colorSlice';
 import useAddRow from './useAddRow';
 import useInsertCopiedRow from './useInsertCopiedRow';
-import { WBSData, ChartRow, EventRow, isSeparatorRow, SeparatorRow } from '../types/DataTypes';
+import { useColorBasis } from './useColorBasis';
+import { WBSData, isSeparatorRow, SeparatorRow } from '../types/DataTypes';
 import { MenuItemProps } from '../components/MenuItem';
 import { createSelector } from '@reduxjs/toolkit';
 
@@ -47,86 +47,16 @@ export const useContextMenuOptions = ({
     const copiedRows = useSelector((state: RootState) => state.copiedRows.rows);
     const showCriticalPath = useSelector((state: RootState) => state.uiFlags.showCriticalPath);
     const storeDataArray = useSelector(selectWbsDataArray);
-    const colorState = useSelector((state: RootState) => state.color);
+    const { basisColumnId, candidates, switchTo, autoAssign } = useColorBasis();
     const finalDataArray = useMemo(() => {
         return dataArray.length > 0 ? dataArray : storeDataArray;
     }, [dataArray, storeDataArray]);
 
+    // アクティブな色分け基準列のユニーク値へ自動で色を割り当てる。
+    // 行選択があればその範囲だけを対象にする。
     const handleAutoColorSetting = useCallback(() => {
-        const targetRowIds = selectedRowIds && selectedRowIds.length > 0
-            ? selectedRowIds
-            : finalDataArray.map(row => row.id);
-
-        const uniqueColors = new Set<string>();
-        finalDataArray.forEach(row => {
-            if (targetRowIds.includes(row.id) && (row.rowType === 'Chart' || row.rowType === 'Event')) {
-                const coloredRow = row as ChartRow | EventRow;
-                const color = coloredRow.color;
-                if (color && color.trim() !== "") {
-                    uniqueColors.add(color.trim());
-                }
-            }
-        });
-
-        const colorArray = Array.from(uniqueColors);
-
-        const shuffle = <T>(array: T[]): T[] => {
-            const shuffled = [...array];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            return shuffled;
-        };
-
-        const existingColors = new Set<string>();
-        for (let i = 1; i <= 7; i++) {
-            const currentAlias = colorState.colors[i].alias;
-            if (currentAlias && currentAlias.trim() !== "") {
-                currentAlias.split(',').forEach(color => {
-                    const trimmedColor = color.trim();
-                    if (trimmedColor !== "") {
-                        existingColors.add(trimmedColor);
-                    }
-                });
-            }
-        }
-
-        const newColors = colorArray.filter(color => !existingColors.has(color));
-
-        const localAliasState: { [id: number]: string } = {};
-        for (let i = 1; i <= 7; i++) {
-            localAliasState[i] = colorState.colors[i].alias || "";
-        }
-
-        for (let groupIndex = 0; groupIndex * 7 < newColors.length; groupIndex++) {
-            const groupStart = groupIndex * 7;
-            const groupEnd = Math.min(groupStart + 7, newColors.length);
-            const groupColors = newColors.slice(groupStart, groupEnd);
-
-            const shuffledSlots = shuffle([1, 2, 3, 4, 5, 6, 7]);
-
-            groupColors.forEach((color, index) => {
-                const targetSlotId = shuffledSlots[index];
-                const currentAlias = localAliasState[targetSlotId];
-
-                let newAlias;
-                if (!currentAlias || currentAlias.trim() === "") {
-                    newAlias = color;
-                } else {
-                    newAlias = `${currentAlias.trim()},${color}`;
-                }
-                localAliasState[targetSlotId] = newAlias;
-            });
-        }
-
-        for (let i = 1; i <= 7; i++) {
-            if (localAliasState[i] !== colorState.colors[i].alias) {
-                dispatch(updateAlias({ id: i, alias: localAliasState[i] }));
-            }
-        }
-
-    }, [selectedRowIds, finalDataArray, dispatch, colorState.colors]);
+        autoAssign(selectedRowIds);
+    }, [autoAssign, selectedRowIds]);
 
     const menuOptions = useMemo(() => {
         const createAddRowItems = (type: 'Chart' | 'Event') => {
@@ -391,7 +321,8 @@ export const useContextMenuOptions = ({
             const initialColumnOrder = [
                 'no', 'wbsNumber', 'displayName', 'color', 'plannedStartDate', 'plannedEndDate',
                 'plannedDays', 'actualStartDate', 'actualEndDate', 'progress', 'dependency',
-                'cpPredecessors', 'textColumn1', 'textColumn2', 'textColumn3', 'isIncludeHolidays'
+                'cpPredecessors', 'textColumn1', 'textColumn2', 'textColumn3', 'textColumn4',
+                'textColumn5', 'textColumn6', 'textColumn7', 'isIncludeHolidays'
             ];
 
             const columnSettingsItems: MenuItemProps[] = initialColumnOrder.reduce((acc: MenuItemProps[], columnId) => {
@@ -419,6 +350,19 @@ export const useContextMenuOptions = ({
             children: t("Show Critical Path"),
             onClick: () => dispatch(setShowCriticalPath(!showCriticalPath)),
             checked: showCriticalPath,
+            path: String(pathCounter++)
+        });
+
+        // 色分け基準列の切り替え。テーブル・チャートどちらの右クリックからも
+        // 変更できる(トップバーのクイック切替・チャート設定と同じ状態)。
+        baseOptions.push({
+            children: t("Color Basis"),
+            items: candidates.map((candidate, index) => ({
+                children: candidate.label,
+                onClick: () => switchTo(candidate.columnId),
+                checked: candidate.columnId === basisColumnId,
+                path: `${pathCounter}.${index}`,
+            })),
             path: String(pathCounter++)
         });
 
@@ -503,7 +447,7 @@ export const useContextMenuOptions = ({
         });
 
         return baseOptions;
-    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting, showCriticalPath]);
+    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, onEditDependency, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting, showCriticalPath, basisColumnId, candidates, switchTo]);
 
     return menuOptions;
 };

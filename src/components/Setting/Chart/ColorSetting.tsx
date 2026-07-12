@@ -7,7 +7,8 @@ import SettingChildDiv from "../SettingChildDiv";
 import ColorInfoItem from "./ColorInfoItem";
 import { useTranslation } from "react-i18next";
 import { RootState } from "../../../reduxStoreAndSlices/store";
-import { resetToDefaultColors, updateFallbackColor, ColorInfo } from "../../../reduxStoreAndSlices/colorSlice";
+import { resetToDefaultColors, updateFallbackColor, addColorInfo, ColorInfo } from "../../../reduxStoreAndSlices/colorSlice";
+import { useColorBasis } from "../../../hooks/useColorBasis";
 
 const ColorSetting: React.FC = memo(() => {
   const { t } = useTranslation();
@@ -16,7 +17,8 @@ const ColorSetting: React.FC = memo(() => {
   const currentFallbackColor = useSelector((state: RootState) => state.color.fallbackColor);
   const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
   const previewData = useSelector((state: RootState) => state.history?.previewData);
-  
+  const { basisColumnId, candidates, switchTo, autoAssign } = useColorBasis();
+
   const colors: { [id: number]: ColorInfo } = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
   const fallbackColor = isViewingPast && previewData?.fallbackColor ? previewData.fallbackColor : currentFallbackColor;
 
@@ -76,6 +78,46 @@ const ColorSetting: React.FC = memo(() => {
       </div>
     }>
 
+      {/* 色分け基準列の選択。切り替えると列ごとに保存されたパレットへ切り替わり、
+          その列のユニーク値へ自動で色が割り当てられる。 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+        <span>{t('Color Basis')}:</span>
+        <select
+          value={basisColumnId}
+          onChange={(e) => switchTo(e.target.value)}
+          style={{
+            height: '28px',
+            padding: '2px 8px',
+            border: '1px solid #e0e0e0',
+            borderRadius: '6px',
+            background: '#ffffff',
+            outline: 'none',
+          }}
+        >
+          {candidates.map(candidate => (
+            <option key={candidate.columnId} value={candidate.columnId}>{candidate.label}</option>
+          ))}
+        </select>
+        <Tippy content={t('Color basis tooltip')} placement="right">
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '16px',
+            height: '16px',
+            borderRadius: '50%',
+            backgroundColor: '#e3f2fd',
+            color: '#1976d2',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            cursor: 'help',
+            userSelect: 'none'
+          }}>
+            ?
+          </span>
+        </Tippy>
+      </div>
+
       {Object.entries(colors).filter(([id]) => parseInt(id) !== 999).map(([id, { alias, color }]) => (
         <ColorInfoItem
           key={id}
@@ -85,9 +127,41 @@ const ColorSetting: React.FC = memo(() => {
           handleColorClick={handleColorClick}
           handleColorClose={handleColorClose}
           displayColorPicker={displayColorPicker[parseInt(id)]}
+          removable
         />
       ))}
-      
+
+      <div style={{ display: 'flex', gap: '6px', margin: '6px 0 12px 0' }}>
+        <button
+          onClick={() => dispatch(addColorInfo())}
+          style={{
+            padding: '4px 10px',
+            fontSize: '12px',
+            border: '1px solid #d0d0d0',
+            borderRadius: '4px',
+            background: '#f8f8f8',
+            color: '#555',
+            cursor: 'pointer',
+          }}
+        >
+          {t('Add Color')}
+        </button>
+        <button
+          onClick={() => autoAssign()}
+          style={{
+            padding: '4px 10px',
+            fontSize: '12px',
+            border: '1px solid #d0d0d0',
+            borderRadius: '4px',
+            background: '#f8f8f8',
+            color: '#555',
+            cursor: 'pointer',
+          }}
+        >
+          {t('Auto Assign Colors')}
+        </button>
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '3px' }}>
         <div
           style={{
