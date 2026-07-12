@@ -24,7 +24,7 @@ export const helpEn = {
     },
     tableColumns: {
       title: "Customizing Columns",
-      p1: "Setting > Table lists every column with a visibility checkbox and a rename field — rename columns to fit your project (e.g., Text1 → Owner). The free-text columns Text1–7 are general-purpose (Text4–7 are hidden by default; turn them on here when you need them).",
+      p1: "Setting > Table lists every column with a visibility checkbox and a rename field — rename columns to fit your project (e.g., Text1 → Owner). You can also right-click a column header and choose \"Rename Column\" to rename it on the spot. The free-text columns Text1–7 are general-purpose (Text4–7 are hidden by default; turn them on here when you need them).",
       p2: "Drag a column header's border to resize it, or drag the header itself to reorder columns (No and WBS stay pinned to the front).",
       p3: "The table's right-click menu offers \"Hide Column(s)\" to quickly hide the selected columns, and a \"Show/Hide Column\" submenu to turn columns back on. The CP column can only be toggled from this submenu.",
       p4: "Turn on the hidden \"WBS\" column to get automatic outline numbers such as 1, 1-1, 1-1-2 derived from the separator hierarchy (read-only).",
@@ -121,7 +121,7 @@ export const helpJa: typeof helpEn = {
     },
     tableColumns: {
       title: "列のカスタマイズ",
-      p1: "「設定 > 表設定」に全列の表示チェックボックスと列名の入力欄があり、プロジェクトに合わせて列名を自由に変更できます(例: Text1 → 担当者)。Text1〜7は自由に使えるフリーテキスト列です(Text4〜7は既定で非表示なので、必要になったらここで表示してください)。",
+      p1: "「設定 > 表設定」に全列の表示チェックボックスと列名の入力欄があり、プロジェクトに合わせて列名を自由に変更できます(例: Text1 → 担当者)。列のヘッダーを右クリックして「列名を変更」を選ぶと、その場で列名を変更することもできます。Text1〜7は自由に使えるフリーテキスト列です(Text4〜7は既定で非表示なので、必要になったらここで表示してください)。",
       p2: "列幅は列ヘッダの境界をドラッグして変更できます。列ヘッダ自体をドラッグすると列の並び替えができます(No列とWBS列は先頭に固定)。",
       p3: "テーブルの右クリックメニューの「列を非表示」で選択中の列をすばやく隠せます。再表示は「列表示」サブメニューから。CP列の表示/非表示はこのサブメニューでのみ切り替えられます。",
       p4: "既定で非表示の「WBS」列を表示すると、セパレータの階層から 1、1-1、1-1-2 のようなアウトライン番号が自動で振られます(読み取り専用)。",

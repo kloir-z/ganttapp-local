@@ -13,6 +13,7 @@ import { SeparatorCell, SeparatorCellTemplate } from './utils/SeparatorCell';
 import { CustomDependencyCell, CustomDependencyCellTemplate } from './utils/CustomDependencyCell';
 import { assignIds, reorderArray } from './utils/wbsHelpers';
 import ContextMenu from '../ContextMenu/ContextMenu';
+import RenameColumnDialog from '../ContextMenu/RenameColumnDialog';
 import { setCopiedRows } from '../../reduxStoreAndSlices/copiedRowsSlice';
 import useInsertCopiedRow from '../../hooks/useInsertCopiedRow';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
@@ -86,6 +87,28 @@ const WBSInfo: React.FC = memo(() => {
   const regularDaysOff = useSelector((state: RootState) => state.wbsData.regularDaysOff);
   const selectedRangesRef = useRef<{ selectedRowIds: string[], selectedColumnIds: string[] }>();
   const wbsRef = useRef<HTMLDivElement>(null);
+
+  // ヘッダー行の右クリック検出(列名変更メニュー用)。ReactGrid のセルは
+  // data-cell-rowidx / data-cell-colidx を持ち、rowidx 0 がヘッダー行、
+  // colidx は visibleColumns 内のインデックスに一致する。
+  const [headerContextColumn, setHeaderContextColumn] = useState<ExtendedColumn | null>(null);
+  const [renameColumnTarget, setRenameColumnTarget] = useState<ExtendedColumn | null>(null);
+
+  useEffect(() => {
+    const element = wbsRef.current;
+    if (!element) return;
+    const handleHeaderContextMenu = (event: MouseEvent) => {
+      const headerCell = (event.target as HTMLElement).closest?.('[data-cell-rowidx="0"][data-cell-colidx]');
+      if (headerCell) {
+        const colIdx = Number(headerCell.getAttribute('data-cell-colidx'));
+        setHeaderContextColumn(visibleColumns[colIdx] ?? null);
+      } else {
+        setHeaderContextColumn(null);
+      }
+    };
+    element.addEventListener('contextmenu', handleHeaderContextMenu);
+    return () => element.removeEventListener('contextmenu', handleHeaderContextMenu);
+  }, [visibleColumns]);
 
   const dataArray = useMemo(() => {
     return Object.values(data);
@@ -196,7 +219,9 @@ const WBSInfo: React.FC = memo(() => {
     selectedColumnIds: selectedRanges.selectedColumnIds,
     includeColumnSettings: true,
     columns,
-    dataArray
+    dataArray,
+    headerColumn: isViewingPast ? null : headerContextColumn,
+    onRenameColumn: setRenameColumnTarget
   });
 
   const handleSelectionChanged = useCallback((selectedRanges: MyRange[]) => {
@@ -228,6 +253,11 @@ const WBSInfo: React.FC = memo(() => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // 列名変更ダイアログ表示中は行コピー/挿入のショートカットを無効化する
+      // (ダイアログは activeModal を使わないローカル表示のため個別にガード)
+      if (renameColumnTarget) {
+        return;
+      }
       if (event.ctrlKey && event.key === 'c' && allSelectedColumnsVisible && !cKeyDownActive && !activeModal) {
         event.preventDefault();
         const selectedRowIds = selectedRangesRef.current?.selectedRowIds || [];
@@ -261,7 +291,7 @@ const WBSInfo: React.FC = memo(() => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [activeModal, allSelectedColumnsVisible, cKeyDownActive, copiedRows, dataArray, dispatch, insertCopiedRow, vKeyDownActive]);
+  }, [activeModal, allSelectedColumnsVisible, cKeyDownActive, copiedRows, dataArray, dispatch, insertCopiedRow, vKeyDownActive, renameColumnTarget]);
 
   return (
     <div ref={wbsRef}>
@@ -287,6 +317,10 @@ const WBSInfo: React.FC = memo(() => {
       <ContextMenu
         targetRef={wbsRef}
         items={menuOptions}
+      />
+      <RenameColumnDialog
+        column={renameColumnTarget}
+        onClose={() => setRenameColumnTarget(null)}
       />
       <CpHelp
         show={isCpColumnSelected}

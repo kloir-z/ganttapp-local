@@ -27,6 +27,9 @@ interface UseContextMenuOptionsProps {
     includeColumnSettings?: boolean;
     columns?: ExtendedColumn[];
     dataArray?: WBSData[];
+    // テーブルヘッダー上で右クリックされたときだけ渡される(列名変更メニュー用)
+    headerColumn?: ExtendedColumn | null;
+    onRenameColumn?: (column: ExtendedColumn) => void;
 }
 
 export const useContextMenuOptions = ({
@@ -38,7 +41,9 @@ export const useContextMenuOptions = ({
     contextMenu,
     includeColumnSettings = false,
     columns = [],
-    dataArray = []
+    dataArray = [],
+    headerColumn = null,
+    onRenameColumn
 }: UseContextMenuOptionsProps) => {
     const { t } = useTranslation();
     const dispatch = useDispatch();
@@ -91,6 +96,16 @@ export const useContextMenuOptions = ({
 
         const baseOptions = [];
         let pathCounter = 0;
+
+        // ヘッダー右クリック時は列名変更を先頭に出す(設定モーダルを開かずに変更できる)
+        if (headerColumn && onRenameColumn) {
+            const targetColumn = headerColumn;
+            baseOptions.push({
+                children: `${t("Rename Column")} (${targetColumn.columnName})`,
+                onClick: () => onRenameColumn(targetColumn),
+                path: String(pathCounter++)
+            });
+        }
 
         if (onDeleteBar) {
             baseOptions.push({
@@ -447,7 +462,7 @@ export const useContextMenuOptions = ({
         });
 
         return baseOptions;
-    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, onEditDependency, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting, showCriticalPath, basisColumnId, candidates, switchTo]);
+    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, onEditDependency, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting, showCriticalPath, basisColumnId, candidates, switchTo, headerColumn, onRenameColumn]);
 
     return menuOptions;
 };

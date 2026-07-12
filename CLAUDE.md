@@ -130,6 +130,7 @@ This is an offline-first Gantt chart application built with React 18, TypeScript
 #### Context Menu System (`src/components/ContextMenu/`)
 - **ContextMenu.tsx**: Right-click context menu
 - **CustomRowCountDialogContainer.tsx**: Row insertion dialog
+- **RenameColumnDialog.tsx**: Column rename dialog opened from the table-header right-click menu. A "Rename Column" item appears first in the menu only when the right-click landed on a header cell — WBSInfo detects this via ReactGrid's `data-cell-rowidx="0"` cell attribute and passes `headerColumn`/`onRenameColumn` into `useContextMenuOptions`. Renames via `pushPastState` + `setColumns` (undoable), same data path as Setting > Table
 
 #### Welcome & Onboarding (`src/components/Welcome/`)
 - **WelcomeModal.tsx**: First-time user welcome modal with samples; its "How to use" button opens the Help modal
