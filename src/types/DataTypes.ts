@@ -32,6 +32,11 @@ export interface ChartRow extends BaseRow {
   textColumn1: string;
   textColumn2: string;
   textColumn3: string;
+  // textColumn4〜7 は後から追加されたため省略可能(旧ファイルには存在しない)。
+  textColumn4?: string;
+  textColumn5?: string;
+  textColumn6?: string;
+  textColumn7?: string;
   isIncludeHolidays: boolean;
   cpPredecessors?: CpPredecessor[];
 }
@@ -63,6 +68,10 @@ export interface EventRow extends BaseRow {
   textColumn1: string;
   textColumn2: string;
   textColumn3: string;
+  textColumn4?: string;
+  textColumn5?: string;
+  textColumn6?: string;
+  textColumn7?: string;
   eventData: EventData[];
 }
 

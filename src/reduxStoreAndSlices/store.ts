@@ -53,7 +53,11 @@ const isDisplayNameOnlyRow = (row: WBSData): boolean => {
     isEmpty(row.actualEndDate) &&
     isEmpty(row.textColumn1) &&
     isEmpty(row.textColumn2) &&
-    isEmpty(row.textColumn3);
+    isEmpty(row.textColumn3) &&
+    isEmpty(row.textColumn4) &&
+    isEmpty(row.textColumn5) &&
+    isEmpty(row.textColumn6) &&
+    isEmpty(row.textColumn7);
   if (isChartRow(row)) {
     return baseFieldsEmpty && isEmpty(row.dependency);
   } else {

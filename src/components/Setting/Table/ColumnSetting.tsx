@@ -16,7 +16,8 @@ const ColumnSetting: React.FC = memo(() => {
   const initialColumnOrder = [
     'no', 'wbsNumber', 'displayName', 'color', 'plannedStartDate', 'plannedEndDate',
     'plannedDays', 'actualStartDate', 'actualEndDate', 'progress', 'dependency',
-    'textColumn1', 'textColumn2', 'textColumn3', 'isIncludeHolidays'
+    'cpPredecessors', 'textColumn1', 'textColumn2', 'textColumn3', 'textColumn4',
+    'textColumn5', 'textColumn6', 'textColumn7', 'isIncludeHolidays'
   ];
   const filteredColumns = initialColumnOrder
     .map(id => allColumns.find(col => col.columnId === id))
