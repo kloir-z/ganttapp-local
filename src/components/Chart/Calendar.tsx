@@ -87,6 +87,17 @@ const Calendar: React.FC<CalendarProps> = memo(({ dateArray }) => {
               const displayDate = (dateFormat === 'yyyy/MM/dd' || dateFormat === 'yyyy/M/d') ?
                 `${date.format("YYYY")}/${date.format("M")}` :
                 `${date.format("M")}/${date.format("YYYY")}`;
+              // 表示範囲が月途中から始まる場合など、この月のセグメントがラベルより
+              // 狭いと次の月ラベルと重なって読めなくなる。後続の月ラベルが存在し、
+              // かつセグメント幅がラベル幅(概算)に満たないときは描画しない。
+              const firstDayOfMonth = cdate(date.format("YYYY-MM") + "-01");
+              const lastDayOfMonth = firstDayOfMonth.add(1, "month").prev("day");
+              const daysUntilNextMonth = lastDayOfMonth.get("date") - date.get("date") + 1;
+              const hasFollowingLabel = index + daysUntilNextMonth < dateArray.length;
+              const estimatedLabelWidth = displayDate.length * 8 + 12;
+              if (hasFollowingLabel && daysUntilNextMonth * cellWidth < estimatedLabelWidth) {
+                return null;
+              }
               return (
                 <CalendarCell
                   key={index}
