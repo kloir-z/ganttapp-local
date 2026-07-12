@@ -9,6 +9,8 @@ export const createStateBackup = (state: RootState): string => {
     columns: state.wbsData.columns,
     colors: state.color.colors,
     fallbackColor: state.color.fallbackColor,
+    colorSchemes: state.color.schemes,
+    colorBasisColumn: state.color.basisColumnId,
     title: state.baseSettings.title,
     holidayInput: state.baseSettings.holidayInput,
     regularDaysOffSetting: state.wbsData.regularDaysOffSetting,
@@ -27,6 +29,8 @@ export interface BackupData {
   columns: any[];
   colors: any;
   fallbackColor: string;
+  colorSchemes?: any;
+  colorBasisColumn?: string;
   title: string;
   holidayInput: any;
   regularDaysOffSetting: any;

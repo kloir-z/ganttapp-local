@@ -197,6 +197,40 @@ describe('ExportImportHandler', () => {
       expect(projectData.colors).toEqual(testColors);
       expect('notesModalState' in projectData).toBe(false);
       expect('historySnapshots' in projectData).toBe(false);
+      // v2フィールドは未指定なら出力しない(旧アプリとの互換を保つ)
+      expect('colorSchemes' in projectData).toBe(false);
+      expect('colorBasisColumn' in projectData).toBe(false);
+    });
+
+    it('should include colorSchemes and colorBasisColumn when provided (v2)', () => {
+      const schemes = {
+        color: { colors: testColors, fallbackColor: '#76ff7051' },
+        textColumn1: { colors: { 1: { alias: 'A社', color: '#123' }, 999: { alias: '', color: '#0003' } }, fallbackColor: '#76ff7051' },
+      };
+      const projectData = buildProjectData({
+        fileId: testFileId,
+        colors: testColors,
+        colorSchemes: schemes,
+        colorBasisColumn: 'textColumn1',
+        dateRange: testDateRange,
+        columns: testColumns,
+        data: testData,
+        holidayInput: '',
+        holidayColor: { color: '#ff0000', subColor: '#ff000080' },
+        regularDaysOffSetting: {},
+        wbsWidth: 690,
+        calendarWidth: 1000,
+        cellWidth: 21,
+        title: 'Test Project',
+        showYear: true,
+        dateFormat: 'yyyy/M/d',
+        treeData: [],
+        noteData: {},
+        language: 'ja',
+        scrollPosition: { scrollLeft: 0, scrollTop: 0 },
+      });
+      expect(projectData.colorSchemes).toEqual(schemes);
+      expect(projectData.colorBasisColumn).toBe('textColumn1');
     });
   });
 
@@ -224,6 +258,79 @@ describe('ExportImportHandler', () => {
       await thunkAction(mockDispatchFn, () => ({} as any), {});
 
       expect(mockDispatchFn).toHaveBeenCalled();
+    });
+
+    it('should restore per-column color schemes from a v2 file', async () => {
+      const schemes = {
+        color: { colors: testColors, fallbackColor: '#76ff7051' },
+        textColumn1: { colors: { 1: { alias: 'A社', color: '#123' }, 999: { alias: '', color: '#0003' } }, fallbackColor: '#76ff7051' },
+      };
+      const jsonFile = {
+        type: 'application/json',
+        text: jest.fn().mockResolvedValue(JSON.stringify({
+          version: 2,
+          colors: testColors,
+          colorSchemes: schemes,
+          colorBasisColumn: 'textColumn1',
+        }))
+      } as unknown as File;
+
+      const thunkAction = handleImport({ file: jsonFile });
+      await thunkAction(mockDispatchFn, () => ({} as any), {});
+
+      const actions = mockDispatchFn.mock.calls.map(c => c[0]).filter(a => a && a.type);
+      const setEntire = actions.find(a => a.type === 'color/setEntireColorState');
+      expect(setEntire).toBeDefined();
+      expect(setEntire.payload.basisColumnId).toBe('textColumn1');
+      expect(setEntire.payload.schemes).toEqual(schemes);
+      // 新形式があるときは旧形式の読込は走らない
+      expect(actions.some(a => a.type === 'color/updateEntireColorSettings')).toBe(false);
+    });
+
+    it('should fall back to the legacy single-palette import for v1 files', async () => {
+      const jsonFile = {
+        type: 'application/json',
+        text: jest.fn().mockResolvedValue(JSON.stringify({ colors: testColors }))
+      } as unknown as File;
+
+      const thunkAction = handleImport({ file: jsonFile });
+      await thunkAction(mockDispatchFn, () => ({} as any), {});
+
+      const actions = mockDispatchFn.mock.calls.map(c => c[0]).filter(a => a && a.type);
+      expect(actions.some(a => a.type === 'color/updateEntireColorSettings')).toBe(true);
+      expect(actions.some(a => a.type === 'color/setEntireColorState')).toBe(false);
+    });
+
+    it('should inject the extended text columns (Text4-7, hidden) into legacy column lists', async () => {
+      const legacyColumns = [
+        { columnId: 'no', columnName: 'No', width: 37, visible: true },
+        { columnId: 'displayName', columnName: 'DisplayName', width: 100, visible: true },
+        { columnId: 'dependency', columnName: 'Dep', width: 60, visible: true },
+        { columnId: 'textColumn1', columnName: 'Text1', width: 50, visible: true },
+        { columnId: 'textColumn2', columnName: 'Text2', width: 50, visible: true },
+        { columnId: 'textColumn3', columnName: 'Text3', width: 50, visible: true },
+        { columnId: 'isIncludeHolidays', columnName: 'IncHol', width: 50, visible: true },
+      ];
+      const jsonFile = {
+        type: 'application/json',
+        text: jest.fn().mockResolvedValue(JSON.stringify({ columns: legacyColumns }))
+      } as unknown as File;
+
+      const thunkAction = handleImport({ file: jsonFile });
+      await thunkAction(mockDispatchFn, () => ({} as any), {});
+
+      const actions = mockDispatchFn.mock.calls.map(c => c[0]).filter(a => a && a.type);
+      const setCols = actions.find(a => a.type === 'wbsData/setColumns');
+      expect(setCols).toBeDefined();
+      const ids = setCols.payload.map((c: { columnId: string }) => c.columnId);
+      ['textColumn4', 'textColumn5', 'textColumn6', 'textColumn7'].forEach(id => {
+        expect(ids).toContain(id);
+        const col = setCols.payload.find((c: { columnId: string }) => c.columnId === id);
+        expect(col.visible).toBe(false);
+      });
+      // 既存の後付け列(WBS/CP)の注入も引き続き行われる
+      expect(ids).toContain('wbsNumber');
+      expect(ids).toContain('cpPredecessors');
     });
 
     it('should handle ZIP file import', async () => {

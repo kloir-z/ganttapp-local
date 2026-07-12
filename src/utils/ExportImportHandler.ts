@@ -1,8 +1,8 @@
 import { AppDispatch, ExtendedColumn, RootState, setColumns, setDateFormat, setIsSavedChangesStore, setShowYear, updateEntireRegularDaysOffSetting, updateHolidayColor } from "../reduxStoreAndSlices/store";
-import { ensureCpPredecessorsColumn, ensureWbsNumberColumn } from "../reduxStoreAndSlices/initialColumns";
-import { ColorInfo, setIsSavedChangesColor } from "../reduxStoreAndSlices/colorSlice";
+import { ensureCpPredecessorsColumn, ensureExtendedTextColumns, ensureWbsNumberColumn } from "../reduxStoreAndSlices/initialColumns";
+import { ColorInfo, ColorScheme, setIsSavedChangesColor } from "../reduxStoreAndSlices/colorSlice";
 import { WBSData, DateFormatType, RegularDaysOffSettingsType, HolidayColor } from "../types/DataTypes";
-import { updateEntireColorSettings } from "../reduxStoreAndSlices/colorSlice";
+import { updateEntireColorSettings, setEntireColorState } from "../reduxStoreAndSlices/colorSlice";
 import { setEntireData, setHolidays } from "../reduxStoreAndSlices/store";
 import { setWbsWidth, setDateRange, setHolidayInput, setTitle, setCalendarWidth, setCellWidth, setLanguage, setIsSavedChangesSettings, setScrollPosition } from "../reduxStoreAndSlices/baseSettingsSlice";
 import JSZip from 'jszip';
@@ -15,11 +15,15 @@ import i18n from "i18next";
 // Schema version of the exported project data. Bump this whenever the shape of
 // the exported JSON changes in a way that import logic must account for.
 // Files exported before versioning existed have no `version` field; treat those as 1.
-export const EXPORT_SCHEMA_VERSION = 1;
+// v2: 色分け基準列(colorBasisColumn)と基準列ごとのパレット(colorSchemes)を追加。
+//     `colors` はアクティブなパレットとして残す(旧アプリでも開ける)。
+export const EXPORT_SCHEMA_VERSION = 2;
 
 export interface ExportData {
   fileId: string;
   colors: { [id: number]: ColorInfo };
+  colorSchemes?: { [columnId: string]: ColorScheme };
+  colorBasisColumn?: string;
   dateRange: { startDate: string, endDate: string };
   columns: ExtendedColumn[];
   data: { [id: string]: WBSData };
@@ -50,6 +54,8 @@ export interface ExportData {
 export const buildProjectData = (options: ExportData) => {
   const {
     colors,
+    colorSchemes,
+    colorBasisColumn,
     dateRange,
     columns,
     data,
@@ -87,6 +93,8 @@ export const buildProjectData = (options: ExportData) => {
   return {
     version: EXPORT_SCHEMA_VERSION,
     colors,
+    ...(colorSchemes && { colorSchemes }),
+    ...(colorBasisColumn && { colorBasisColumn }),
     dateRange,
     columns,
     data,
@@ -158,7 +166,14 @@ export const handleImport = createAsyncThunk<void, { file: Blob; skipHistoryImpo
         `Importing a project saved with a newer format (v${schemaVersion}) than this app supports (v${EXPORT_SCHEMA_VERSION}). Some data may not load correctly.`
       );
     }
-    if (parsedData.colors) {
+    if (parsedData.colorSchemes && typeof parsedData.colorSchemes === 'object') {
+      // v2: 基準列ごとのパレット一式を復元する。
+      dispatch(setEntireColorState({
+        schemes: parsedData.colorSchemes,
+        basisColumnId: typeof parsedData.colorBasisColumn === 'string' ? parsedData.colorBasisColumn : 'color',
+      }));
+    } else if (parsedData.colors) {
+      // v1(旧形式): 単一パレットを Color 列基準として読み込む。
       dispatch(updateEntireColorSettings(parsedData.colors));
     }
     if (parsedData.dateRange && parsedData.dateRange.startDate && parsedData.dateRange.endDate) {
@@ -168,10 +183,10 @@ export const handleImport = createAsyncThunk<void, { file: Blob; skipHistoryImpo
       }));
     }
     if (parsedData.columns && Array.isArray(parsedData.columns)) {
-      // Older projects predate the optional "WBS" column and the critical-path
-      // "CP" column; inject them (hidden) so they can be turned on from the
-      // column settings.
-      dispatch(setColumns(ensureCpPredecessorsColumn(ensureWbsNumberColumn(parsedData.columns))));
+      // Older projects predate the optional "WBS" column, the critical-path
+      // "CP" column and the extended text columns (Text4〜7); inject them
+      // (hidden) so they can be turned on from the column settings.
+      dispatch(setColumns(ensureExtendedTextColumns(ensureCpPredecessorsColumn(ensureWbsNumberColumn(parsedData.columns)))));
     }
     if (parsedData.regularDaysOffSetting) {
       dispatch(updateEntireRegularDaysOffSetting(parsedData.regularDaysOffSetting));

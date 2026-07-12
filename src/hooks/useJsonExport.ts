@@ -10,6 +10,8 @@ export const useJsonExport = () => {
     const dispatch = useDispatch();
 
     const currentColors = useSelector((state: RootState) => state.color.colors);
+    const colorSchemes = useSelector((state: RootState) => state.color.schemes);
+    const colorBasisColumn = useSelector((state: RootState) => state.color.basisColumnId);
     const currentDateRange = useSelector((state: RootState) => state.baseSettings.dateRange);
     const currentColumns = useSelector((state: RootState) => state.wbsData.columns);
     const currentData = useSelector((state: RootState) => state.wbsData.data);
@@ -46,6 +48,8 @@ export const useJsonExport = () => {
             const zipBlob = await handleExport({
                 fileId: uuidv4(),
                 colors,
+                colorSchemes,
+                colorBasisColumn,
                 dateRange,
                 columns,
                 data,
@@ -97,7 +101,7 @@ export const useJsonExport = () => {
             throw error;
         }
     }, [
-        colors, dateRange, columns, data, holidayInput, holidayColor,
+        colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor,
         regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title,
         showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage,
         scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition,

@@ -2,7 +2,7 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from './store';
 import { startViewingPast, returnToPresent } from './historySlice';
 import { setEntireData, setColumns, updateEntireRegularDaysOffSetting, setDateFormat } from './store';
-import { updateEntireColorSettings, updateFallbackColor } from './colorSlice';
+import { updateEntireColorSettings, updateFallbackColor, setEntireColorState } from './colorSlice';
 import { setTitle, setHolidayInput } from './baseSettingsSlice';
 import { setNotes } from './notesSlice';
 import { createStateBackup, parseBackupData } from '../utils/StateBackupUtils';
@@ -69,9 +69,17 @@ export const returnToPresentWithRestore = createAsyncThunk(
         // バックアップから各状態を復元
         dispatch(setEntireData(backupData.data));
         dispatch(setColumns(backupData.columns));
-        dispatch(updateEntireColorSettings(backupData.colors));
-        if (backupData.fallbackColor) {
-          dispatch(updateFallbackColor(backupData.fallbackColor));
+        if (backupData.colorSchemes) {
+          // 基準列ごとのパレット一式を丸ごと復元する(新形式バックアップ)。
+          dispatch(setEntireColorState({
+            schemes: backupData.colorSchemes,
+            basisColumnId: backupData.colorBasisColumn ?? 'color',
+          }));
+        } else {
+          dispatch(updateEntireColorSettings(backupData.colors));
+          if (backupData.fallbackColor) {
+            dispatch(updateFallbackColor(backupData.fallbackColor));
+          }
         }
         dispatch(setTitle(backupData.title));
         dispatch(setHolidayInput(backupData.holidayInput));

@@ -13,6 +13,8 @@ export const createSnapshot = async (
     const projectData = {
       colors: state.color.colors,
       fallbackColor: state.color.fallbackColor,
+      colorSchemes: state.color.schemes,
+      colorBasisColumn: state.color.basisColumnId,
       columns: state.wbsData.columns,
       data: state.wbsData.data,
       holidayInput: state.baseSettings.holidayInput,
@@ -47,6 +49,8 @@ export const getCurrentProjectDataAsJson = (state: RootState): string => {
   const projectData = {
     colors: state.color.colors,
     fallbackColor: state.color.fallbackColor,
+    colorSchemes: state.color.schemes,
+    colorBasisColumn: state.color.basisColumnId,
     columns: state.wbsData.columns,
     data: state.wbsData.data,
     holidayInput: state.baseSettings.holidayInput,

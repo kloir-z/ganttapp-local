@@ -64,6 +64,8 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
 
   // Redux state for export
   const currentColors = useSelector((state: RootState) => state.color.colors);
+  const colorSchemes = useSelector((state: RootState) => state.color.schemes);
+  const colorBasisColumn = useSelector((state: RootState) => state.color.basisColumnId);
   const currentDateRange = useSelector((state: RootState) => state.baseSettings.dateRange);
   const currentColumns = useSelector((state: RootState) => state.wbsData.columns);
   const currentData = useSelector((state: RootState) => state.wbsData.data);
@@ -108,6 +110,8 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
       const zipBlob = await handleExport({
         fileId: uuidv4(),
         colors,
+        colorSchemes,
+        colorBasisColumn,
         dateRange,
         columns,
         data,
@@ -156,7 +160,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
       setLoading(false);
     }
   }, [
-    colors, dateRange, columns, data, holidayInput, holidayColor,
+    colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor,
     regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title,
     showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, historySnapshots, dispatch, t
   ]);
