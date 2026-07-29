@@ -76,6 +76,7 @@ This is an offline-first Gantt chart application built with React 18, TypeScript
   - **CustomDatePicker.tsx**: Date selection component
 - **Grid Utilities** (`src/components/Table/utils/`):
   - **gridHandlers.ts**: ReactGrid change handlers. Planned start/end changes arriving together (Excel-like range paste) are merged into one `setPlannedDate` per row — dispatching them separately would revert the first date with stale data — and are applied *after* `setEntireData` so a mixed paste (dates + other columns) doesn't clobber them; `pushPastState` is skipped when `setEntireData` already pushed the undo snapshot (unit-tested in `gridHandlers.test.ts`)
+  - **pasteTiling.ts**: Pure clipboard-tiling helpers for the Excel-like "fill the whole selection" paste (`tileClipboardHtml` for ReactGrid's own `data-reactgrid="reactgrid-content"` table, `tileClipboardText` for external TSV). ReactGrid's `pasteData` only fills the selection when the copied block is a single cell; otherwise it writes the block once at the selection's top-left. These helpers repeat the copied block (row- and column-wise, clipped at the selection edge) and return null when no tiling is needed. Unit-tested in `pasteTiling.test.ts`
   - **wbsHelpers.ts**: WBS data manipulation utilities
   - **wbsRowCreators.ts**: Row creation functions
 
@@ -225,6 +226,7 @@ NotesModal (90 lines)
 - **useColorBasis.ts**: Shared hook for the color-basis feature — exposes the basis candidates (Color column + text columns, labeled with user-renamed column names), `switchTo(columnId)` (collects the column's unique values and dispatches `switchColorBasis`) and `autoAssign(targetRowIds?)` (re-runs auto-assignment on the active basis; also backs the right-click "Auto color setting" items)
 - **useGanttExcelExport.ts**: Excel export — gathers Redux state (including the `notes` slice's `treeData`/`noteData`/`rowNoteData` for the Notes sheet and `color.basisColumnId`) and downloads the workbook from `GanttExcelExport.ts`. `exportExcel({ includeNotes })` omits the Notes sheet when `includeNotes` is false (driven by the export dialog in `TopBarLocal`)
 - **useInsertCopiedRow.ts**: Copy/paste row insertion logic
+- **useRangePasteFill.ts**: Excel-like range paste — intercepts the `paste` event in the capture phase on the WBS container (only when the target is ReactGrid's `.rg-hidden-element`, so cell-editor pastes are untouched), tiles the clipboard to the active selection via `pasteTiling.ts`, and re-dispatches a synthetic `ClipboardEvent` carrying the enlarged payload. ReactGrid then sees a clipboard that already matches the selection, so cell-type resolution, `onCellsChanged`/`handleGridChanges` and the single undo snapshot stay unchanged. WBSInfo feeds it the active range's row/column counts from `onSelectionChanged`
 - **useLanguageChange.ts**: Language switching functionality
 - **useResetIsSavedChangesFlags.ts**: Unsaved changes flag management
 - **useResetReduxStates.ts**: Redux state reset and initialization

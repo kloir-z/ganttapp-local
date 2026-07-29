@@ -18,6 +18,8 @@ import { setCopiedRows } from '../../reduxStoreAndSlices/copiedRowsSlice';
 import useInsertCopiedRow from '../../hooks/useInsertCopiedRow';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { useImeCellOverlay } from '../../hooks/useImeCellOverlay';
+import { useRangePasteFill } from '../../hooks/useRangePasteFill';
+import { PasteTarget } from './utils/pasteTiling';
 import { buildWbsNumberMap } from '../../utils/wbsNumber';
 import { buildCpDisplayTextMap } from '../../utils/CriticalPath';
 import CpHelp from './CpHelp';
@@ -86,6 +88,8 @@ const WBSInfo: React.FC = memo(() => {
 
   const regularDaysOff = useSelector((state: RootState) => state.wbsData.regularDaysOff);
   const selectedRangesRef = useRef<{ selectedRowIds: string[], selectedColumnIds: string[] }>();
+  // 貼り付け時に「選択範囲を繰り返しで埋める」ため、アクティブな選択範囲の行数・列数を保持する
+  const pasteTargetRef = useRef<PasteTarget | null>(null);
   const wbsRef = useRef<HTMLDivElement>(null);
 
   // ヘッダー行の右クリック検出(列名変更メニュー用)。ReactGrid のセルは
@@ -240,9 +244,19 @@ const WBSInfo: React.FC = memo(() => {
       selectedColumnIds: Array.from(selectedColumnIds),
     };
     selectedRangesRef.current = newSelection;
+    // 貼り付け先はアクティブな範囲(複数範囲選択のときは最後に作られたもの)
+    const activeRange = selectedRanges[selectedRanges.length - 1];
+    pasteTargetRef.current = activeRange
+      ? { rowCount: activeRange.rows.length, columnCount: activeRange.columns.length }
+      : null;
     setSelectedRanges(newSelection);
     areAllSelectedColumnsVisible(Array.from(visibleColumnIds).every(id => selectedColumnIds.has(id)));
   }, [visibleColumnIds]);
+
+  // Excelライクな範囲貼り付け: コピー元より広い範囲を選択して貼り付けたときは、
+  // 選択範囲を埋めるまでコピー元の内容を繰り返す(ReactGrid 自身はコピー元のサイズぶんしか貼らない)
+  const getPasteTarget = useCallback(() => pasteTargetRef.current, []);
+  useRangePasteFill(wbsRef, getPasteTarget, !isViewingPast);
 
   // IME(日本語)変換中の文字と候補ウィンドウを、画面中央の隠し要素ではなく
   // フォーカス中のセル上に表示する(Excelライクな直接入力)。
