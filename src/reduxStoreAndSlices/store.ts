@@ -250,6 +250,38 @@ export const wbsDataSlice = createSlice({
         state.isSavedChanges = false;
       }
     },
+    // 範囲ペーストのように複数行の予定日をまとめて確定するための一括版。
+    // 行ごとに setPlannedDate を撃つと、後続行の dispatch の依存計算(前後行の再計算)が
+    // 先に貼り付けた行の値を上書きしてしまい、貼り付けた並びが同じ値に潰れる。
+    // ここでは先に全行へ値を入れ、貼り付けた行同士は再計算対象から外して(visited に入れて)
+    // 依存を伝播させるので、貼り付けた値がそのまま残り、影響は範囲外の行だけに及ぶ。
+    setPlannedDates: (state, action: PayloadAction<{ id: string; startDate: string; endDate: string }[]>) => {
+      const updates = action.payload.filter(({ id }) => isChartRow(state.data[id]));
+      if (updates.length === 0) {
+        return;
+      }
+      let changed = false;
+      updates.forEach(({ id, startDate, endDate }) => {
+        const chartRow = state.data[id];
+        if (!isChartRow(chartRow) || (chartRow.plannedStartDate === startDate && chartRow.plannedEndDate === endDate)) {
+          return;
+        }
+        chartRow.plannedStartDate = startDate;
+        chartRow.plannedEndDate = endDate;
+        chartRow.plannedDays = calculatePlannedDays(startDate, endDate, state.holidays, chartRow.isIncludeHolidays, state.regularDaysOff);
+        changed = true;
+      });
+      if (!changed) {
+        return;
+      }
+      const pastedIds = updates.map(update => update.id);
+      updates.forEach(({ id, startDate, endDate }) => {
+        const visited = new Set(pastedIds.filter(pastedId => pastedId !== id));
+        updateDependentRows(state, id, startDate, endDate, visited);
+      });
+      state.data = updateSeparatorRowDates(state.data);
+      state.isSavedChanges = false;
+    },
     setActualDate: (state, action: PayloadAction<{ id: string; startDate: string; endDate: string }>) => {
       const { id, startDate, endDate } = action.payload;
       const chartRow = state.data[id];
@@ -655,6 +687,7 @@ export const {
   setMessageInfo,
   clearMessageInfo,
   setPlannedDate,
+  setPlannedDates,
   setActualDate,
   setDisplayName,
   toggleSeparatorCollapsed,

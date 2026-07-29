@@ -18,8 +18,7 @@ import { setCopiedRows } from '../../reduxStoreAndSlices/copiedRowsSlice';
 import useInsertCopiedRow from '../../hooks/useInsertCopiedRow';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { useImeCellOverlay } from '../../hooks/useImeCellOverlay';
-import { useRangePasteFill } from '../../hooks/useRangePasteFill';
-import { PasteTarget } from './utils/pasteTiling';
+import { PasteRange, useRangePasteFill } from '../../hooks/useRangePasteFill';
 import { buildWbsNumberMap } from '../../utils/wbsNumber';
 import { buildCpDisplayTextMap } from '../../utils/CriticalPath';
 import CpHelp from './CpHelp';
@@ -88,8 +87,11 @@ const WBSInfo: React.FC = memo(() => {
 
   const regularDaysOff = useSelector((state: RootState) => state.wbsData.regularDaysOff);
   const selectedRangesRef = useRef<{ selectedRowIds: string[], selectedColumnIds: string[] }>();
-  // 貼り付け時に「選択範囲を繰り返しで埋める」ため、アクティブな選択範囲の行数・列数を保持する
-  const pasteTargetRef = useRef<PasteTarget | null>(null);
+  // 貼り付け時に「選択範囲を繰り返しで埋める」ため、アクティブな選択範囲を保持する
+  const pasteRangeRef = useRef<PasteRange | null>(null);
+  // 直前の貼り付けが埋めた行ID。onCellsChanged で使い切る(値が変わらなかった行も
+  // 依存計算から守るために handleGridChanges へ渡す)。
+  const pastedRowsRef = useRef<{ rowIds: string[]; at: number } | null>(null);
   const wbsRef = useRef<HTMLDivElement>(null);
 
   // ヘッダー行の右クリック検出(列名変更メニュー用)。ReactGrid のセルは
@@ -246,8 +248,8 @@ const WBSInfo: React.FC = memo(() => {
     selectedRangesRef.current = newSelection;
     // 貼り付け先はアクティブな範囲(複数範囲選択のときは最後に作られたもの)
     const activeRange = selectedRanges[selectedRanges.length - 1];
-    pasteTargetRef.current = activeRange
-      ? { rowCount: activeRange.rows.length, columnCount: activeRange.columns.length }
+    pasteRangeRef.current = activeRange
+      ? { rowIds: activeRange.rows.map(row => row.rowId.toString()), columnCount: activeRange.columns.length }
       : null;
     setSelectedRanges(newSelection);
     areAllSelectedColumnsVisible(Array.from(visibleColumnIds).every(id => selectedColumnIds.has(id)));
@@ -255,8 +257,18 @@ const WBSInfo: React.FC = memo(() => {
 
   // Excelライクな範囲貼り付け: コピー元より広い範囲を選択して貼り付けたときは、
   // 選択範囲を埋めるまでコピー元の内容を繰り返す(ReactGrid 自身はコピー元のサイズぶんしか貼らない)
-  const getPasteTarget = useCallback(() => pasteTargetRef.current, []);
-  useRangePasteFill(wbsRef, getPasteTarget, !isViewingPast);
+  const getPasteRange = useCallback(() => pasteRangeRef.current, []);
+  const handlePasteRange = useCallback((range: PasteRange) => {
+    pastedRowsRef.current = { rowIds: range.rowIds, at: Date.now() };
+  }, []);
+  useRangePasteFill(wbsRef, getPasteRange, handlePasteRange, !isViewingPast);
+
+  // 貼り付け直後の onCellsChanged でだけ使う(取り出したら破棄。古い記録は使わない)
+  const consumePastedRowIds = useCallback(() => {
+    const pasted = pastedRowsRef.current;
+    pastedRowsRef.current = null;
+    return pasted && Date.now() - pasted.at < 1000 ? pasted.rowIds : undefined;
+  }, []);
 
   // IME(日本語)変換中の文字と候補ウィンドウを、画面中央の隠し要素ではなく
   // フォーカス中のセル上に表示する(Excelライクな直接入力)。
@@ -312,7 +324,7 @@ const WBSInfo: React.FC = memo(() => {
       <ReactGrid
         rows={rows}
         columns={visibleColumns}
-        onCellsChanged={isViewingPast ? undefined : (changes) => handleGridChanges(dispatch, data, changes, columns, holidays, regularDaysOff)}
+        onCellsChanged={isViewingPast ? undefined : (changes) => handleGridChanges(dispatch, data, changes, columns, holidays, regularDaysOff, consumePastedRowIds())}
         onColumnResized={isViewingPast ? undefined : onColumnResize}
         stickyTopRows={1}
         stickyLeftColumns={1}

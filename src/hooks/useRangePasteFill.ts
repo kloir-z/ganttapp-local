@@ -1,10 +1,16 @@
 import { RefObject, useEffect } from 'react';
 import {
   isReactGridClipboardHtml,
-  PasteTarget,
   tileClipboardHtml,
   tileClipboardText,
 } from '../components/Table/utils/pasteTiling';
+
+export interface PasteRange {
+  /** 貼り付け先として選択されている行ID(表示順) */
+  rowIds: string[];
+  /** 貼り付け先として選択されている列数 */
+  columnCount: number;
+}
 
 /**
  * 選択範囲いっぱいに繰り返し貼り付ける(Excel ライク)ためのフック。
@@ -16,12 +22,15 @@ import {
  * onCellsChanged 以降の処理(handleGridChanges / undo)は一切変わらない。
  *
  * @param containerRef ReactGrid を含むラッパー要素
- * @param getPasteTarget 貼り付け先の選択範囲サイズを返す(選択なしなら null)
+ * @param getPasteRange 貼り付け先の選択範囲を返す(選択なしなら null)
+ * @param onPaste 横取りした貼り付けごとに、その貼り付け先範囲を通知する
+ *   (タイル化の有無によらず呼ぶ。貼り付けた行を依存計算から守るために使う)
  * @param enabled 履歴プレビュー中など編集不可のときは false
  */
 export function useRangePasteFill(
   containerRef: RefObject<HTMLElement>,
-  getPasteTarget: () => PasteTarget | null,
+  getPasteRange: () => PasteRange | null,
+  onPaste: (range: PasteRange) => void,
   enabled = true
 ): void {
   useEffect(() => {
@@ -38,10 +47,14 @@ export function useRangePasteFill(
       const target = event.target;
       if (!(target instanceof HTMLElement) || !target.classList.contains('rg-hidden-element')) return;
 
-      const pasteTarget = getPasteTarget();
+      const pasteRange = getPasteRange();
       const clipboardData = event.clipboardData;
-      if (!pasteTarget || !clipboardData) return;
+      if (!pasteRange || !clipboardData) return;
 
+      // タイル化するかどうかに関わらず、この貼り付けが埋める範囲を知らせる
+      onPaste(pasteRange);
+
+      const pasteTarget = { rowCount: pasteRange.rowIds.length, columnCount: pasteRange.columnCount };
       const html = clipboardData.getData('text/html');
       const text = clipboardData.getData('text/plain');
       // ReactGrid 形式の HTML があるときは ReactGrid もそちらを読むので HTML 側を複製する
@@ -73,5 +86,5 @@ export function useRangePasteFill(
 
     container.addEventListener('paste', handlePasteCapture, true);
     return () => container.removeEventListener('paste', handlePasteCapture, true);
-  }, [containerRef, getPasteTarget, enabled]);
+  }, [containerRef, getPasteRange, onPaste, enabled]);
 }

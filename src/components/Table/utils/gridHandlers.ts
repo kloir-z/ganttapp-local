@@ -2,7 +2,7 @@
 import i18next from 'i18next';
 import { CellChange, TextCell, NumberCell, CheckboxCell, EmailCell, DropdownCell, ChevronCell, HeaderCell, TimeCell, DateCell } from "@silevis/reactgrid";
 import { WBSData, ChartRow, isChartRow, isEventRow, isSeparatorRow } from '../../../types/DataTypes';
-import { setEntireData, setPlannedDate, updateSeparatorDates, pushPastState, ExtendedColumn, setMessageInfo, clearMessageInfo, AppDispatch } from '../../../reduxStoreAndSlices/store';
+import { setEntireData, setPlannedDates, updateSeparatorDates, pushPastState, ExtendedColumn, setMessageInfo, clearMessageInfo, AppDispatch } from '../../../reduxStoreAndSlices/store';
 import { CustomDateCell } from './CustomDateCell';
 import { CustomTextCell } from "./CustomTextCell";
 import { addPlannedDays, validateDateString } from "../../../utils/CommonUtils";
@@ -18,14 +18,25 @@ const validateTextLength = (text: string, maxLength: number) => {
   return length <= maxLength;
 };
 
-export const handleGridChanges = (dispatch: AppDispatch, data: { [id: string]: WBSData }, changes: CellChange<AllCellTypes>[], columns: ExtendedColumn[], holidays: string[], regularDaysOff: number[]) => {
+export const handleGridChanges = (
+  dispatch: AppDispatch,
+  data: { [id: string]: WBSData },
+  changes: CellChange<AllCellTypes>[],
+  columns: ExtendedColumn[],
+  holidays: string[],
+  regularDaysOff: number[],
+  // 貼り付けで埋めた行ID(範囲ペースト時のみ)。値が変わらなかった行は ReactGrid が
+  // 変更を出さないため、そのままだと隣の行の依存計算に動かされてしまう。
+  // 予定日の一括更新に「現在値のまま」で混ぜて、貼り付け範囲全体を守る。
+  pastedRowIds?: string[]
+) => {
   const updatedData = { ...data };
   const visibleColumns = columns.filter(column => column.visible);
   const secondVisibleColumnId = visibleColumns.length > 1 ? visibleColumns[1].columnId : null;
   const maxLength = 150;
 
   // Planned start/end edits from the table mirror the chart bar drag: set the date
-  // directly and cascade to dependent (successor) rows via setPlannedDate, instead of
+  // directly and cascade to dependent (successor) rows via setPlannedDates, instead of
   // going through setEntireData -> resolveDependencies, which would re-derive (snap
   // back) a dependent row's own start from its predecessor.
   const isPlannedDateChange = (change: CellChange<AllCellTypes>) => {
@@ -49,9 +60,8 @@ export const handleGridChanges = (dispatch: AppDispatch, data: { [id: string]: W
     if (otherChanges.length === 0) {
       dispatch(pushPastState());
     }
-    // 同一行の開始日・終了日が同時に届く範囲ペーストでは、行ごとに1回の
-    // setPlannedDate にまとめる(別々に dispatch すると、後の dispatch が
-    // もう片方の日付をペースト前の値で戻してしまう)。
+    // 同一行の開始日・終了日が同時に届く範囲ペーストでは、行ごとに1つの更新へ
+    // まとめる(別々に反映すると、後の更新がもう片方の日付をペースト前の値で戻してしまう)。
     const plannedByRow = new Map<string, { startDate?: string; endDate?: string }>();
     plannedDateChanges.forEach((change) => {
       const rowId = change.rowId.toString();
@@ -64,14 +74,24 @@ export const handleGridChanges = (dispatch: AppDispatch, data: { [id: string]: W
       }
       plannedByRow.set(rowId, entry);
     });
-    plannedByRow.forEach((entry, rowId) => {
+    // 貼り付けで埋めた行のうち、値が変わらず変更が届かなかった行も現在値のまま加える
+    // (加えないと、変わった行の依存計算に引きずられて動いてしまう)。
+    pastedRowIds?.forEach((rowId) => {
+      if (isChartRow(data[rowId]) && !plannedByRow.has(rowId)) {
+        plannedByRow.set(rowId, {});
+      }
+    });
+    // 複数行ぶんはさらに1回の setPlannedDates にまとめる(行ごとに dispatch すると、
+    // 後の行の依存計算が先に貼り付けた行の日付を再計算して上書きしてしまう)。
+    const plannedUpdates = Array.from(plannedByRow, ([rowId, entry]) => {
       const chartRow = data[rowId] as ChartRow;
-      dispatch(setPlannedDate({
+      return {
         id: rowId,
         startDate: entry.startDate ?? validateDateString(chartRow.plannedStartDate),
         endDate: entry.endDate ?? validateDateString(chartRow.plannedEndDate),
-      }));
+      };
     });
+    dispatch(setPlannedDates(plannedUpdates));
     dispatch(updateSeparatorDates());
   }
 };

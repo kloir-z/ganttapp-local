@@ -1,7 +1,8 @@
 // handleGridChanges の範囲ペースト挙動のテスト。
-// 特に「同一行の予定開始日+終了日が同時に届いたとき、1回の setPlannedDate に
-// まとめて両方の新しい値が反映されること」(範囲ペーストで終了日だけが貼り付き
-// 開始日が古い値に戻るバグの回帰テスト)を確認する。
+// 特に「同一行の予定開始日+終了日が同時に届いたとき、1つの更新にまとめて両方の
+// 新しい値が反映されること」(範囲ペーストで終了日だけが貼り付き開始日が古い値に
+// 戻るバグの回帰テスト)と、「複数行ぶんが1回の setPlannedDates にまとまること」
+// (行ごとの dispatch だと依存計算が先の行を上書きしてしまう)を確認する。
 import { CellChange } from '@silevis/reactgrid';
 import { handleGridChanges } from './gridHandlers';
 import { CustomDateCell } from './CustomDateCell';
@@ -67,7 +68,7 @@ describe('handleGridChanges (range paste)', () => {
     row1: makeChartRow('row1', 2, '2026/01/06', '2026/01/11'),
   } as { [id: string]: WBSData });
 
-  test('同一行に開始日と終了日が同時に来たら1回の setPlannedDate に両方反映される', () => {
+  test('同一行に開始日と終了日が同時に来たら1回の setPlannedDates に両方反映される', () => {
     const dispatched: { type: string; payload?: unknown }[] = [];
     const dispatch = ((action: { type: string }) => { dispatched.push(action); }) as never;
 
@@ -76,16 +77,16 @@ describe('handleGridChanges (range paste)', () => {
       dateChange('row0', 'plannedEndDate', '2026/02/05'),
     ], columns, [], []);
 
-    const plannedActions = dispatched.filter(a => a.type === 'wbsData/setPlannedDate');
+    const plannedActions = dispatched.filter(a => a.type === 'wbsData/setPlannedDates');
     expect(plannedActions).toHaveLength(1);
-    expect(plannedActions[0].payload).toEqual({
+    expect(plannedActions[0].payload).toEqual([{
       id: 'row0',
       startDate: '2026/02/01',
       endDate: '2026/02/05',
-    });
+    }]);
   });
 
-  test('複数行×開始/終了の2x2ペーストは行ごとに1回ずつ dispatch される', () => {
+  test('複数行×開始/終了の2x2ペーストは1回の setPlannedDates にまとめて dispatch される', () => {
     const dispatched: { type: string; payload?: unknown }[] = [];
     const dispatch = ((action: { type: string }) => { dispatched.push(action); }) as never;
 
@@ -96,10 +97,33 @@ describe('handleGridChanges (range paste)', () => {
       dateChange('row1', 'plannedEndDate', '2026/02/06'),
     ], columns, [], []);
 
-    const plannedActions = dispatched.filter(a => a.type === 'wbsData/setPlannedDate');
-    expect(plannedActions).toHaveLength(2);
-    expect(plannedActions[0].payload).toEqual({ id: 'row0', startDate: '2026/02/01', endDate: '2026/02/05' });
-    expect(plannedActions[1].payload).toEqual({ id: 'row1', startDate: '2026/02/02', endDate: '2026/02/06' });
+    // 行ごとに分けて dispatch すると、後の行の依存計算が先の行の日付を
+    // 上書きしてしまうため、必ず1アクションにまとめる
+    const plannedActions = dispatched.filter(a => a.type === 'wbsData/setPlannedDates');
+    expect(plannedActions).toHaveLength(1);
+    expect(plannedActions[0].payload).toEqual([
+      { id: 'row0', startDate: '2026/02/01', endDate: '2026/02/05' },
+      { id: 'row1', startDate: '2026/02/02', endDate: '2026/02/06' },
+    ]);
+  });
+
+  test('貼り付け範囲のうち値が変わらなかった行も現在値のまま一括更新に含める', () => {
+    const dispatched: { type: string; payload?: unknown }[] = [];
+    const dispatch = ((action: { type: string }) => { dispatched.push(action); }) as never;
+
+    // row1 は貼り付けた値が元と同じで ReactGrid から変更が届かないケース。
+    // 含めないと row0 の依存計算に引きずられて動いてしまう。
+    handleGridChanges(dispatch, buildData(), [
+      dateChange('row0', 'plannedStartDate', '2026/02/01'),
+      dateChange('row0', 'plannedEndDate', '2026/02/05'),
+    ], columns, [], [], ['row0', 'row1']);
+
+    const plannedActions = dispatched.filter(a => a.type === 'wbsData/setPlannedDates');
+    expect(plannedActions).toHaveLength(1);
+    expect(plannedActions[0].payload).toEqual([
+      { id: 'row0', startDate: '2026/02/01', endDate: '2026/02/05' },
+      { id: 'row1', startDate: '2026/01/06', endDate: '2026/01/11' },
+    ]);
   });
 
   test('片方だけの変更ではもう片方は既存値を維持する', () => {
@@ -110,16 +134,16 @@ describe('handleGridChanges (range paste)', () => {
       dateChange('row0', 'plannedEndDate', '2026/03/01'),
     ], columns, [], []);
 
-    const plannedActions = dispatched.filter(a => a.type === 'wbsData/setPlannedDate');
+    const plannedActions = dispatched.filter(a => a.type === 'wbsData/setPlannedDates');
     expect(plannedActions).toHaveLength(1);
-    expect(plannedActions[0].payload).toEqual({
+    expect(plannedActions[0].payload).toEqual([{
       id: 'row0',
       startDate: '2026/01/05',
       endDate: '2026/03/01',
-    });
+    }]);
   });
 
-  test('予定日と他列が混在するペーストでは setEntireData の後に setPlannedDate が来る', () => {
+  test('予定日と他列が混在するペーストでは setEntireData の後に setPlannedDates が来る', () => {
     const dispatched: { type: string; payload?: unknown }[] = [];
     const dispatch = ((action: { type: string }) => { dispatched.push(action); }) as never;
 
@@ -131,7 +155,7 @@ describe('handleGridChanges (range paste)', () => {
 
     const types = dispatched.map(a => a.type);
     const entireIdx = types.indexOf('wbsData/setEntireData');
-    const plannedIdx = types.indexOf('wbsData/setPlannedDate');
+    const plannedIdx = types.indexOf('wbsData/setPlannedDates');
     expect(entireIdx).toBeGreaterThanOrEqual(0);
     expect(plannedIdx).toBeGreaterThan(entireIdx);
 
