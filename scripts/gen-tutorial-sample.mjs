@@ -264,17 +264,18 @@ const buildColumns = (names) => [
   { columnId: 'isIncludeHolidays', columnName: names.isIncludeHolidays, width: 50, resizable: true, reorderable: true, visible: false },
 ];
 
+// 色はアプリの既定パレット(colorSlice の defaultColorValues)と同じトーンに揃える
 const buildColors = (s) => ({
-  1: { alias: s.tryAlias, color: '#70ecff51' },
-  2: { alias: s.infoAlias, color: '#fffe7051' },
-  3: { alias: '', color: '#8a70ff51' },
-  4: { alias: '', color: '#ff70ea51' },
-  5: { alias: '', color: '#ff707051' },
-  6: { alias: '', color: '#76ff7051' },
-  7: { alias: '', color: '#70b0ff51' },
-  8: { alias: '', color: '#76ff7051' },
-  9: { alias: '', color: '#76ff7051' },
-  10: { alias: '', color: '#76ff7051' },
+  1: { alias: s.tryAlias, color: '#3de5ff6b' },
+  2: { alias: s.infoAlias, color: '#fffe3d6b' },
+  3: { alias: '', color: '#603dff6b' },
+  4: { alias: '', color: '#ff3de36b' },
+  5: { alias: '', color: '#ff3d3d6b' },
+  6: { alias: '', color: '#45ff3d6b' },
+  7: { alias: '', color: '#3d94ff6b' },
+  8: { alias: '', color: '#45ff3d6b' },
+  9: { alias: '', color: '#45ff3d6b' },
+  10: { alias: '', color: '#45ff3d6b' },
   999: { alias: '', color: '#0000003d' },
 });
 

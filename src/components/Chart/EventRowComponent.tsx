@@ -9,7 +9,7 @@ import { GanttRow } from '../../styles/GanttStyles';
 import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
-import { ColorInfo, getColorSourceValue, resolveColorFromPalette } from '../../reduxStoreAndSlices/colorSlice';
+import { ColorInfo, DEFAULT_FALLBACK_COLOR, getColorSourceValue, resolveColorFromPalette } from '../../reduxStoreAndSlices/colorSlice';
 
 type Action =
   | { type: 'INIT'; payload: EventType[] }
@@ -83,7 +83,7 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
   const basisColumnId = useSelector((state: RootState) => state.color.basisColumnId);
   const colorSourceValue = getColorSourceValue(entry, basisColumnId);
   const plannedChartBarColor = useMemo(() => {
-    return resolveColorFromPalette(colorSourceValue, colors, '#76ff7051');
+    return resolveColorFromPalette(colorSourceValue, colors, DEFAULT_FALLBACK_COLOR);
   }, [colorSourceValue, colors]);
   const actualChartBarColor = useMemo(() => {
     const colorInfo = colors[999];

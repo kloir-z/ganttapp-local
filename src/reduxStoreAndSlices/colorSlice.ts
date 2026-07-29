@@ -38,22 +38,25 @@ export const COLOR_BASIS_COLUMN_IDS = [
 // 実績バー用の特別ID(基準列に関係なく全スキームで同じ色を共有する)
 export const ACTUAL_COLOR_ID = 999;
 
-const DEFAULT_FALLBACK_COLOR = '#76ff7051';
+// 既定パレットと自動割当て色(generateAutoColor)は同じトーンで揃える:
+// 色相はそのまま・彩度100%・明度62%・不透明度0.42(= 16進のα 6b)。
+// 以前は明度72%/α0.32で薄すぎたため、色相を変えずに一段濃くしている。
+export const DEFAULT_FALLBACK_COLOR = '#45ff3d6b';
 const DEFAULT_ACTUAL_COLOR = '#0000003d';
 // 自動割当てで作るエントリ数の上限(超えた値はフォールバック色のまま)
 const MAX_AUTO_COLOR_ENTRIES = 30;
 
 const defaultColorValues = {
-  1: { alias: '', color: '#70ecff51' },
-  2: { alias: '', color: '#70b0ff51' },
-  3: { alias: '', color: '#8a70ff51' },
-  4: { alias: '', color: '#ff70ea51' },
-  5: { alias: '', color: '#ff707051' },
-  6: { alias: '', color: '#fffe7051' },
-  7: { alias: '', color: '#76ff7051' },
-  8: { alias: '', color: '#76ff7051' },
-  9: { alias: '', color: '#76ff7051' },
-  10: { alias: '', color: '#76ff7051' },
+  1: { alias: '', color: '#3de5ff6b' },
+  2: { alias: '', color: '#3d94ff6b' },
+  3: { alias: '', color: '#603dff6b' },
+  4: { alias: '', color: '#ff3de36b' },
+  5: { alias: '', color: '#ff3d3d6b' },
+  6: { alias: '', color: '#fffe3d6b' },
+  7: { alias: '', color: '#45ff3d6b' },
+  8: { alias: '', color: '#45ff3d6b' },
+  9: { alias: '', color: '#45ff3d6b' },
+  10: { alias: '', color: '#45ff3d6b' },
   999: { alias: '', color: DEFAULT_ACTUAL_COLOR }
 };
 
