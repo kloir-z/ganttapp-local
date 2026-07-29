@@ -1,10 +1,11 @@
 // ColorSetting.tsx
-import { useState, useCallback, memo } from "react";
-import { ChromePicker, ColorResult } from 'react-color';
+import { useState, useCallback, memo, useRef } from "react";
+import { ColorResult } from 'react-color';
 import { useSelector, useDispatch } from 'react-redux';
 import Tippy from '@tippyjs/react';
 import SettingChildDiv from "../SettingChildDiv";
 import ColorInfoItem from "./ColorInfoItem";
+import ColorPickerPopover from "./ColorPickerPopover";
 import { useTranslation } from "react-i18next";
 import { RootState } from "../../../reduxStoreAndSlices/store";
 import { resetToDefaultColors, updateFallbackColor, addColorInfo, ColorInfo } from "../../../reduxStoreAndSlices/colorSlice";
@@ -27,6 +28,7 @@ const ColorSetting: React.FC = memo(() => {
   type DisplayColorPickerType = { [key: number]: boolean };
   const [displayColorPicker, setDisplayColorPicker] = useState<DisplayColorPickerType>({});
   const [displayFallbackColorPicker, setDisplayFallbackColorPicker] = useState(false);
+  const fallbackSwatchRef = useRef<HTMLDivElement>(null);
 
   const handleColorClick = useCallback((id: number) => {
     setDisplayColorPicker(prevState => ({ ...prevState, [id]: !prevState[id] }));
@@ -164,6 +166,7 @@ const ColorSetting: React.FC = memo(() => {
 
       <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '3px' }}>
         <div
+          ref={fallbackSwatchRef}
           style={{
             width: '55px',
             height: '20px',
@@ -189,15 +192,12 @@ const ColorSetting: React.FC = memo(() => {
             onClick={handleFallbackColorClick}
           />
           {displayFallbackColorPicker && (
-            <div style={{ position: 'absolute', top: '24px', left: '33px', zIndex: '9999' }}>
-              <div style={{ position: 'fixed', top: '0px', right: '0px', bottom: '0px', left: '0px' }} onClick={handleFallbackColorClose} />
-              <div onClick={(e) => e.stopPropagation()}>
-                <ChromePicker
-                  color={fallbackColor}
-                  onChange={handleFallbackColorChange}
-                />
-              </div>
-            </div>
+            <ColorPickerPopover
+              anchorRef={fallbackSwatchRef}
+              color={fallbackColor}
+              onChange={handleFallbackColorChange}
+              onClose={handleFallbackColorClose}
+            />
           )}
         </div>
         <span style={{ margin: 'auto 0', marginLeft: '10px' }}>{t('Default Color')}</span>

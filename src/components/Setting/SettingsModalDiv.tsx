@@ -77,6 +77,13 @@ const SettingsModalDiv: React.FC<SettingsModalDivProps> = memo(({ children }) =>
           left: `${modalPosition.x}px`,
           top: `${modalPosition.y}px`,
           position: 'absolute',
+          // 色を増やすなどで中身が伸びても画面下端をはみ出さないよう高さを抑え、
+          // あふれた分は中身側でスクロールさせる(ドラッグバーと閉じるボタンは常に見える)。
+          // モーダルの表示位置に追従させるため vh と現在の top から算出する。
+          maxHeight: `max(200px, calc(100vh - ${modalPosition.y}px - 16px))`,
+          // 上下の padding と枠線ぶんも高さ上限に含める(はみ出し量を無くす)
+          boxSizing: 'border-box',
+          overflow: 'hidden',
         }}
       >
         <ModalDragBar onMouseDown={startDrag}>
@@ -84,7 +91,9 @@ const SettingsModalDiv: React.FC<SettingsModalDivProps> = memo(({ children }) =>
         <ModalCloseButton onClick={handleClose}>
           <MdClose size={'20px'} />
         </ModalCloseButton>
-        {children}
+        <div style={{ overflowY: 'auto', overscrollBehavior: 'contain', minHeight: 0 }}>
+          {children}
+        </div>
       </ModalContainer >
     </>
   )

@@ -202,7 +202,20 @@ describe('colorSlice: ヘルパー', () => {
   });
 
   test('generateAutoColor は半透明の rgba 文字列を返す', () => {
-    expect(generateAutoColor(0)).toMatch(/^rgba\(\d+, \d+, \d+, 0\.32\)$/);
+    expect(generateAutoColor(0)).toMatch(/^rgba\(\d+, \d+, \d+, 0\.42\)$/);
     expect(generateAutoColor(1)).not.toBe(generateAutoColor(2));
+  });
+
+  test('generateAutoColor は薄すぎない(白に載せても十分色が出る)', () => {
+    // 白背景に載せたときの実効色が、薄すぎて見分けづらくならないこと。
+    // 既定パレット(彩度100%/明度72%/α0.32)より濃いことを目安にする。
+    const match = generateAutoColor(0).match(/^rgba\((\d+), (\d+), (\d+), ([\d.]+)\)$/);
+    expect(match).not.toBeNull();
+    const [r, g, b, a] = (match as RegExpMatchArray).slice(1).map(Number);
+    const onWhite = (v: number) => a * v + (1 - a) * 255;
+    // 最も暗いチャンネルが十分下がっている = 白に近い薄い色になっていない
+    expect(Math.min(onWhite(r), onWhite(g), onWhite(b))).toBeLessThan(200);
+    // ただし濃くしすぎない(バー上のタスク名が読める明るさを保つ)
+    expect(Math.min(onWhite(r), onWhite(g), onWhite(b))).toBeGreaterThan(120);
   });
 });

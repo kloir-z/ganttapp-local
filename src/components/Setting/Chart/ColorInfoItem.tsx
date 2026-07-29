@@ -1,10 +1,11 @@
 // ColorInfoItem.tsx
 import { useCallback, memo, useState, useRef, useEffect } from 'react';
-import { ChromePicker, ColorResult } from 'react-color';
+import { ColorResult } from 'react-color';
 import { useTranslation } from 'react-i18next';
 import { useDispatch } from 'react-redux';
 import { updateAlias, updateColor, removeColorInfo } from '../../../reduxStoreAndSlices/colorSlice';
 import { clearMessageInfo, setMessageInfo } from '../../../reduxStoreAndSlices/store';
+import ColorPickerPopover from './ColorPickerPopover';
 
 type ColorInfoItemProps = {
   id: number;
@@ -65,9 +66,12 @@ const ColorInfoItem: React.FC<ColorInfoItemProps> = memo(({
     dispatch(updateColor({ id, color: rgbaColor }));
   }, [dispatch]);
 
+  const swatchRef = useRef<HTMLDivElement>(null);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '3px' }}>
       <div
+        ref={swatchRef}
         style={{
           width: '55px',
           height: '20px',
@@ -93,15 +97,12 @@ const ColorInfoItem: React.FC<ColorInfoItemProps> = memo(({
           onClick={() => handleColorClick(id)}
         />
         {displayColorPicker && (
-          <div style={{ position: 'absolute', top: '24px', left: '33px', zIndex: '9999' }}>
-            <div style={{ position: 'fixed', top: '0px', right: '0px', bottom: '0px', left: '0px' }} onClick={() => handleColorClose(id)} />
-            <div onClick={(e) => e.stopPropagation()}>
-              <ChromePicker
-                color={color}
-                onChange={handleColorChange(id)}
-              />
-            </div>
-          </div>
+          <ColorPickerPopover
+            anchorRef={swatchRef}
+            color={color}
+            onChange={handleColorChange(id)}
+            onClose={() => handleColorClose(id)}
+          />
         )}
       </div>
       {id === 999 ? (

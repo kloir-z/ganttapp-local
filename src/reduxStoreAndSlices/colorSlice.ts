@@ -102,11 +102,13 @@ export const collectBasisValues = (
 };
 
 // 自動割当て用の色を生成する。黄金角で色相を回すので、隣り合う番号でも
-// 見分けやすい色になる。既存パレットと同じ半透明(α≒0.32)の rgba で返す。
+// 見分けやすい色になる。既定パレット(彩度100%・明度72%・α0.32)より少しだけ
+// 濃く鮮やかにして、薄すぎて見分けづらくならないようにしている
+// (バー上のタスク名が読めなくなるほどは濃くしない)。
 export const generateAutoColor = (index: number): string => {
   const hue = (index * 137.508) % 360;
-  const s = 0.62;
-  const l = 0.72;
+  const s = 1;
+  const l = 0.62;
   const c = (1 - Math.abs(2 * l - 1)) * s;
   const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
   const m = l - c / 2;
@@ -118,7 +120,7 @@ export const generateAutoColor = (index: number): string => {
   else if (hue < 300) { r = x; b = c; }
   else { r = c; b = x; }
   const to255 = (v: number) => Math.round((v + m) * 255);
-  return `rgba(${to255(r)}, ${to255(g)}, ${to255(b)}, 0.32)`;
+  return `rgba(${to255(r)}, ${to255(g)}, ${to255(b)}, 0.42)`;
 };
 
 // スキーム内で既にエイリアスとして登録済みの値の集合。

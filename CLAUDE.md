@@ -81,7 +81,7 @@ This is an offline-first Gantt chart application built with React 18, TypeScript
   - **wbsRowCreators.ts**: Row creation functions
 
 #### Settings System (`src/components/Setting/`)
-- **SettingsModalDiv.tsx**: Main settings modal container
+- **SettingsModalDiv.tsx**: Main settings modal container. Deliberately kept **narrow** so the chart stays visible while colors are tweaked; its height is capped at the viewport (`max-height` derived from the modal's current `top`, `box-sizing: border-box`) and the content scrolls inside, so growing the palette never pushes it off-screen (the drag bar and close button sit outside the scroller and stay put)
 - **SettingChildDiv.tsx**: Individual setting section wrapper
 - **Basic Settings** (`src/components/Setting/Basic/`):
   - **SettingsModalBasics.tsx**: Basic project settings modal
@@ -90,6 +90,7 @@ This is an offline-first Gantt chart application built with React 18, TypeScript
   - **SettingsModalChart.tsx**: Chart appearance settings modal
   - **ColorSetting.tsx**: Task color scheme configuration
   - **ColorInfoItem.tsx**: Individual color setting item
+  - **ColorPickerPopover.tsx**: The swatch's `ChromePicker`, portaled to `document.body` and positioned from the swatch's viewport rect (clamped to stay on-screen). Rendering it inside the modal would clip it now that the modal scrolls
   - **CellWidthSetting.tsx**: Chart cell width adjustment
   - **ActualBarSetting.tsx**: Toggle for "extend the actual bar to today when the actual end date is empty" (`baseSettings.extendActualBarToToday`)
 - **Table Settings** (`src/components/Setting/Table/`):

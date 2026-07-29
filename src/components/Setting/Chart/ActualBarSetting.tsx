@@ -3,6 +3,7 @@
 import { memo, useCallback } from "react";
 import { useDispatch, useSelector } from 'react-redux';
 import Switch from '@mui/material/Switch';
+import Tippy from '@tippyjs/react';
 import SettingChildDiv from "../SettingChildDiv";
 import { RootState } from "../../../reduxStoreAndSlices/store";
 import { setExtendActualBarToToday } from "../../../reduxStoreAndSlices/baseSettingsSlice";
@@ -18,17 +19,37 @@ const ActualBarSetting: React.FC = memo(() => {
   }, [dispatch]);
 
   return (
-    <SettingChildDiv text={t('Actual Bar')}>
+    <SettingChildDiv text={
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span>{t('Actual Bar')}</span>
+        <Tippy content={t('Extend to today tooltip')} placement="right">
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '16px',
+            height: '16px',
+            borderRadius: '50%',
+            backgroundColor: '#e3f2fd',
+            color: '#1976d2',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            cursor: 'help',
+            userSelect: 'none'
+          }}>
+            ?
+          </span>
+        </Tippy>
+      </div>
+    }>
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <Switch
           checked={extendActualBarToToday}
           onChange={handleChange}
           name="extendActualBarToTodaySwitch"
+          size="small"
         />
-        <label>{t('Extend to today when actual end is empty')}</label>
-      </div>
-      <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-        {t('Extend to today description')}
+        <label style={{ marginLeft: '6px' }}>{t('Extend to today')}</label>
       </div>
     </SettingChildDiv>
   )
