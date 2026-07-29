@@ -82,6 +82,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
   const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
   const calendarWidth = useSelector((state: RootState) => state.baseSettings.calendarWidth);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
+  const extendActualBarToToday = useSelector((state: RootState) => state.baseSettings.extendActualBarToToday);
   const title = useSelector((state: RootState) => state.baseSettings.title);
   const showYear = useSelector((state: RootState) => state.wbsData.showYear);
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
@@ -121,6 +122,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
         wbsWidth,
         calendarWidth,
         cellWidth,
+        extendActualBarToToday,
         title,
         showYear,
         dateFormat,
@@ -161,7 +163,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
     }
   }, [
     colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor,
-    regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title,
+    regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title,
     showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, historySnapshots, dispatch, t
   ]);
 

@@ -93,6 +93,32 @@ describe('buildGanttWorkbook', () => {
     expect(argb).not.toBe('FFFFFFFF'); // not white -> a real (composited blue) fill
   });
 
+  it('実績終了日が未入力の行は、設定が有効なら当日まで実績バーを描く', async () => {
+    // 画面側と同じ挙動: 実績開始だけ入っている行は当日まで塗る。
+    const data: { [id: string]: WBSData } = {
+      r1: chartRow({ plannedStartDate: '', plannedEndDate: '', actualStartDate: '2024/06/03', actualEndDate: '' }),
+    };
+    const params = { ...baseParams(data), extendActualBarToToday: true, today: '2024/06/06' };
+    const ws = (await buildGanttWorkbook(params)).worksheets[0];
+    // 日付グリッドは5列目=2024/06/01。06/03→7列目、06/06→10列目まで実績バーが続く。
+    expect((ws.getRow(3).getCell(7).fill as any)?.fgColor?.argb).toBeTruthy();
+    expect((ws.getRow(3).getCell(10).fill as any)?.fgColor?.argb).toBeTruthy();
+    // バーは当日で止まる(翌日 06/07 = 11列目は当日のセルと同じ塗りにならない)
+    expect((ws.getRow(3).getCell(10).fill as any)?.fgColor?.argb)
+      .not.toBe((ws.getRow(3).getCell(11).fill as any)?.fgColor?.argb);
+  });
+
+  it('設定が無効なら実績終了日が未入力の行の実績バーは描かない', async () => {
+    const data: { [id: string]: WBSData } = {
+      r1: chartRow({ plannedStartDate: '', plannedEndDate: '', actualStartDate: '2024/06/03', actualEndDate: '' }),
+    };
+    const withoutExtend = (await buildGanttWorkbook({ ...baseParams(data), extendActualBarToToday: false, today: '2024/06/06' })).worksheets[0];
+    const withExtend = (await buildGanttWorkbook({ ...baseParams(data), extendActualBarToToday: true, today: '2024/06/06' })).worksheets[0];
+    const off = (withoutExtend.getRow(3).getCell(7).fill as any)?.fgColor?.argb;
+    const on = (withExtend.getRow(3).getCell(7).fill as any)?.fgColor?.argb;
+    expect(off).not.toBe(on);
+  });
+
   it('colors bars by the selected basis column (colorBasisColumn) instead of the Color column', async () => {
     // 色分け基準列を textColumn1 にすると、Color列ではなくその列の値がパレットの
     // エイリアスと照合される(画面側の色分け切替と同じ挙動)。

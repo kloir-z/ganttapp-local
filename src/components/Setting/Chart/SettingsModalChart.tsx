@@ -2,6 +2,7 @@
 import { memo } from "react";
 import ColorSetting from "./ColorSetting";
 import CellWidthSetting from "./CellWidthSetting";
+import ActualBarSetting from "./ActualBarSetting";
 import SettingsModalDiv from "../SettingsModalDiv";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../reduxStoreAndSlices/store";
@@ -13,6 +14,7 @@ const SettingsModalChart: React.FC = memo(() => {
     <SettingsModalDiv>
       <ColorSetting />
       <CellWidthSetting />
+      <ActualBarSetting />
     </SettingsModalDiv>
   )
 });

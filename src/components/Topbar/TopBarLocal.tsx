@@ -87,6 +87,7 @@ const TopBarLocal: React.FC = memo(() => {
   const holidayColor = useSelector((state: RootState) => state.wbsData.holidayColor);
   const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
+  const extendActualBarToToday = useSelector((state: RootState) => state.baseSettings.extendActualBarToToday);
   const calendarWidth = useSelector((state: RootState) => state.baseSettings.calendarWidth);
   const showYear = useSelector((state: RootState) => state.wbsData.showYear);
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
@@ -179,6 +180,7 @@ const TopBarLocal: React.FC = memo(() => {
         wbsWidth,
         calendarWidth,
         cellWidth,
+        extendActualBarToToday,
         title: effectiveTitle,
         showYear,
         dateFormat,
@@ -214,7 +216,7 @@ const TopBarLocal: React.FC = memo(() => {
         : t('Download failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
     }
-  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, notesModalState, historySnapshots, resetIsSavedChangesFlags, handleClose, dispatch, t]);
+  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, notesModalState, historySnapshots, resetIsSavedChangesFlags, handleClose, dispatch, t]);
 
   const handleSaveAsSubmit = useCallback(async () => {
     if (!newTitle) return;
@@ -238,6 +240,7 @@ const TopBarLocal: React.FC = memo(() => {
         wbsWidth,
         calendarWidth,
         cellWidth,
+        extendActualBarToToday,
         title,
         showYear,
         dateFormat,
@@ -262,7 +265,7 @@ const TopBarLocal: React.FC = memo(() => {
         : t('HTML export failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
     }
-  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey, historySnapshots, handleClose, dispatch, t]);
+  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey, historySnapshots, handleClose, dispatch, t]);
 
   const handleLocalOpen = useCallback(() => {
     const input = document.createElement('input');

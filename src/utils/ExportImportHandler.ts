@@ -4,7 +4,7 @@ import { ColorInfo, ColorScheme, setIsSavedChangesColor } from "../reduxStoreAnd
 import { WBSData, DateFormatType, RegularDaysOffSettingsType, HolidayColor } from "../types/DataTypes";
 import { updateEntireColorSettings, setEntireColorState } from "../reduxStoreAndSlices/colorSlice";
 import { setEntireData, setHolidays } from "../reduxStoreAndSlices/store";
-import { setWbsWidth, setDateRange, setHolidayInput, setTitle, setCalendarWidth, setCellWidth, setLanguage, setIsSavedChangesSettings, setScrollPosition } from "../reduxStoreAndSlices/baseSettingsSlice";
+import { setWbsWidth, setDateRange, setHolidayInput, setTitle, setCalendarWidth, setCellWidth, setExtendActualBarToToday, setLanguage, setIsSavedChangesSettings, setScrollPosition } from "../reduxStoreAndSlices/baseSettingsSlice";
 import JSZip from 'jszip';
 import { parseHolidaysFromInput } from '../components/Setting/utils/settingHelpers';
 import { createAsyncThunk } from "@reduxjs/toolkit";
@@ -33,6 +33,9 @@ export interface ExportData {
   wbsWidth: number;
   calendarWidth: number;
   cellWidth: number;
+  // 実績終了日が未入力の行の実績バーを当日まで伸ばすか。v2 に後から追加した項目なので
+  // 省略可(古いファイルには無い。読み込み時は既定の true になる)。
+  extendActualBarToToday?: boolean;
   title: string;
   showYear: boolean;
   dateFormat: DateFormatType;
@@ -65,6 +68,7 @@ export const buildProjectData = (options: ExportData) => {
     wbsWidth,
     calendarWidth,
     cellWidth,
+    extendActualBarToToday,
     title,
     showYear,
     dateFormat,
@@ -104,6 +108,7 @@ export const buildProjectData = (options: ExportData) => {
     wbsWidth,
     calendarWidth,
     cellWidth,
+    ...(extendActualBarToToday !== undefined && { extendActualBarToToday }),
     title,
     showYear,
     dateFormat,
@@ -224,6 +229,8 @@ export const handleImport = createAsyncThunk<void, { file: Blob; skipHistoryImpo
     if (parsedData.cellWidth) {
       dispatch(setCellWidth(parsedData.cellWidth));
     }
+    // 古いファイルにはこの項目が無いので、既定(当日まで伸ばす)として読み込む
+    dispatch(setExtendActualBarToToday(parsedData.extendActualBarToToday !== false));
     if (parsedData.noteData && parsedData.treeData) {
       dispatch(setNotes({
         treeData: parsedData.treeData,

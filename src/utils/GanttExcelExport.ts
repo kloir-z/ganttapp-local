@@ -22,7 +22,7 @@ import {
 } from '../types/DataTypes';
 import { ColorInfo, getColorSourceValue } from '../reduxStoreAndSlices/colorSlice';
 import { ExtendedColumn } from '../reduxStoreAndSlices/store';
-import { generateDates, isHoliday } from './CommonUtils';
+import { generateDates, isHoliday, resolveActualEndDate } from './CommonUtils';
 import { formatCpPredecessorsText } from './CriticalPath';
 import { collectVisibleRows, computeWbsNumbers } from './wbsNumber';
 import { standardizeLongDateFormat, standardizeShortDateFormat } from '../components/Table/utils/wbsHelpers';
@@ -60,6 +60,10 @@ export interface BuildGanttWorkbookParams {
   t: TFunction;
   // 色分け基準列('color' | 'textColumn1'〜'textColumn7')。省略時は従来どおり Color 列。
   colorBasisColumn?: string;
+  // 実績終了日が未入力の行の実績バーを当日まで伸ばして描くか(画面の設定と揃える)。
+  // 有効にするときは基準日 today('YYYY/MM/DD')も渡す。
+  extendActualBarToToday?: boolean;
+  today?: string;
   // Optional notes payload; when present a second "Notes" worksheet is appended.
   notes?: NotesExportData;
 }
@@ -498,6 +502,7 @@ const cellTextFor = (
 const croppedDateCount = (
   dateArray: ReturnType<typeof cdate>[],
   data: { [id: string]: WBSData },
+  actualEndOf: (row: ChartRow) => string = (row) => row.actualEndDate,
 ): number => {
   let maxKey = '';
   const fold = (d: string | undefined) => {
@@ -507,7 +512,7 @@ const croppedDateCount = (
   Object.values(data).forEach((row) => {
     if (isChartRow(row)) {
       fold(row.plannedEndDate);
-      fold(row.actualEndDate);
+      fold(actualEndOf(row));
     } else if (isEventRow(row)) {
       // Only eventData bars appear on the chart for event rows, so the crop must
       // key off those end dates — not the row's own (unrendered) planned/actual.
@@ -531,6 +536,9 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
   } = params;
   // 色分け基準列。バー色は Color 列の値ではなく、この列の値をパレットへ照合する。
   const colorBasisColumn = params.colorBasisColumn || 'color';
+  // 実績バーの終了日。画面と同じく、未入力なら設定に応じて当日まで伸ばす。
+  const actualEndOf = (row: ChartRow): string =>
+    resolveActualEndDate(row.actualStartDate, row.actualEndDate, params.extendActualBarToToday === true, params.today || '');
   const basisValueOf = (row: ChartRow | EventRow): string =>
     getColorSourceValue(row, colorBasisColumn);
 
@@ -548,7 +556,7 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
   const rows = collectVisibleRows(data);
   const wbsNumbers = computeWbsNumbers(rows);
   const fullDates = generateDates(dateRange.startDate, dateRange.endDate);
-  const dateCount = croppedDateCount(fullDates, data);
+  const dateCount = croppedDateCount(fullDates, data, actualEndOf);
   const dates = fullDates.slice(0, dateCount);
 
   // Below this cell width the chart stops showing daily dates and switches to
@@ -748,7 +756,7 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
       pStart = toKey(row.plannedStartDate);
       pEnd = toKey(row.plannedEndDate);
       aStart = toKey(row.actualStartDate);
-      aEnd = toKey(row.actualEndDate);
+      aEnd = toKey(actualEndOf(row));
     } else if (isEventRow(row)) {
       // Event rows render ONLY their eventData bars on the chart — never the row's
       // own planned/actual date fields — so leave pStart/pEnd/aStart/aEnd empty and

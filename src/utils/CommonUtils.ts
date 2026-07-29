@@ -27,6 +27,25 @@ export const isHoliday = (date: cdate.CDate, holidays: string[]): boolean => {
   return holidays.includes(dateString);
 };
 
+// 実績バーを描くときの終了日を決める。実績終了日が未入力でも、開始日が入っていて
+// 設定(baseSettings.extendActualBarToToday)が有効なら当日まで伸ばして描く
+// (進行中のタスクを見えるようにするため)。データ自体は書き換えず、描画・出力時にのみ使う。
+// 開始日が未来のときは当日まで遡らせず、開始日そのもの(1日ぶん)にとどめる。
+export const resolveActualEndDate = (
+  startDate: string,
+  endDate: string,
+  extendToToday: boolean,
+  todayString: string
+): string => {
+  if (endDate) {
+    return endDate;
+  }
+  if (!extendToToday || !startDate || !todayString) {
+    return '';
+  }
+  return +cdate(startDate) > +cdate(todayString) ? startDate : todayString;
+};
+
 export const calculatePlannedDays = (startString: string, endString: string, holidays: string[], isIncludeHolidays: boolean, regularDaysOff: number[]): number => {
   const start = cdate(startString);
   const end = cdate(endString);

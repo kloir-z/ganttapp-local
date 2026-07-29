@@ -1,10 +1,11 @@
-import { 
+import {
   generateDates,
   isRegularDaysOff,
   isHoliday,
   calculatePlannedDays,
   addPlannedDays,
   adjustColorOpacity,
+  resolveActualEndDate,
   validateDateString,
   determineDateFormat
 } from './CommonUtils';
@@ -137,6 +138,35 @@ describe('CommonUtils', () => {
     it('should return original color for unsupported format', () => {
       const result = adjustColorOpacity('red');
       expect(result).toBe('red');
+    });
+  });
+
+  describe('resolveActualEndDate', () => {
+    const today = '2026/07/29';
+
+    it('実績終了日が入っていればそのまま使う', () => {
+      expect(resolveActualEndDate('2026/07/01', '2026/07/10', true, today)).toBe('2026/07/10');
+      expect(resolveActualEndDate('2026/07/01', '2026/07/10', false, today)).toBe('2026/07/10');
+    });
+
+    it('終了日が未入力なら当日まで伸ばす', () => {
+      expect(resolveActualEndDate('2026/07/01', '', true, today)).toBe(today);
+    });
+
+    it('設定が無効なら伸ばさない', () => {
+      expect(resolveActualEndDate('2026/07/01', '', false, today)).toBe('');
+    });
+
+    it('開始日が未入力なら伸ばさない', () => {
+      expect(resolveActualEndDate('', '', true, today)).toBe('');
+    });
+
+    it('開始日が未来なら開始日どまり(バーが逆向きにならない)', () => {
+      expect(resolveActualEndDate('2026/08/10', '', true, today)).toBe('2026/08/10');
+    });
+
+    it('開始日が当日そのものなら当日', () => {
+      expect(resolveActualEndDate(today, '', true, today)).toBe(today);
     });
   });
 

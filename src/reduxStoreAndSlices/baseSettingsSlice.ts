@@ -15,6 +15,8 @@ interface BaseSettingsState {
     endDate: string;
   };
   holidayInput: string;
+  // 実績終了日が未入力の行の実績バーを当日まで伸ばして描くか(プロジェクト全体の設定)
+  extendActualBarToToday: boolean;
   title: string;
   savedFileList: SavedFileList;
   currentFileId: string;
@@ -42,6 +44,7 @@ const initialState: BaseSettingsState = {
     endDate: format(endDate, "yyyy-MM-dd"),
   },
   holidayInput: "",
+  extendActualBarToToday: true,
   title: "",
   savedFileList: {},
   currentFileId: "",
@@ -103,6 +106,12 @@ const baseSettingsSlice = createSlice({
         state.isSavedChanges = false;
       }
     },
+    setExtendActualBarToToday(state, action: PayloadAction<boolean>) {
+      if (state.extendActualBarToToday !== action.payload) {
+        state.extendActualBarToToday = action.payload;
+        state.isSavedChanges = false;
+      }
+    },
     setScrollPosition(state, action: PayloadAction<{ scrollLeft: number; scrollTop: number }>) {
       const { scrollLeft, scrollTop } = action.payload;
       if (typeof scrollLeft === 'number' && typeof scrollTop === 'number' && 
@@ -119,6 +128,7 @@ const baseSettingsSlice = createSlice({
       state.cellWidth = initialState.cellWidth;
       state.dateRange = initialState.dateRange;
       state.holidayInput = initialState.holidayInput;
+      state.extendActualBarToToday = initialState.extendActualBarToToday;
       state.title = initialState.title;
       state.scrollPosition = initialState.scrollPosition;
       state.isSavedChanges = true;
@@ -140,6 +150,6 @@ const baseSettingsSlice = createSlice({
   },
 });
 
-export const { setWbsWidth, setMaxWbsWidth, setCalendarWidth, setCellWidth, setDateRange, setHolidayInput, setTitle, setScrollPosition, resetBaseSettings, setSavedFileList, setCurrentFileId, setUserEmail, setLanguage, setIsSavedChangesSettings } = baseSettingsSlice.actions;
+export const { setWbsWidth, setMaxWbsWidth, setCalendarWidth, setCellWidth, setDateRange, setHolidayInput, setExtendActualBarToToday, setTitle, setScrollPosition, resetBaseSettings, setSavedFileList, setCurrentFileId, setUserEmail, setLanguage, setIsSavedChangesSettings } = baseSettingsSlice.actions;
 
 export default baseSettingsSlice.reducer;
