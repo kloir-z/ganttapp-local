@@ -190,6 +190,36 @@ describe('handleGridChanges (range paste)', () => {
     expect(entire.payload.row0.textColumn1).toBe('5');
   });
 
+  test('年を省略した日付を貼り付けると周辺行の年を補って反映される', () => {
+    const dispatched: { type: string; payload?: unknown }[] = [];
+    const dispatch = ((action: { type: string }) => { dispatched.push(action); }) as never;
+
+    // row0 は 2026年、row1 に年なしの "2/1" - "2/5" を貼り付ける
+    handleGridChanges(dispatch, buildData(), [
+      dateChange('row1', 'plannedStartDate', '2/1'),
+      dateChange('row1', 'plannedEndDate', '2/5'),
+    ], columns, [], [], undefined, 'yyyy/MM/dd');
+
+    const plannedActions = dispatched.filter(a => a.type === 'wbsData/setPlannedDates');
+    expect(plannedActions[0].payload).toEqual([{
+      id: 'row1',
+      startDate: '2026/02/01',
+      endDate: '2026/02/05',
+    }]);
+  });
+
+  test('年を省略した実績日も補完して保存される', () => {
+    const dispatched: { type: string; payload?: unknown }[] = [];
+    const dispatch = ((action: { type: string }) => { dispatched.push(action); }) as never;
+
+    handleGridChanges(dispatch, buildData(), [
+      dateChange('row0', 'actualStartDate', '1/6'),
+    ], columns, [], [], undefined, 'yyyy/MM/dd');
+
+    const entire = dispatched.find(a => a.type === 'wbsData/setEntireData') as { payload: { [id: string]: ChartRow } };
+    expect(entire.payload.row0.actualStartDate).toBe('2026/01/06');
+  });
+
   test('予定日のみの変更では pushPastState が1回だけ dispatch される', () => {
     const dispatched: { type: string; payload?: unknown }[] = [];
     const dispatch = ((action: { type: string }) => { dispatched.push(action); }) as never;

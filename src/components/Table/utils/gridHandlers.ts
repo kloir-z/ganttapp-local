@@ -1,7 +1,7 @@
 // gridHandlers.ts
 import i18next from 'i18next';
 import { CellChange, TextCell, NumberCell, CheckboxCell, EmailCell, DropdownCell, ChevronCell, HeaderCell, TimeCell, DateCell } from "@silevis/reactgrid";
-import { WBSData, ChartRow, isChartRow, isEventRow, isSeparatorRow } from '../../../types/DataTypes';
+import { WBSData, ChartRow, DateFormatType, isChartRow, isEventRow, isSeparatorRow } from '../../../types/DataTypes';
 import { setEntireData, setPlannedDates, updateSeparatorDates, pushPastState, ExtendedColumn, setMessageInfo, clearMessageInfo, AppDispatch } from '../../../reduxStoreAndSlices/store';
 import { CustomDateCell } from './CustomDateCell';
 import { CustomTextCell } from "./CustomTextCell";
@@ -10,6 +10,7 @@ import { parseCpPredecessorsText } from "../../../utils/CriticalPath";
 import { SeparatorCell } from "./SeparatorCell";
 import { CustomNumberCell } from './CustomNumberCell';
 import { CustomDependencyCell } from './CustomDependencyCell';
+import { getResolvedDateText, isDateColumnId, resolvePastedDateTexts } from './pastedDateResolver';
 
 type AllCellTypes = TextCell | NumberCell | CheckboxCell | EmailCell | DropdownCell | ChevronCell | HeaderCell | TimeCell | DateCell | CustomDateCell | CustomTextCell | CustomNumberCell | SeparatorCell | CustomDependencyCell;
 
@@ -18,18 +19,63 @@ const validateTextLength = (text: string, maxLength: number) => {
   return length <= maxLength;
 };
 
+const isDateCellChange = (change: CellChange<AllCellTypes>) =>
+  change.newCell.type === 'customDate' && isDateColumnId(change.columnId.toString());
+
+/**
+ * 日付セルに入ってきたテキストを、周辺の日付から年を補って正準形に直す。
+ * Excel などから "7/5" のように年を省略した値を貼り付けても通るようにするための前処理で、
+ * これ以降の処理は今まで通り「年つきの日付が届いた」ものとして扱える。
+ */
+const resolveDateCellTexts = (
+  changes: CellChange<AllCellTypes>[],
+  data: { [id: string]: WBSData },
+  dateFormat: DateFormatType
+): CellChange<AllCellTypes>[] => {
+  const dateChanges = changes.filter(isDateCellChange);
+  if (dateChanges.length === 0) return changes;
+
+  const resolved = resolvePastedDateTexts(
+    dateChanges.map(change => ({
+      rowId: change.rowId.toString(),
+      columnId: change.columnId.toString(),
+      text: String((change.newCell as CustomDateCell).text ?? ''),
+    })),
+    {
+      rowOrder: Object.keys(data),
+      getDate: (rowId, columnId) => {
+        const rowData = data[rowId];
+        if (!rowData || isSeparatorRow(rowData)) return '';
+        return String((rowData as unknown as { [key: string]: unknown })[columnId] ?? '');
+      },
+      dateFormat,
+      currentYear: new Date().getFullYear(),
+    }
+  );
+
+  return changes.map(change => {
+    if (!isDateCellChange(change)) return change;
+    const text = getResolvedDateText(resolved, change.rowId.toString(), change.columnId.toString());
+    if (text === undefined || text === (change.newCell as CustomDateCell).text) return change;
+    return { ...change, newCell: { ...change.newCell, text } } as CellChange<AllCellTypes>;
+  });
+};
+
 export const handleGridChanges = (
   dispatch: AppDispatch,
   data: { [id: string]: WBSData },
-  changes: CellChange<AllCellTypes>[],
+  rawChanges: CellChange<AllCellTypes>[],
   columns: ExtendedColumn[],
   holidays: string[],
   regularDaysOff: number[],
   // 貼り付けで埋めた行ID(範囲ペースト時のみ)。値が変わらなかった行は ReactGrid が
   // 変更を出さないため、そのままだと隣の行の依存計算に動かされてしまう。
   // 予定日の一括更新に「現在値のまま」で混ぜて、貼り付け範囲全体を守る。
-  pastedRowIds?: string[]
+  pastedRowIds?: string[],
+  // 年を省略した日付("7/5" など)の並びを解釈するための表示書式
+  dateFormat: DateFormatType = 'yyyy/MM/dd'
 ) => {
+  const changes = resolveDateCellTexts(rawChanges, data, dateFormat);
   const updatedData = { ...data };
   const visibleColumns = columns.filter(column => column.visible);
   const secondVisibleColumnId = visibleColumns.length > 1 ? visibleColumns[1].columnId : null;

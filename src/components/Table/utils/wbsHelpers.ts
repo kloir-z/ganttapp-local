@@ -122,6 +122,40 @@ export function standardizeLongDateFormat(dateStr: string, dateFormat: DateForma
 }
 
 /**
+ * 日付らしき文字列を数値トークン(年/月/日のいずれか2〜3個)へ分解する。
+ * 区切りは '/' '-' '.' 空白いずれも許容し、'yyyymmdd' の8桁連結や
+ * 全角数字・「2026年7月5日」表記も受け付ける。日付として読めない形なら null。
+ */
+function splitDateTokens(input: string): string[] | null {
+  if (!input) return null;
+  const cleaned = input
+    .trim()
+    .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+    .replace(/[年月．／－]/g, '/')
+    .replace(/日\s*$/, '')
+    .replace(/[.\-\s]+/g, '/')
+    .replace(/\/+/g, '/')
+    .replace(/^\/|\/$/g, '');
+  if (!cleaned) return null;
+
+  const parts = /^\d{8}$/.test(cleaned)
+    ? [cleaned.slice(0, 4), cleaned.slice(4, 6), cleaned.slice(6, 8)]
+    : cleaned.split('/');
+  if (parts.length < 2 || parts.length > 3) return null;
+  if (parts.some(p => !/^\d{1,4}$/.test(p))) return null;
+  return parts;
+}
+
+/**
+ * 入力に年が書かれているか(3要素なら必ず年を含み、2要素でも4桁トークンがあれば年)。
+ * 年が書かれている入力は、周辺行からの年の推測より常に優先する。
+ */
+export function hasExplicitYear(input: string): boolean {
+  const parts = splitDateTokens(input);
+  return !!parts && (parts.length === 3 || parts.some(p => p.length === 4));
+}
+
+/**
  * ユーザーが手入力した日付文字列を柔軟に解釈し、正準形 'yyyy/MM/dd' を返す(解釈不能なら null)。
  * Excelライクな省略入力に対応する:
  *   - 'yyyy/m/d'(または現在の dateFormat の並び)      → そのまま
@@ -136,22 +170,8 @@ export function parseFlexibleDate(
   dateFormat: DateFormatType,
   fallbackYear: number
 ): string | null {
-  if (!input) return null;
-  const cleaned = input
-    .trim()
-    .replace(/[.\-\s]+/g, '/')
-    .replace(/\/+/g, '/')
-    .replace(/^\/|\/$/g, '');
-  if (!cleaned) return null;
-
-  let parts: string[];
-  if (/^\d{8}$/.test(cleaned)) {
-    parts = [cleaned.slice(0, 4), cleaned.slice(4, 6), cleaned.slice(6, 8)];
-  } else {
-    parts = cleaned.split('/');
-  }
-  if (parts.length < 2 || parts.length > 3) return null;
-  if (parts.some(p => !/^\d{1,4}$/.test(p))) return null;
+  const parts = splitDateTokens(input);
+  if (!parts) return null;
   const nums = parts.map(Number);
 
   const dayFirst = dateFormat === 'dd/MM/yyyy' || dateFormat === 'd/M/yyyy';

@@ -52,6 +52,19 @@ describe('parseFlexibleDate', () => {
     });
   });
 
+  describe('日本語表記・全角', () => {
+    const fmt = 'yyyy/MM/dd' as const;
+    test('「2026年8月4日」を解釈する', () => {
+      expect(parseFlexibleDate('2026年8月4日', fmt, YEAR)).toBe('2026/08/04');
+    });
+    test('年を省略した「8月4日」も補完する', () => {
+      expect(parseFlexibleDate('8月4日', fmt, YEAR)).toBe('2026/08/04');
+    });
+    test('全角数字・全角スラッシュを解釈する', () => {
+      expect(parseFlexibleDate('２０２６／８／４', fmt, YEAR)).toBe('2026/08/04');
+    });
+  });
+
   describe('不正値', () => {
     const fmt = 'yyyy/MM/dd' as const;
     test('存在しない日付は null', () => {

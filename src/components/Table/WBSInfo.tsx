@@ -19,6 +19,8 @@ import useInsertCopiedRow from '../../hooks/useInsertCopiedRow';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { useImeCellOverlay } from '../../hooks/useImeCellOverlay';
 import { PasteRange, useRangePasteFill } from '../../hooks/useRangePasteFill';
+import { useRangeClipboardCopy } from '../../hooks/useRangeClipboardCopy';
+import { ClipboardCell, cellToClipboardText } from './utils/clipboardCopy';
 import { buildWbsNumberMap } from '../../utils/wbsNumber';
 import { buildCpDisplayTextMap } from '../../utils/CriticalPath';
 import CpHelp from './CpHelp';
@@ -89,6 +91,8 @@ const WBSInfo: React.FC = memo(() => {
   const selectedRangesRef = useRef<{ selectedRowIds: string[], selectedColumnIds: string[] }>();
   // 貼り付け時に「選択範囲を繰り返しで埋める」ため、アクティブな選択範囲を保持する
   const pasteRangeRef = useRef<PasteRange | null>(null);
+  // コピー/切り取りでクリップボードへ書き出す範囲(表示順の行ID・列ID)
+  const copyRangeRef = useRef<{ rowIds: string[]; columnIds: string[] } | null>(null);
   // 直前の貼り付けが埋めた行ID。onCellsChanged で使い切る(値が変わらなかった行も
   // 依存計算から守るために handleGridChanges へ渡す)。
   const pastedRowsRef = useRef<{ rowIds: string[]; at: number } | null>(null);
@@ -251,6 +255,12 @@ const WBSInfo: React.FC = memo(() => {
     pasteRangeRef.current = activeRange
       ? { rowIds: activeRange.rows.map(row => row.rowId.toString()), columnCount: activeRange.columns.length }
       : null;
+    copyRangeRef.current = activeRange
+      ? {
+        rowIds: activeRange.rows.map(row => row.rowId.toString()),
+        columnIds: activeRange.columns.map(column => column.columnId.toString()),
+      }
+      : null;
     setSelectedRanges(newSelection);
     areAllSelectedColumnsVisible(Array.from(visibleColumnIds).every(id => selectedColumnIds.has(id)));
   }, [visibleColumnIds]);
@@ -262,6 +272,31 @@ const WBSInfo: React.FC = memo(() => {
     pastedRowsRef.current = { rowIds: range.rowIds, at: Date.now() };
   }, []);
   useRangePasteFill(wbsRef, getPasteRange, handlePasteRange, !isViewingPast);
+
+  // コピー/切り取り: ReactGrid のプレーンテキストは区切り文字が入らず、メモ帳などに貼ると
+  // 1行につながってしまうため、タブ区切りのテキストを自前でクリップボードへ載せる。
+  // 内容はイベント発生時点の最新の行・列から組み立てる(コールバックは作り直さない)。
+  const copySourceRef = useRef({ rows, visibleColumns, showYear, dateFormat });
+  copySourceRef.current = { rows, visibleColumns, showYear, dateFormat };
+  const getCopyCells = useCallback((): ClipboardCell[][] | null => {
+    const range = copyRangeRef.current;
+    if (!range || range.rowIds.length === 0 || range.columnIds.length === 0) return null;
+    const { rows, visibleColumns, showYear, dateFormat } = copySourceRef.current;
+    const rowById = new Map(rows.map(row => [row.rowId.toString(), row]));
+    const columnIndexById = new Map(visibleColumns.map((column, index) => [column.columnId.toString(), index]));
+    return range.rowIds.map(rowId => {
+      const row = rowById.get(rowId);
+      return range.columnIds.map(columnId => {
+        const columnIndex = columnIndexById.get(columnId);
+        const cell = row && columnIndex !== undefined ? row.cells[columnIndex] : undefined;
+        return {
+          cell: cell ?? { type: 'text', text: '' },
+          text: cell ? cellToClipboardText(cell, { showYear, dateFormat }) : '',
+        };
+      });
+    });
+  }, []);
+  useRangeClipboardCopy(wbsRef, getCopyCells);
 
   // 貼り付け直後の onCellsChanged でだけ使う(取り出したら破棄。古い記録は使わない)
   const consumePastedRowIds = useCallback(() => {
@@ -285,7 +320,8 @@ const WBSInfo: React.FC = memo(() => {
         return;
       }
       if (event.ctrlKey && event.key === 'c' && allSelectedColumnsVisible && !cKeyDownActive && !activeModal) {
-        event.preventDefault();
+        // 既定のコピーは止めない。行コピー(アプリ内の行貼り付け用)と同時に、
+        // 選択範囲のタブ区切りテキストを useRangeClipboardCopy がクリップボードへ載せる。
         const selectedRowIds = selectedRangesRef.current?.selectedRowIds || [];
         const copiedRows = selectedRowIds.reduce((acc, currId) => {
           const foundRow = dataArray.find(row => row.id === currId);
@@ -298,8 +334,6 @@ const WBSInfo: React.FC = memo(() => {
         event.preventDefault();
         insertCopiedRow(selectedRangesRef.current?.selectedRowIds[0] || "", copiedRows)
         setVKeyDownActive(true);
-      } else if (event.ctrlKey && event.key === 'c' && allSelectedColumnsVisible && cKeyDownActive && !activeModal) {
-        event.preventDefault();
       } else if (event.ctrlKey && event.key === 'v' && allSelectedColumnsVisible && vKeyDownActive && !activeModal) {
         event.preventDefault();
       }
@@ -324,7 +358,7 @@ const WBSInfo: React.FC = memo(() => {
       <ReactGrid
         rows={rows}
         columns={visibleColumns}
-        onCellsChanged={isViewingPast ? undefined : (changes) => handleGridChanges(dispatch, data, changes, columns, holidays, regularDaysOff, consumePastedRowIds())}
+        onCellsChanged={isViewingPast ? undefined : (changes) => handleGridChanges(dispatch, data, changes, columns, holidays, regularDaysOff, consumePastedRowIds(), dateFormat)}
         onColumnResized={isViewingPast ? undefined : onColumnResize}
         stickyTopRows={1}
         stickyLeftColumns={1}
