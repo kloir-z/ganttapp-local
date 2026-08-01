@@ -93,6 +93,11 @@ temp/
 # Headless capture harness output
 scripts/out/
 
+# Claude Code local settings / memory (shared config lives in .claude/skills/)
+.claude/settings.json
+.claude/settings.local.json
+.claude/memory/
+
 # Editor directories and files
 .vscode/
 .idea/
