@@ -27,6 +27,19 @@ export interface EditorState {
   scrollPosition?: number;
 }
 
+// エディタのツールバー表示は「プロジェクトの中身」ではなく操作の好みなので、
+// プロジェクトファイルではなく localStorage に持たせて再読み込み後も維持する。
+const TOOLBAR_STORAGE_KEY = 'gantty_notes_toolbar_visible';
+
+const loadShowToolbar = (): boolean => {
+  try {
+    return localStorage.getItem(TOOLBAR_STORAGE_KEY) === 'true';
+  } catch {
+    // file:// などでストレージが使えない場合はセッション限りの状態として扱う
+    return false;
+  }
+};
+
 interface NotesState {
   treeData: ExtendedTreeDataNode[];
   noteData: noteData;
@@ -34,6 +47,8 @@ interface NotesState {
   modalState: NotesModalState;
   isSavedChanges: boolean;
   zoomLevel: number;
+  // ノートエディタのツールバーを常設表示するか。既定は非表示で、Aaトグルで開閉する。
+  showToolbar: boolean;
   treeExpandedKeys: React.Key[];
   treeScrollPosition: number;
   editorStates: { [key: string]: EditorState };
@@ -55,6 +70,7 @@ const initialState: NotesState = {
   },
   isSavedChanges: true,
   zoomLevel: 1,
+  showToolbar: loadShowToolbar(),
   treeExpandedKeys: [],
   treeScrollPosition: 0,
   editorStates: {},
@@ -315,6 +331,15 @@ const notesSlice = createSlice({
       state.zoomLevel = action.payload;
       state.isSavedChanges = false;
     },
+    // プロジェクトの中身ではないので isSavedChanges は汚さない。
+    setShowToolbar: (state, action: PayloadAction<boolean>) => {
+      state.showToolbar = action.payload;
+      try {
+        localStorage.setItem(TOOLBAR_STORAGE_KEY, action.payload ? 'true' : 'false');
+      } catch {
+        // ストレージが使えない環境ではセッション限りの状態のままにする
+      }
+    },
     updateTreeExpandedKeys: (state, action: PayloadAction<React.Key[]>) => {
       state.treeExpandedKeys = action.payload;
       state.isSavedChanges = false;
@@ -372,6 +397,7 @@ export const {
   updateNotesModalState,
   setNotesModalState,
   updateZoomLevel,
+  setShowToolbar,
   updateTreeExpandedKeys,
   updateTreeScrollPosition,
   updateEditorState,

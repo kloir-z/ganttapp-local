@@ -86,6 +86,7 @@ export const helpEn = {
       p1: "Click Notes in the top bar to open the notes window: a tree of notes on the left and a rich-text editor on the right. Use it for meeting minutes and background information — notes are saved into the project file.",
       p2: "Add, rename and delete notes from the tree pane. Notes can be nested freely, and the window can be moved and resized.",
       p3: "Rows can carry their own notes too: hover over a row on the chart and click the sticky-note icon to open a draggable, resizable note window (several can be open at once). Row notes are also listed under \"Task Notes\" in the notes window, and an arrow points from the task's position on the chart to the note being viewed. Esc closes the frontmost note window.",
+      p4: "The formatting toolbar is hidden by default so the editor stays out of the way. Click the \"Aa\" button at the top right of the editor to show or hide it — the setting is remembered and applies to both the notes window and the row-note windows. Most formatting also has a shortcut: Ctrl+B / I / U, Ctrl+1 / 2 / 3 for headings and Ctrl+0 to clear one, Tab / Shift+Tab to indent, Ctrl+H for a divider, Ctrl+/ to insert the date and time, and Ctrl+: to strip formatting.",
     },
     saveExport: {
       title: "Save & Export",
@@ -183,6 +184,7 @@ export const helpJa: typeof helpEn = {
       p1: "トップバーの「メモ帳」をクリックすると、左にメモのツリー、右にリッチテキストエディタを備えたメモウィンドウが開きます。議事録や補足情報の記録に使え、メモはプロジェクトファイルと一緒に保存されます。",
       p2: "ツリーペインでメモの追加・名前変更・削除ができます。メモは自由に階層化でき、ウィンドウは移動やサイズ変更が可能です。",
       p3: "行ごとのメモも書けます。チャート側で行にマウスを乗せると付箋アイコンが表示され、クリックするとドラッグ移動・リサイズ可能なメモウィンドウが開きます(同時に複数開けます)。行メモはメモ帳の「タスクメモ」一覧からも開け、表示中はチャート上のタスク位置からメモへ矢印が表示されます。最前面のメモウィンドウはEscキーで閉じられます。",
+      p4: "書式ツールバーは既定では非表示で、エディタ右上の「Aa」ボタンで表示/非表示を切り替えられます。設定は記憶され、メモ帳と行メモの両方に適用されます。主な書式にはショートカットもあります: 太字/斜体/下線は Ctrl+B / I / U、見出しは Ctrl+1 / 2 / 3(解除は Ctrl+0)、インデントは Tab / Shift+Tab、区切り線は Ctrl+H、日時挿入は Ctrl+/、書式クリアは Ctrl+: です。",
     },
     saveExport: {
       title: "保存とエクスポート",

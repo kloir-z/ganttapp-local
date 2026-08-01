@@ -149,6 +149,7 @@ export const helpTopics: HelpTopic[] = [
       { type: 'paragraph', key: 'help.topics.notes.p1' },
       { type: 'paragraph', key: 'help.topics.notes.p2' },
       { type: 'paragraph', key: 'help.topics.notes.p3' },
+      { type: 'paragraph', key: 'help.topics.notes.p4' },
     ],
   },
   {

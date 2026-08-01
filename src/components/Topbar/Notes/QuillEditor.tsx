@@ -4,7 +4,7 @@ import Toolbar from 'quill/modules/toolbar';
 import { BlockEmbed } from 'quill/blots/block';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, store } from '../../../reduxStoreAndSlices/store';
-import { updateNoteData, updateZoomLevel, updateEditorState, EditorState } from '../../../reduxStoreAndSlices/notesSlice';
+import { updateNoteData, updateZoomLevel, updateEditorState, setShowToolbar, EditorState } from '../../../reduxStoreAndSlices/notesSlice';
 import { cdate } from 'cdate';
 import { StyledQuillContainer } from './NotesStyles';
 import { useTranslation } from 'react-i18next';
@@ -112,6 +112,9 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
   const currentNoteData = useSelector((state: RootState) => state.notes.noteData);
   const noteData = propsNoteData ?? currentNoteData;
   const zoomLevel = useSelector((state: RootState) => state.notes.zoomLevel);
+  // ツールバーは既定で畳んでおき、Aaトグルで出す。状態は全エディタ共通
+  // (メモ帳モーダルと行メモのふせんウィンドウ)。
+  const showToolbar = useSelector((state: RootState) => state.notes.showToolbar);
   const editorStates = useSelector((state: RootState) => state.notes.editorStates);
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
   const editorContainerRef = useRef<HTMLDivElement>(null);
@@ -235,6 +238,10 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
       }
     }, 10);
   };
+
+  const handleToggleToolbar = useCallback(() => {
+    dispatch(setShowToolbar(!showToolbar));
+  }, [dispatch, showToolbar]);
 
   const saveEditorState = useCallback(() => {
     // Row-note mode (onSave provided) does not persist per-node cursor/scroll
@@ -663,7 +670,10 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
   }, [zoomLevel, updateZoomButtonStates]);
 
   return (
-    <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div
+      className={`quill-editor-root${showToolbar ? '' : ' quill-toolbar-hidden'}`}
+      style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}
+    >
       <style>
         {`
           .ql-editor {
@@ -781,6 +791,20 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(({ readOnly, selectedNod
           flexDirection: 'column'
         }}
       />
+      {/* readOnly時はQuill側でツールバー自体を作らないのでトグルも出さない。 */}
+      {!readOnly && (
+        <button
+          type="button"
+          className={`quill-toolbar-toggle${showToolbar ? ' is-active' : ''}`}
+          title={showToolbar ? t('Hide Toolbar') : t('Show Toolbar')}
+          aria-pressed={showToolbar}
+          // mousedownを止めてエディタの選択範囲/カーソルを保持したまま開閉する。
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleToggleToolbar}
+        >
+          Aa
+        </button>
+      )}
     </div>
   );
 });

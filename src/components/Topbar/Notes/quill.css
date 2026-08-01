@@ -2,6 +2,55 @@
   content: "\2015";
 }
 
+/* --- ツールバーの開閉 (Aaトグル) --------------------------------------- */
+/* 既定は非表示。Quillの再生成は本文が飛ぶのでCSSで畳むだけにしている。 */
+.quill-toolbar-hidden .ql-toolbar {
+  display: none;
+}
+
+/* Quillはツールバーがある前提で本文枠の上辺を消すため、畳んだ時に戻す。
+   Quill本体の `.ql-toolbar.ql-snow + .ql-container.ql-snow` に勝つ詳細度が要る。 */
+.quill-toolbar-hidden .ql-toolbar.ql-snow + .ql-container.ql-snow {
+  border-top: 1px solid #ccc;
+}
+
+/* 右上のAaボタンとツールバー最終列が重ならないよう右端を空ける。 */
+.ql-toolbar.ql-snow {
+  padding-right: 34px;
+}
+
+.quill-toolbar-toggle {
+  position: absolute;
+  top: 3px;
+  right: 6px;
+  z-index: 5;
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #666;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.quill-toolbar-toggle:hover {
+  opacity: 1;
+  border-color: #ddd;
+  background: #f0f0f0;
+}
+
+.quill-toolbar-toggle.is-active {
+  opacity: 0.9;
+  color: #0066cc;
+}
+
 /* ツールバーアイコンのサイズ制限 */
 .ql-toolbar button svg,
 .ql-toolbar .ql-picker-label svg {
