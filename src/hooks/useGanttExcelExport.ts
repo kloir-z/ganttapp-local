@@ -22,6 +22,7 @@ export const useGanttExcelExport = () => {
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const colorBasisColumn = useSelector((state: RootState) => state.color.basisColumnId);
   const extendActualBarToToday = useSelector((state: RootState) => state.baseSettings.extendActualBarToToday);
+  const annotations = useSelector((state: RootState) => state.wbsData.annotations);
   const treeData = useSelector((state: RootState) => state.notes.treeData);
   const noteData = useSelector((state: RootState) => state.notes.noteData);
   const rowNoteData = useSelector((state: RootState) => state.notes.rowNoteData);
@@ -36,6 +37,7 @@ export const useGanttExcelExport = () => {
         colorBasisColumn,
         // 実績終了日が未入力の実績バーは、画面と同じく当日まで伸ばして出力する
         extendActualBarToToday, today: cdate().format('YYYY/MM/DD'),
+        annotations,
         ...(includeNotes ? { notes: { treeData, noteData, rowNoteData } } : {}),
       });
       const blob = new Blob([buffer], {
@@ -56,7 +58,7 @@ export const useGanttExcelExport = () => {
         : t('Excel export failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message, severity: 'error' }));
     }
-  }, [data, columns, colors, fallbackColor, dateRange, holidays, holidayColor, regularDaysOffSetting, dateFormat, showYear, title, cellWidth, colorBasisColumn, extendActualBarToToday, treeData, noteData, rowNoteData, t, dispatch]);
+  }, [data, columns, colors, fallbackColor, dateRange, holidays, holidayColor, regularDaysOffSetting, dateFormat, showYear, title, cellWidth, colorBasisColumn, extendActualBarToToday, annotations, treeData, noteData, rowNoteData, t, dispatch]);
 
   return { exportExcel };
 };

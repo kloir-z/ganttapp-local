@@ -19,12 +19,18 @@ import {
   isChartRow,
   isEventRow,
   isSeparatorRow,
+  ChartAnnotation,
 } from '../types/DataTypes';
 import { ColorInfo, getColorSourceValue } from '../reduxStoreAndSlices/colorSlice';
 import { ExtendedColumn } from '../reduxStoreAndSlices/store';
 import { generateDates, isHoliday, resolveActualEndDate } from './CommonUtils';
 import { formatCpPredecessorsText } from './CriticalPath';
 import { collectVisibleRows, computeWbsNumbers } from './wbsNumber';
+import {
+  BRACKET_WIDTH,
+  CARD_WIDTH,
+  computeAnnotationGeometry,
+} from './ChartAnnotationGeometry';
 import { standardizeLongDateFormat, standardizeShortDateFormat } from '../components/Table/utils/wbsHelpers';
 
 // Minimal shape of a notes-tree node needed for the export. Structurally
@@ -66,7 +72,63 @@ export interface BuildGanttWorkbookParams {
   today?: string;
   // Optional notes payload; when present a second "Notes" worksheet is appended.
   notes?: NotesExportData;
+  // チャート注釈。オートシェイプ(角丸四角・右括弧・直線)として描き込む。
+  annotations?: ChartAnnotation[];
 }
+
+// --- チャート注釈のオートシェイプ ---------------------------------------
+// exceljs には図形の API が無い(画像のみ)ので、シリアライズ後の xlsx に
+// DrawingML を直接注入する。<ignoredErrors> と同じ zip 直パッチの延長。
+//
+// アンカーは twoCellAnchor ではなく oneCellAnchor + ext(サイズ固定)を使う。
+// 日付列は 1 文字幅ほどしかないため、twoCellAnchor だとカードが列幅に
+// 引きずられて潰れてしまう。画面側と同じく「括弧は追従、カードは固定幅」。
+const EMU_PER_PX = 9525;
+// Excel 側のデータ行の高さは 15pt 固定 = 20px。注釈の縦位置はこの行高で算出する。
+export const EXCEL_ROW_HEIGHT_PX = 20;
+const ANNOTATION_ACCENT = '5F6B7A';
+const ANNOTATION_CARD_BG = 'FFFDF0';
+const ANNOTATION_TEXT = '333333';
+
+export interface AnnotationShape {
+  kind: 'rect' | 'bracket' | 'line' | 'card';
+  // oneCellAnchor の起点(0-based の列・行)とセル内オフセット(EMU)
+  col: number;
+  colOff: number;
+  row: number;
+  rowOff: number;
+  // 図形サイズ(EMU)
+  cx: number;
+  cy: number;
+  text?: string;
+}
+
+const xmlEscape = (value: string): string =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
+// 本文を行に割る。CRLF / CR / LF のどれでも同じ結果にする。
+const splitLines = (text: string): string[] => text.split(/\r\n|\r|\n/);
+
+// 全角を 1、半角を 0.5 として数えた「表示幅」。カード高さの見積りに使う。
+const displayWidth = (line: string): number => {
+  let width = 0;
+  // 半角(ASCII と半角カナ)は 0.5、それ以外(全角)は 1 として数える。
+  for (const ch of line) {
+    const code = ch.codePointAt(0) ?? 0;
+    width += (code <= 0xff || (code >= 0xff61 && code <= 0xff9f)) ? 0.5 : 1;
+  }
+  return width;
+};
+
+// 本文からカードの高さ(px)をざっくり求める。Excel 側では折り返し位置を
+// 正確には再現できないので、1 行あたりの収容文字数から行数を見積もる。
+export const estimateAnnotationCardHeight = (text: string, cardWidthPx: number, fontPx = 12): number => {
+  const perLine = Math.max(1, Math.floor((cardWidthPx - 12) / fontPx));
+  const lines = splitLines(text || '')
+    .reduce((count, line) => count + Math.max(1, Math.ceil(displayWidth(line) / perLine)), 0);
+  return Math.max(EXCEL_ROW_HEIGHT_PX, lines * Math.round(fontPx * 1.45) + 10);
+};
 
 type RGB = { r: number; g: number; b: number };
 type RGBA = RGB & { a: number };
@@ -146,6 +208,124 @@ const toKey = (dateStr: string | undefined | null): string => {
     return '';
   }
 };
+
+// px 座標(チャートグリッド原点 = データ1行目の左上)を oneCellAnchor の
+// 「起点セル + セル内オフセット」に変換する。日付列を1列 cellWidth px、
+// データ行を1行 EXCEL_ROW_HEIGHT_PX として数える。
+// 右端の日付列より外に出る座標(カードは大抵そうなる)は、最終列に寄せて
+// 余りを colOff に積む。シート外の列にアンカーすると既定列幅(≠cellWidth)で
+// 位置がずれるため。
+const annotationAnchor = (
+  x: number, y: number, wbsColCount: number, cellWidth: number, dateCount: number,
+): { col: number; colOff: number; row: number; rowOff: number } => {
+  const clampedX = Math.max(0, x);
+  const clampedY = Math.max(0, y);
+  let dateIdx = Math.floor(clampedX / cellWidth);
+  let offX = clampedX - dateIdx * cellWidth;
+  if (dateIdx > dateCount - 1) {
+    offX += (dateIdx - (dateCount - 1)) * cellWidth;
+    dateIdx = Math.max(0, dateCount - 1);
+  }
+  const rowIdx = Math.floor(clampedY / EXCEL_ROW_HEIGHT_PX);
+  const offY = clampedY - rowIdx * EXCEL_ROW_HEIGHT_PX;
+  return {
+    col: wbsColCount + dateIdx,
+    colOff: Math.round(offX * EMU_PER_PX),
+    // データ行はシートの3行目から始まる(1行目=月バンド, 2行目=列名)。
+    row: rowIdx + 2,
+    rowOff: Math.round(offY * EMU_PER_PX),
+  };
+};
+
+export interface AnnotationShapeParams {
+  annotations: ChartAnnotation[];
+  rows: WBSData[];
+  dateKeys: string[];
+  wbsColCount: number;
+  cellWidth: number;
+}
+
+// 注釈をオートシェイプの仕様リストに変換する。座標計算は画面描画と共通の
+// computeAnnotationGeometry を使い、行高だけ Excel の 15pt(=20px)に読み替える。
+export const buildAnnotationShapes = ({
+  annotations, rows, dateKeys, wbsColCount, cellWidth,
+}: AnnotationShapeParams): AnnotationShape[] => {
+  if (!annotations || annotations.length === 0 || dateKeys.length === 0) return [];
+  const dateIndex: { [key: string]: number } = {};
+  dateKeys.forEach((key, index) => { dateIndex[key] = index; });
+  const filteredData: [string, WBSData][] = rows.map((row) => [row.id, row]);
+
+  const shapes: AnnotationShape[] = [];
+  annotations.forEach((annotation) => {
+    const geometry = computeAnnotationGeometry({
+      annotation, filteredData, dateIndex, dateKeys, toKey,
+      cellWidth, rowHeight: EXCEL_ROW_HEIGHT_PX,
+    });
+    if (!geometry) return;
+
+    const push = (kind: AnnotationShape['kind'], x: number, y: number, w: number, h: number, text?: string) => {
+      shapes.push({
+        kind,
+        ...annotationAnchor(x, y, wbsColCount, cellWidth, dateKeys.length),
+        cx: Math.max(0, Math.round(w * EMU_PER_PX)),
+        cy: Math.max(0, Math.round(h * EMU_PER_PX)),
+        ...(text !== undefined ? { text } : {}),
+      });
+    };
+
+    // 指し示す対象のバーを枠線だけの矩形で強調する。図形はセルの上に浮くので、
+    // 罫線と違ってバーの塗りを切らない。
+    geometry.bars.forEach((bar) => push('rect', bar.x, bar.y, bar.width, bar.height));
+    push('bracket', geometry.bracketX, geometry.bracketY, BRACKET_WIDTH, geometry.bracketHeight);
+
+    const cardHeight = estimateAnnotationCardHeight(annotation.text, CARD_WIDTH);
+    const cardTop = geometry.cardCenterY - cardHeight / 2;
+    // 引き出し線はブラケット右辺の中央からカード左辺の中央へ。カードを動かすと
+    // 斜めになるが、oneCellAnchor は負のサイズを持てないので左上から描く。
+    const leadX1 = geometry.leaderX;
+    const leadY1 = geometry.leaderY;
+    const leadX2 = geometry.cardX;
+    const leadY2 = geometry.cardCenterY;
+    push('line', Math.min(leadX1, leadX2), Math.min(leadY1, leadY2),
+      Math.abs(leadX2 - leadX1), Math.abs(leadY2 - leadY1));
+    push('card', geometry.cardX, cardTop, CARD_WIDTH, cardHeight, annotation.text);
+  });
+  return shapes;
+};
+
+const shapeXml = (shape: AnnotationShape, id: number): string => {
+  const geom = shape.kind === 'bracket' ? 'rightBracket' : shape.kind === 'line' ? 'line'
+    : shape.kind === 'card' ? 'roundRect' : 'rect';
+  const fill = shape.kind === 'card'
+    ? `<a:solidFill><a:srgbClr val="${ANNOTATION_CARD_BG}"/></a:solidFill>`
+    : '<a:noFill/>';
+  const paragraphs = shape.kind === 'card'
+    ? splitLines(shape.text || '').map((line) =>
+      `<a:p><a:r><a:rPr lang="ja-JP" sz="900"><a:solidFill><a:srgbClr val="${ANNOTATION_TEXT}"/></a:solidFill></a:rPr><a:t>${xmlEscape(line)}</a:t></a:r></a:p>`).join('')
+    : '<a:p><a:endParaRPr lang="ja-JP" sz="900"/></a:p>';
+  return `<xdr:oneCellAnchor>`
+    + `<xdr:from><xdr:col>${shape.col}</xdr:col><xdr:colOff>${shape.colOff}</xdr:colOff>`
+    + `<xdr:row>${shape.row}</xdr:row><xdr:rowOff>${shape.rowOff}</xdr:rowOff></xdr:from>`
+    + `<xdr:ext cx="${shape.cx}" cy="${shape.cy}"/>`
+    + `<xdr:sp macro="" textlink="">`
+    + `<xdr:nvSpPr><xdr:cNvPr id="${id}" name="Annotation ${shape.kind} ${id}"/><xdr:cNvSpPr txBox="1"/></xdr:nvSpPr>`
+    + `<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${shape.cx}" cy="${shape.cy}"/></a:xfrm>`
+    + `<a:prstGeom prst="${geom}"><a:avLst/></a:prstGeom>${fill}`
+    + `<a:ln w="9525"><a:solidFill><a:srgbClr val="${ANNOTATION_ACCENT}"/></a:solidFill></a:ln></xdr:spPr>`
+    + `<xdr:txBody><a:bodyPr vertOverflow="clip" wrap="square" lIns="45720" tIns="27432" rIns="45720" bIns="27432" anchor="ctr"/>`
+    + `<a:lstStyle/>${paragraphs}</xdr:txBody>`
+    + `</xdr:sp><xdr:clientData/></xdr:oneCellAnchor>`;
+};
+
+// 図形リストを xl/drawings/drawing1.xml の中身にする。
+export const buildAnnotationDrawingXml = (shapes: AnnotationShape[]): string =>
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+  + '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"'
+  + ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+  // 図形 id は 1 が予約扱いになりがちなので 2 から振る。
+  + shapes.map((shape, index) => shapeXml(shape, index + 2)).join('')
+  + '</xdr:wsDr>';
+
 
 // Excel's hard per-cell character limit; longer strings make Excel show a
 // "repaired records" dialog on open, so note bodies/titles are clamped to it.
@@ -551,9 +731,29 @@ const croppedDateCount = (
   return cropIdx === -1 ? dateArray.length : cropIdx + 1;
 };
 
+// シートの骨格(左表の列・描画する行・日付列)。注釈のオートシェイプは
+// シリアライズ後に別途注入するため、同じ座標系を得られるよう関数に切り出して
+// buildGanttWorkbook と buildGanttXlsxBuffer の双方から呼ぶ。
+const ganttSheetLayout = (params: BuildGanttWorkbookParams) => {
+  const { data, columns, dateRange } = params;
+  const actualEndOf = (row: ChartRow): string =>
+    resolveActualEndDate(row.actualStartDate, row.actualEndDate, params.extendActualBarToToday === true, params.today || '');
+  // Drop the on-screen 'No' column (Excel's own row numbers replace it). The
+  // mechanical WBS-number column follows the on-screen setting like any other
+  // column: hidden in the app means absent here too. The number itself is still
+  // computed — it drives the name indent, the empty-row test and the Notes sheet.
+  const dataColumns = columns.filter((c) => c.visible !== false && c.columnId !== 'no');
+  const wbsColumns: { columnId: string; columnName: string; width: number }[] =
+    dataColumns.map((c) => ({ columnId: c.columnId, columnName: c.columnName, width: c.width || 50 }));
+  const rows = collectVisibleRows(data);
+  const fullDates = generateDates(dateRange.startDate, dateRange.endDate);
+  const dates = fullDates.slice(0, croppedDateCount(fullDates, data, actualEndOf));
+  return { wbsColumns, rows, dates };
+};
+
 export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Promise<Workbook> => {
   const {
-    data, columns, colors, fallbackColor, dateRange, holidays, holidayColor,
+    data, colors, fallbackColor, holidays, holidayColor,
     regularDaysOffSetting, dateFormat, showYear, title, cellWidth, t,
   } = params;
   // 色分け基準列。バー色は Color 列の値ではなく、この列の値をパレットへ照合する。
@@ -566,18 +766,8 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
   // 進捗タグの色は「今日」との比較で決まる。params.today は実績バー延長用と共用。
   const todayKey = toKey(params.today) || toKey(cdate().format('YYYY/MM/DD'));
 
-  // Drop the on-screen 'No' column (Excel's own row numbers replace it). The
-  // mechanical WBS-number column follows the on-screen setting like any other
-  // column: hidden in the app means absent here too. The number itself is still
-  // computed — it drives the name indent, the empty-row test and the Notes sheet.
-  const dataColumns = columns.filter((c) => c.visible !== false && c.columnId !== 'no');
-  const wbsColumns: { columnId: string; columnName: string; width: number }[] =
-    dataColumns.map((c) => ({ columnId: c.columnId, columnName: c.columnName, width: c.width || 50 }));
-  const rows = collectVisibleRows(data);
+  const { wbsColumns, rows, dates } = ganttSheetLayout(params);
   const wbsNumbers = computeWbsNumbers(rows);
-  const fullDates = generateDates(dateRange.startDate, dateRange.endDate);
-  const dateCount = croppedDateCount(fullDates, data, actualEndOf);
-  const dates = fullDates.slice(0, dateCount);
 
   // Below this cell width the chart stops showing daily dates and switches to
   // week-of-month numbers; the export mirrors that exactly.
@@ -927,10 +1117,42 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
 // headers) and short date strings Excel reads as two-digit-year dates. The sqref
 // is taken from each sheet's own <dimension> so it always covers exactly that
 // sheet's used range (the notes sheet is a different size from the Gantt sheet).
+// 注釈を描き込むのは 1 枚目(ガント)のシートだけ。Notes シートは 2 枚目。
+const GANTT_SHEET_PATH = 'xl/worksheets/sheet1.xml';
+
 export const buildGanttXlsxBuffer = async (params: BuildGanttWorkbookParams): Promise<Uint8Array> => {
   const wb = await buildGanttWorkbook(params);
   const raw = await wb.xlsx.writeBuffer();
   const zip = await JSZip.loadAsync(raw as ArrayBuffer);
+
+  // チャート注釈をオートシェイプとして注入する。exceljs は図形を出力しないので、
+  // 描画パート・リレーション・コンテンツタイプを自前で足す(素の出力には
+  // xl/drawings も xl/worksheets/_rels も無いため、衝突の心配はない)。
+  const layout = ganttSheetLayout(params);
+  const shapes = buildAnnotationShapes({
+    annotations: params.annotations || [],
+    rows: layout.rows,
+    // toKey と同じ 'YYYYMMDD' 形式で揃える。
+    dateKeys: layout.dates.map((d) => d.format('YYYYMMDD')),
+    wbsColCount: layout.wbsColumns.length,
+    cellWidth: params.cellWidth,
+  });
+  if (shapes.length > 0) {
+    zip.file('xl/drawings/drawing1.xml', buildAnnotationDrawingXml(shapes));
+    zip.file('xl/worksheets/_rels/sheet1.xml.rels',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"'
+      + ' Target="../drawings/drawing1.xml"/></Relationships>');
+    const ctFile = zip.file('[Content_Types].xml');
+    if (ctFile) {
+      const ct = await ctFile.async('string');
+      zip.file('[Content_Types].xml', ct.replace('</Types>',
+        '<Override PartName="/xl/drawings/drawing1.xml"'
+        + ' ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>'));
+    }
+  }
+
   const sheetPaths = Object.keys(zip.files).filter((p) => /^xl\/worksheets\/sheet\d+\.xml$/.test(p));
   for (const path of sheetPaths) {
     const file = zip.file(path);
@@ -940,9 +1162,10 @@ export const buildGanttXlsxBuffer = async (params: BuildGanttWorkbookParams): Pr
     const dimMatch = xml.match(/<dimension ref="([^"]+)"\s*\/>/);
     const sqref = dimMatch ? dimMatch[1] : 'A1';
     const ignored = `<ignoredErrors><ignoredError sqref="${sqref}" numberStoredAsText="1" twoDigitTextYear="1"/></ignoredErrors>`;
-    // <ignoredErrors> must be the last child group before </worksheet> in our
-    // output (no drawing/tableParts are emitted), so this placement is valid.
-    xml = xml.replace('</worksheet>', `${ignored}</worksheet>`);
+    // CT_Worksheet の要素順は ... ignoredErrors, smartTags, drawing ... なので、
+    // 注釈の <drawing> は <ignoredErrors> の後ろに置く。
+    const drawingTag = path === GANTT_SHEET_PATH && shapes.length > 0 ? '<drawing r:id="rId1"/>' : '';
+    xml = xml.replace('</worksheet>', `${ignored}${drawingTag}</worksheet>`);
     zip.file(path, xml);
   }
   return zip.generateAsync({ type: 'uint8array' });

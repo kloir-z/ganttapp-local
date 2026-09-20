@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
-import { buildGanttWorkbook, buildGanttXlsxBuffer, htmlToPlainText, noteContentToPlainText, NotesExportData } from './GanttExcelExport';
-import { ChartRow, EventRow, SeparatorRow, WBSData } from '../types/DataTypes';
+import { buildGanttWorkbook, buildGanttXlsxBuffer, htmlToPlainText, noteContentToPlainText, NotesExportData, estimateAnnotationCardHeight } from './GanttExcelExport';
+import { ChartRow, EventRow, SeparatorRow, WBSData, ChartAnnotation } from '../types/DataTypes';
 import { ExtendedColumn } from '../reduxStoreAndSlices/store';
 
 const t = ((key: string) => key) as any;
@@ -591,5 +591,82 @@ describe('noteContentToPlainText', () => {
 
   it('treats an empty Delta document as empty content', () => {
     expect(noteContentToPlainText(delta([{ insert: '\n' }]))).toBe('');
+  });
+});
+
+describe('チャート注釈のオートシェイプ', () => {
+  const annotation = (overrides: Partial<ChartAnnotation> = {}): ChartAnnotation => ({
+    id: 'a1', startRowId: 'r1', endRowId: 'r2', text: '承認待ち', offsetX: 0, offsetY: 0, ...overrides,
+  });
+  const twoRows: { [id: string]: WBSData } = {
+    r1: chartRow({ no: 1, id: 'r1', displayName: 'T1', plannedStartDate: '2024/06/03', plannedEndDate: '2024/06/07' }),
+    r2: chartRow({ no: 2, id: 'r2', displayName: 'T2', plannedStartDate: '2024/06/05', plannedEndDate: '2024/06/10' }),
+  };
+
+  const drawingOf = async (params: any): Promise<string | null> => {
+    const zip = await JSZip.loadAsync(await buildGanttXlsxBuffer(params));
+    const file = zip.file('xl/drawings/drawing1.xml');
+    return file ? file.async('string') : null;
+  };
+
+  it('注釈が無ければ描画パートを作らない', async () => {
+    const zip = await JSZip.loadAsync(await buildGanttXlsxBuffer(baseParams(twoRows)));
+    expect(zip.file('xl/drawings/drawing1.xml')).toBeNull();
+    expect(zip.file('xl/worksheets/_rels/sheet1.xml.rels')).toBeNull();
+    // シートに <drawing> 参照も残らない
+    const sheet = await zip.file('xl/worksheets/sheet1.xml')!.async('string');
+    expect(sheet).not.toContain('<drawing ');
+  });
+
+  it('対象バーの強調枠・括弧・引き出し線・カードを図形として出す', async () => {
+    const xml = (await drawingOf({ ...baseParams(twoRows), annotations: [annotation()] }))!;
+    expect(xml).toBeTruthy();
+    // バー2本分の rect + rightBracket + line + roundRect
+    expect((xml.match(/prst="rect"/g) || [])).toHaveLength(2);
+    expect(xml).toContain('prst="rightBracket"');
+    expect(xml).toContain('prst="line"');
+    expect(xml).toContain('prst="roundRect"');
+    // カードには本文が入り、サイズ固定の oneCellAnchor で置かれる
+    expect(xml).toContain('<a:t>承認待ち</a:t>');
+    expect(xml).toContain('<xdr:oneCellAnchor>');
+    expect(xml).not.toContain('twoCellAnchor');
+  });
+
+  it('図形パートの参照(rels/コンテンツタイプ/シート)が揃っている', async () => {
+    const zip = await JSZip.loadAsync(await buildGanttXlsxBuffer({ ...baseParams(twoRows), annotations: [annotation()] }));
+    const rels = await zip.file('xl/worksheets/_rels/sheet1.xml.rels')!.async('string');
+    expect(rels).toContain('Target="../drawings/drawing1.xml"');
+    const ct = await zip.file('[Content_Types].xml')!.async('string');
+    expect(ct).toContain('/xl/drawings/drawing1.xml');
+    const sheet = await zip.file('xl/worksheets/sheet1.xml')!.async('string');
+    expect(sheet).toContain('<drawing r:id="rId1"/>');
+    // CT_Worksheet の要素順: ignoredErrors の後ろに drawing が来る
+    expect(sheet.indexOf('<ignoredErrors')).toBeLessThan(sheet.indexOf('<drawing '));
+  });
+
+  it('本文の改行は段落に分かれ、XML 特殊文字はエスケープされる', async () => {
+    const xml = (await drawingOf({
+      ...baseParams(twoRows),
+      annotations: [annotation({ text: 'A & B\n<script>' })],
+    }))!;
+    expect(xml).toContain('<a:t>A &amp; B</a:t>');
+    expect(xml).toContain('<a:t>&lt;script&gt;</a:t>');
+  });
+
+  it('対象行が消えている注釈は図形を作らない', async () => {
+    const xml = await drawingOf({
+      ...baseParams(twoRows),
+      annotations: [annotation({ startRowId: 'gone', endRowId: 'alsoGone' })],
+    });
+    expect(xml).toBeNull();
+  });
+
+  it('カードの高さは本文の行数から見積もる', () => {
+    const one = estimateAnnotationCardHeight('短い', 200);
+    const three = estimateAnnotationCardHeight('1行目\n2行目\n3行目', 200);
+    expect(three).toBeGreaterThan(one);
+    // 折り返しも行数に数える(全角は半角2つ分)
+    const wrapped = estimateAnnotationCardHeight('あ'.repeat(40), 200);
+    expect(wrapped).toBeGreaterThan(one);
   });
 });
