@@ -34,6 +34,8 @@ interface UIFlagsState {
   selectedBarRowIds: string[];
   // Ctrl+Shift+クリックの範囲選択の起点。直前に単独で選び直した行を覚えておく。
   lastSelectedBarRowId: string | null;
+  // バーの選択モード。ONの間はチャートの空白ドラッグがパンではなく矩形選択になる。
+  isBarSelectionMode: boolean;
 }
 
 const initialState: UIFlagsState = {
@@ -51,6 +53,7 @@ const initialState: UIFlagsState = {
   selectedAnnotationId: '',
   selectedBarRowIds: [],
   lastSelectedBarRowId: null,
+  isBarSelectionMode: false,
 };
 
 const uiFlagsSlice = createSlice({
@@ -122,6 +125,14 @@ const uiFlagsSlice = createSlice({
         state.lastSelectedBarRowId = rowId;
       }
     },
+    setBarSelectionMode(state, action: PayloadAction<boolean>) {
+      state.isBarSelectionMode = action.payload;
+      // モードを抜けるときは選択も畳む(選択だけ残って一括移動が暴発するのを防ぐ)
+      if (!action.payload) {
+        state.selectedBarRowIds = [];
+        state.lastSelectedBarRowId = null;
+      }
+    },
     clearSelectedBarRows(state) {
       if (state.selectedBarRowIds.length > 0) {
         state.selectedBarRowIds = [];
@@ -142,5 +153,5 @@ const uiFlagsSlice = createSlice({
   },
 });
 
-export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath, setShowAnnotations, setSelectedAnnotationId, setSelectedBarRows, toggleSelectedBarRow, clearSelectedBarRows, pruneSelectedBarRows } = uiFlagsSlice.actions;
+export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath, setShowAnnotations, setSelectedAnnotationId, setSelectedBarRows, toggleSelectedBarRow, clearSelectedBarRows, pruneSelectedBarRows, setBarSelectionMode } = uiFlagsSlice.actions;
 export default uiFlagsSlice.reducer;

@@ -2,7 +2,7 @@ import { useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, deleteRows, convertDisplayNameOnlyRowsToSeparator, toggleColumnVisibility, hideColumns, ExtendedColumn, createTaskChain, createCpChain, addCpPredecessors, clearCpPredecessors, pushPastState, setSeparatorLevel, setMessageInfo, addAnnotation } from '../reduxStoreAndSlices/store';
-import { setShowCriticalPath, setShowAnnotations } from '../reduxStoreAndSlices/uiFlagSlice';
+import { setShowCriticalPath, setShowAnnotations, setBarSelectionMode } from '../reduxStoreAndSlices/uiFlagSlice';
 import { setCopiedRows } from '../reduxStoreAndSlices/copiedRowsSlice';
 import { openRowDialog } from '../reduxStoreAndSlices/rowDialogSlice';
 import useAddRow from './useAddRow';
@@ -52,6 +52,7 @@ export const useContextMenuOptions = ({
     const copiedRows = useSelector((state: RootState) => state.copiedRows.rows);
     const showCriticalPath = useSelector((state: RootState) => state.uiFlags.showCriticalPath);
     const showAnnotations = useSelector((state: RootState) => state.uiFlags.showAnnotations);
+    const isBarSelectionMode = useSelector((state: RootState) => state.uiFlags.isBarSelectionMode);
     const annotationCount = useSelector((state: RootState) => state.wbsData.annotations.length);
     const storeDataArray = useSelector(selectWbsDataArray);
     const { basisColumnId, candidates, switchTo, autoAssign } = useColorBasis();
@@ -397,6 +398,15 @@ export const useContextMenuOptions = ({
             });
         }
 
+        // バーの選択モード。ONの間はチャートの空白ドラッグが矩形選択になる
+        // (バーは Ctrl+クリックでも選べるので、モードは「まとめて囲みたい」ときの入口)。
+        baseOptions.push({
+            children: t("Bar Selection Mode"),
+            onClick: () => dispatch(setBarSelectionMode(!isBarSelectionMode)),
+            checked: isBarSelectionMode,
+            path: String(pathCounter++)
+        });
+
         // クリティカルパス表示のトグル。テーブル・チャートどちらの右クリックからも
         // 切り替えられるようにトップレベルに置く(設定メニューのトグルと同じ状態)。
         baseOptions.push({
@@ -500,7 +510,7 @@ export const useContextMenuOptions = ({
         });
 
         return baseOptions;
-    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, onEditDependency, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting, showCriticalPath, handleAddAnnotation, showAnnotations, annotationCount, basisColumnId, candidates, switchTo, headerColumn, onRenameColumn]);
+    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, onEditDependency, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting, showCriticalPath, handleAddAnnotation, showAnnotations, annotationCount, isBarSelectionMode, basisColumnId, candidates, switchTo, headerColumn, onRenameColumn]);
 
     return menuOptions;
 };

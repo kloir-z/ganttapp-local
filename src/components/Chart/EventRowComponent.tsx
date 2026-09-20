@@ -372,7 +372,8 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
           eventIndex={index}
           isBarDragging={activeEventIndex === index ? (isBarDragging || isBarStartDragging || isBarEndDragging) : false}
           chartBarColor={event.isPlanned ? plannedChartBarColor : actualChartBarColor}
-          isBarDragged={isBarDragged}
+          // 一括ドラッグ中もラベル入力へ「動かした」と伝える(ChartRowComponent と同じ理由)
+          isBarDragged={isBarDragged || isMultiDragging}
           isBarSelected={isBarSelected}
           onBarMouseDown={(e) => handleBarMouseDown(e, index)}
           onBarEndMouseDown={(e) => handleBarEndMouseDown(e, index)}

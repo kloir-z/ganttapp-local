@@ -15,11 +15,12 @@ import ResizeBar from '../WbsWidthResizer';
 import WBSInfo from '../Table/WBSInfo';
 import SeparatorRowLabelComponent from '../Table/SeparatorRowLabel';
 import { filterVisibleRows, generateDates } from '../../utils/CommonUtils';
+import { MarqueeRect, collectRowsInMarquee, normalizeMarquee } from '../../utils/BarMarqueeSelection';
 import { cdate } from 'cdate';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTranslation } from 'react-i18next';
 import ErrorMessage from '../MessageInfo';
-import { clearSelectedBarRows, pruneSelectedBarRows, setActiveModal } from '../../reduxStoreAndSlices/uiFlagSlice';
+import { clearSelectedBarRows, pruneSelectedBarRows, setActiveModal, setBarSelectionMode, setSelectedBarRows } from '../../reduxStoreAndSlices/uiFlagSlice';
 import CustomRowCountDialogContainer from '../ContextMenu/CustomRowCountDialogContainer';
 import ChartDependencyBuilder from '../Chart/ChartDependencyBuilder';
 import { useLocation } from 'react-router-dom';
@@ -56,6 +57,9 @@ function Gantt() {
   const isDependencyEditing = useSelector((state: RootState) => state.uiFlags.isDependencyEditing);
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
   const selectedBarRowIds = useSelector((state: RootState) => state.uiFlags.selectedBarRowIds);
+  // 選択モード: ONの間、チャートの空白ドラッグはパンではなく矩形(ラバーバンド)選択になる
+  const isBarSelectionMode = useSelector((state: RootState) => state.uiFlags.isBarSelectionMode);
+  const extendActualBarToToday = useSelector((state: RootState) => state.baseSettings.extendActualBarToToday);
   const [isGridRefDragging, setIsGridRefDragging] = useState(false);
   // Drag-scroll bookkeeping is kept in refs (not state) so the window mousemove
   // listener always reads the current values synchronously. With state, the
@@ -70,6 +74,10 @@ function Gantt() {
   // パン操作(ドラッグ)と区別したいので、押した位置とバー上かどうかを覚えておく。
   const downClientRef = useRef({ x: 0, y: 0 });
   const isMouseDownOnBarRef = useRef(false);
+  // 矩形選択。始点はチャート内容座標(スクロール込み)で持つので、選択中にスクロールしても
+  // 矩形が内容に貼り付いたままになる。
+  const marqueeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [marqueeRect, setMarqueeRect] = useState<MarqueeRect | null>(null);
   const setCanGridRefDrag = useCallback((value: boolean) => { canGridRefDragRef.current = value; }, []);
   const [gridHeight, setGridHeight] = useState<number>(0);
   const [indicatorPosition, setIndicatorPosition] = useState({ x: 0, y: 0 });
@@ -154,19 +162,78 @@ function Gantt() {
     }
   }, [cellWidth, indicatorPosition.y, isContextMenuOpen, rowHeight, wbsWidth]);
 
+  // マウス位置をチャート内容座標(スクロール込み)へ直す。行やバーの位置は
+  // 「行の添字 × rowHeight」「日付の列インデックス × cellWidth」なので、この座標系で揃う。
+  const toContentPoint = useCallback((event: MouseEvent) => {
+    const grid = gridRef.current;
+    if (!grid) return null;
+    const rect = grid.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left + grid.scrollLeft,
+      y: event.clientY - rect.top + grid.scrollTop,
+    };
+  }, []);
+
   const handleMouseDown = useCallback((event: MouseEvent) => {
     if (event.button === 0) {
       isMouseDownRef.current = true;
       downClientRef.current = { x: event.clientX, y: event.clientY };
       isMouseDownOnBarRef.current = Boolean((event.target as HTMLElement | null)?.closest?.('[data-bar-row-id]'));
+      // 選択モード中にバー以外を掴んだら、パンではなく矩形選択を始める
+      if (isBarSelectionMode && !isMouseDownOnBarRef.current) {
+        const point = toContentPoint(event);
+        if (point) {
+          marqueeStartRef.current = point;
+          canGridRefDragRef.current = false;
+          return;
+        }
+      }
       if (canGridRefDragRef.current && gridRef.current) {
         startXRef.current = event.clientX + gridRef.current.scrollLeft;
         startYRef.current = event.clientY + gridRef.current.scrollTop;
       }
     }
-  }, []);
+  }, [isBarSelectionMode, toContentPoint]);
 
   const handleMouseUp = useCallback((event: MouseEvent) => {
+    // 矩形選択の確定。重なったバーを持つ行を表示順で選ぶ(Ctrl 併用で今の選択に追加)。
+    if (marqueeStartRef.current) {
+      const start = marqueeStartRef.current;
+      const current = toContentPoint(event);
+      marqueeStartRef.current = null;
+      setMarqueeRect(null);
+      if (current) {
+        const rect = normalizeMarquee(start, current);
+        const dateIndex: { [key: string]: number } = {};
+        const dateKeys: string[] = [];
+        dateArray.forEach((date, index) => {
+          const key = date.format('YYYY-MM-DD');
+          dateIndex[key] = index;
+          dateKeys.push(key);
+        });
+        const hitRowIds = collectRowsInMarquee({
+          filteredData, dateIndex, dateKeys,
+          toKey: (dateStr: string) => {
+            if (!dateStr) return '';
+            const parsed = cdate(dateStr);
+            return isNaN(+parsed.toDate()) ? '' : parsed.format('YYYY-MM-DD');
+          },
+          rect, cellWidth, rowHeight, extendActualBarToToday,
+          todayString: cdate().format('YYYY/MM/DD'),
+        });
+        if (hitRowIds.length > 0 || rect.width > 2 || rect.height > 2) {
+          const isAdditive = event.ctrlKey || event.metaKey;
+          const merged = isAdditive
+            ? [...selectedBarRowIds, ...hitRowIds.filter(id => !selectedBarRowIds.includes(id))]
+            : hitRowIds;
+          dispatch(setSelectedBarRows({ rowIds: merged, anchorRowId: merged[merged.length - 1] ?? null }));
+        }
+      }
+      isMouseDownRef.current = false;
+      canGridRefDragRef.current = true;
+      calculateAndSetIndicatorPosition(event);
+      return;
+    }
     // バー以外の場所を(ドラッグせずに)クリックしたらバーの選択を解除する。
     // パン操作で選択が消えないよう、動いた距離で押しっぱなしのドラッグと区別する。
     if (isMouseDownRef.current && !isMouseDownOnBarRef.current && selectedBarRowIds.length > 0) {
@@ -182,20 +249,24 @@ function Gantt() {
     // dependency builder), the overlay misses it and drag-scroll stays disabled.
     canGridRefDragRef.current = true;
     calculateAndSetIndicatorPosition(event)
-  }, [calculateAndSetIndicatorPosition, dispatch, selectedBarRowIds.length]);
+  }, [calculateAndSetIndicatorPosition, cellWidth, dateArray, dispatch, extendActualBarToToday, filteredData, rowHeight, selectedBarRowIds, toContentPoint]);
 
-  // Esc でバーの選択を解除する。行メモのウィンドウは capture フェーズで Esc を
-  // 止めて自分を閉じるので、そちらが開いているときはここまで届かない(メモ閉じが優先)。
+  // Esc でバーの選択を解除し、選択モード中ならモードごと抜ける。行メモのウィンドウは
+  // capture フェーズで Esc を止めて自分を閉じるので、そちらが開いているときは
+  // ここまで届かない(メモ閉じが優先)。
   useEffect(() => {
-    if (selectedBarRowIds.length === 0) return;
+    if (selectedBarRowIds.length === 0 && !isBarSelectionMode) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key !== 'Escape') return;
+      if (isBarSelectionMode) {
+        dispatch(setBarSelectionMode(false));
+      } else {
         dispatch(clearSelectedBarRows());
       }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [dispatch, selectedBarRowIds.length]);
+  }, [dispatch, isBarSelectionMode, selectedBarRowIds.length]);
 
   // 行の削除・ファイル読み込み・undo で消えた行を選択から落とす
   useEffect(() => {
@@ -224,6 +295,14 @@ function Gantt() {
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (!gridRef.current) return;
 
+    if (marqueeStartRef.current) {
+      const current = toContentPoint(event);
+      if (current) {
+        setMarqueeRect(normalizeMarquee(marqueeStartRef.current, current));
+      }
+      return;
+    }
+
     if (canGridRefDragRef.current && isMouseDownRef.current) {
       gridRef.current.scrollLeft = startXRef.current - event.clientX;
       gridRef.current.scrollTop = startYRef.current - event.clientY;
@@ -233,7 +312,7 @@ function Gantt() {
     } else if (isGridRefDragging && !isMouseDownRef.current) {
       setIsGridRefDragging(false);
     }
-  }, [isGridRefDragging, calculateAndSetIndicatorPosition]);
+  }, [isGridRefDragging, calculateAndSetIndicatorPosition, toContentPoint]);
 
   const resetDragTimeout = useCallback(() => {
     if (dragTimeoutRef.current) {
@@ -526,7 +605,7 @@ function Gantt() {
 
         <ResizeBar setIsGridRefDragging={setIsGridRefDragging} />
 
-        <div style={{ position: 'absolute', top: `${topbarHeight + (rowHeight * 2)}px`, left: `${wbsWidth}px`, width: isExporting ? `${exportDateWidth}px` : `calc(100vw - ${wbsWidth}px)`, height: isExporting ? `${fullContentHeight - (topbarHeight + rowHeight * 2)}px` : `calc(100vh - ${topbarHeight + rowHeight * 2}px)`, overflow: isExporting ? 'visible' : 'scroll', borderLeft: '1px solid transparent', scrollBehavior: 'auto' }} ref={gridRef} id="gantt-grid-scroll">
+        <div style={{ position: 'absolute', top: `${topbarHeight + (rowHeight * 2)}px`, left: `${wbsWidth}px`, width: isExporting ? `${exportDateWidth}px` : `calc(100vw - ${wbsWidth}px)`, height: isExporting ? `${fullContentHeight - (topbarHeight + rowHeight * 2)}px` : `calc(100vh - ${topbarHeight + rowHeight * 2}px)`, overflow: isExporting ? 'visible' : 'scroll', borderLeft: '1px solid transparent', scrollBehavior: 'auto', cursor: isBarSelectionMode ? 'crosshair' : undefined }} ref={gridRef} id="gantt-grid-scroll">
           <div style={{ height: `${(filteredData.length * rowHeight) - topbarHeight}px`, width: `${(dateArray.length * cellWidth)}px` }}>
             {filteredData.map(([key, entry], filteredIndex) => {
               if (gridRef.current) {
@@ -568,6 +647,21 @@ function Gantt() {
                 return null;
               }
             })}
+            {marqueeRect && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${marqueeRect.x}px`,
+                  top: `${marqueeRect.y}px`,
+                  width: `${marqueeRect.width}px`,
+                  height: `${marqueeRect.height}px`,
+                  border: '1px solid rgba(53, 121, 248, 0.9)',
+                  backgroundColor: 'rgba(53, 121, 248, 0.12)',
+                  pointerEvents: 'none',
+                  zIndex: 30,
+                }}
+              />
+            )}
             <CpArrowsOverlay filteredData={filteredData} dateArray={dateArray} />
             <ChartAnnotationLayer
               filteredData={filteredData}
@@ -611,6 +705,25 @@ function Gantt() {
             ></div>
           )}
         </>
+      )}
+      {isBarSelectionMode && !isExporting && (
+        <div
+          onClick={() => dispatch(setBarSelectionMode(false))}
+          style={{
+            position: 'fixed', bottom: '18px', left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '5px 12px', borderRadius: '14px', cursor: 'pointer',
+            backgroundColor: 'rgba(53, 121, 248, 0.95)', color: '#fff', fontSize: '12px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)', zIndex: 10000, whiteSpace: 'nowrap',
+          }}
+        >
+          <span>{t('Drag to select bars (Esc to exit)')}</span>
+          {selectedBarRowIds.length > 0 && (
+            <span style={{ padding: '0 6px', borderRadius: '8px', backgroundColor: 'rgba(255, 255, 255, 0.25)' }}>
+              {t('{{count}} selected', { count: selectedBarRowIds.length })}
+            </span>
+          )}
+        </div>
       )}
       <CustomRowCountDialogContainer />
       {/* Export progress overlay. Rendered OUTSIDE #gantt-export-root so it is not

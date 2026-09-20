@@ -517,7 +517,10 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
           isActual={false}
           entryId={entry.id}
           chartBarColor={plannedChartBarColor}
-          isBarDragged={isPlannedBarDragged}
+          // 一括ドラッグ中もバーラベル(AutoWidthInputBox)に「動かした」と伝える。
+          // ラベル入力はフォーカス時に pushPastState するので、これが届かないと
+          // その1件が取り消されず、undo が2回必要になる。
+          isBarDragged={isPlannedBarDragged || isMultiDragging}
           isCpCritical={isCpCritical}
           isCpDimmed={isCpDimmed}
           isBarSelected={isBarSelected}

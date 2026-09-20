@@ -8,6 +8,11 @@
 //   Ctrl(⌘)+Shift+クリック … 直前に選んだ行からの範囲選択(表示順)
 //   修飾なしクリック       … 選択外の行を掴んだら選択を解除してから単体ドラッグへ
 //
+// 選択モード(uiFlags.isBarSelectionMode)中だけは、修飾なしクリックの意味が変わる。
+// 選択外のバーを押したら「その行を選ぶ」で終わり(ドラッグしない)、選択済みのバーを
+// 押したらそのまま一括ドラッグへ進む。囲んで選ぶためのモードなので、うっかり掴んで
+// バーが動いてしまうのを防ぐ。
+//
 // Shift 単独を範囲選択に使わないのは、バー上の Shift+ダブルクリックが
 // 「実績バーの作成」に割り当て済みで、その1回目の mousedown と衝突するため。
 import { useCallback } from 'react';
@@ -24,7 +29,11 @@ import { isSeparatorRow } from '../types/DataTypes';
 export const useBarSelection = (rowId: string) => {
   const dispatch = useDispatch();
   const store = useStore<RootState>();
-  const isBarSelected = useSelector((state: RootState) => state.uiFlags.selectedBarRowIds.includes(rowId));
+  // 出力中(PDF/Excel/単体HTML)は選択枠を描かない。出力は画面をそのまま写し取るので、
+  // 作業中の選択がそのまま成果物に残ってしまう。
+  const isBarSelected = useSelector((state: RootState) => (
+    !state.uiFlags.isExporting && state.uiFlags.selectedBarRowIds.includes(rowId)
+  ));
 
   /**
    * 選択操作として処理したら true を返す(その場合バーのドラッグは始めない)。
@@ -35,6 +44,7 @@ export const useBarSelection = (rowId: string) => {
     const state = store.getState();
     if (state.history?.isViewingPast) return false;
 
+    const isBarSelectionMode = state.uiFlags.isBarSelectionMode;
     const isToggleModifier = event.ctrlKey || event.metaKey;
     if (isToggleModifier && event.shiftKey) {
       event.stopPropagation();
@@ -65,8 +75,16 @@ export const useBarSelection = (rowId: string) => {
       return true;
     }
 
-    // 修飾なしで選択外のバーを掴んだら、選択を捨てて単体ドラッグに戻す(Excel/Figma と同じ)
     const selectedBarRowIds = state.uiFlags.selectedBarRowIds;
+    if (isBarSelectionMode) {
+      // 選択モード中: 選択済みのバーはそのまま一括ドラッグへ、そうでなければ選ぶだけ
+      if (selectedBarRowIds.includes(rowId)) return false;
+      event.stopPropagation();
+      dispatch(setSelectedBarRows({ rowIds: [rowId], anchorRowId: rowId }));
+      return true;
+    }
+
+    // 修飾なしで選択外のバーを掴んだら、選択を捨てて単体ドラッグに戻す(Excel/Figma と同じ)
     if (selectedBarRowIds.length > 0 && !selectedBarRowIds.includes(rowId)) {
       dispatch(clearSelectedBarRows());
     }
