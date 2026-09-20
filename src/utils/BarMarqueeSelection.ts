@@ -6,6 +6,7 @@
 // 「日付の列インデックス × cellWidth」で決まるので、仮想化でまだマウントされていない行も
 // 正しく拾える(RowNoteConnector のように DOM 矩形を読む方式だと、画面外の行を取りこぼす)。
 import { WBSData, isChartRow, isEventRow } from '../types/DataTypes';
+import { BarType, barKeyOf } from '../reduxStoreAndSlices/uiFlagSlice';
 import { resolveActualEndDate } from './CommonUtils';
 
 /** チャート内容座標(px)での矩形。left/top はスクロール内容の原点から測る。 */
@@ -16,7 +17,9 @@ export interface MarqueeRect {
   height: number;
 }
 
-export interface DateRange {
+export interface SelectableBar {
+  /** 'planned' / 'actual'。予定バーと実績バーは別々に選べる。 */
+  barType: BarType;
   start: string;
   end: string;
 }
@@ -38,40 +41,40 @@ interface CollectParams {
 }
 
 /**
- * 行が持つ「選択の当たり判定に使うバーの範囲」。一括移動できないセパレータ行は対象外。
- * チャート行は予定バーと実績バー、イベント行は各イベントをそれぞれ別の範囲として返す。
+ * 行が持つ「選択の当たり判定に使うバー」。一括移動できないセパレータ行は対象外。
+ * チャート行は予定バーと実績バー、イベント行は各イベントを、それぞれ種別つきで返す。
  */
-export const selectableBarRanges = (
+export const selectableBars = (
   entry: WBSData,
   extendActualBarToToday: boolean,
   todayString: string
-): DateRange[] => {
-  const ranges: DateRange[] = [];
+): SelectableBar[] => {
+  const bars: SelectableBar[] = [];
   if (isChartRow(entry)) {
     if (entry.plannedStartDate && entry.plannedEndDate) {
-      ranges.push({ start: entry.plannedStartDate, end: entry.plannedEndDate });
+      bars.push({ barType: 'planned', start: entry.plannedStartDate, end: entry.plannedEndDate });
     }
     // 実績終了日が未入力の行は、画面に見えている(当日まで伸ばした)バーで判定する
     const actualEnd = resolveActualEndDate(
       entry.actualStartDate ?? '', entry.actualEndDate ?? '', extendActualBarToToday, todayString
     );
     if (entry.actualStartDate && actualEnd) {
-      ranges.push({ start: entry.actualStartDate, end: actualEnd });
+      bars.push({ barType: 'actual', start: entry.actualStartDate, end: actualEnd });
     }
-    return ranges;
+    return bars;
   }
   if (isEventRow(entry)) {
     (entry.eventData || []).forEach(event => {
       if (event.startDate && event.endDate) {
-        ranges.push({ start: event.startDate, end: event.endDate });
+        bars.push({ barType: event.isPlanned ? 'planned' : 'actual', start: event.startDate, end: event.endDate });
       }
     });
   }
-  return ranges;
+  return bars;
 };
 
-/** 矩形に少しでも重なったバーを持つ行のIDを、表示順で返す。 */
-export const collectRowsInMarquee = ({
+/** 矩形に少しでも重なったバーの選択キーを、表示順で重複なく返す。 */
+export const collectBarsInMarquee = ({
   filteredData, dateIndex, dateKeys, toKey, rect, cellWidth, rowHeight, extendActualBarToToday, todayString,
 }: CollectParams): string[] => {
   if (dateKeys.length === 0 || rect.width <= 0 || rect.height <= 0) return [];
@@ -80,28 +83,31 @@ export const collectRowsInMarquee = ({
   const rectRight = rect.x + rect.width;
   const rectBottom = rect.y + rect.height;
 
-  const rowIds: string[] = [];
+  const barKeys: string[] = [];
   filteredData.forEach(([rowId, entry], index) => {
     const rowTop = index * rowHeight;
     const rowBottom = rowTop + rowHeight;
     if (rowBottom <= rect.y || rowTop >= rectBottom) return;
 
-    const hit = selectableBarRanges(entry, extendActualBarToToday, todayString).some(range => {
-      const startKey = toKey(range.start);
-      const endKey = toKey(range.end);
-      if (!startKey || !endKey) return false;
+    selectableBars(entry, extendActualBarToToday, todayString).forEach(bar => {
+      const key = barKeyOf(rowId, bar.barType);
+      if (barKeys.includes(key)) return;
+      const startKey = toKey(bar.start);
+      const endKey = toKey(bar.end);
+      if (!startKey || !endKey) return;
       // 表示期間から完全に外れているバーは無視し、またぐ場合は端でクランプする
-      if (startKey > lastKey || endKey < firstKey) return false;
+      if (startKey > lastKey || endKey < firstKey) return;
       const s = startKey < firstKey ? 0 : dateIndex[startKey];
       const e = endKey > lastKey ? dateKeys.length - 1 : dateIndex[endKey];
-      if (s === undefined || e === undefined || e < s) return false;
+      if (s === undefined || e === undefined || e < s) return;
       const barLeft = s * cellWidth;
       const barRight = (e + 1) * cellWidth;
-      return barRight > rect.x && barLeft < rectRight;
+      if (barRight > rect.x && barLeft < rectRight) {
+        barKeys.push(key);
+      }
     });
-    if (hit) rowIds.push(rowId);
   });
-  return rowIds;
+  return barKeys;
 };
 
 /** ドラッグの始点と現在点から、正規化した(幅・高さが正の)矩形を作る。 */

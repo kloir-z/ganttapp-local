@@ -29,11 +29,13 @@ interface UIFlagsState {
   showAnnotations: boolean;
   // 選択中の注釈(編集ハンドルを出す対象)。純粋なUI状態なので保存しない。
   selectedAnnotationId: string;
-  // チャートバーの複数選択(一括移動の対象行)。表示順を保つため配列で持つ。
+  // チャートバーの複数選択(一括移動の対象)。選択は行ではなく **バー単位** で、
+  // `<行ID>|planned` / `<行ID>|actual` のキーで持つ。予定バーを選んでも実績バーは
+  // 選ばれない(別物として扱う)。表示順を保つため配列。
   // 純粋なUI状態なので保存もundoもしない(selectedAnnotationId と同じ扱い)。
-  selectedBarRowIds: string[];
-  // Ctrl+Shift+クリックの範囲選択の起点。直前に単独で選び直した行を覚えておく。
-  lastSelectedBarRowId: string | null;
+  selectedBarKeys: string[];
+  // Shift+クリックの範囲選択の起点。直前に単独で選び直したバーを覚えておく。
+  lastSelectedBarKey: string | null;
   // バーの選択モード。ONの間はチャートの空白ドラッグがパンではなく矩形選択になる。
   isBarSelectionMode: boolean;
 }
@@ -51,10 +53,16 @@ const initialState: UIFlagsState = {
   showCriticalPath: false,
   showAnnotations: true,
   selectedAnnotationId: '',
-  selectedBarRowIds: [],
-  lastSelectedBarRowId: null,
+  selectedBarKeys: [],
+  lastSelectedBarKey: null,
   isBarSelectionMode: false,
 };
+
+/** 選択キーの組み立て/分解。予定バーと実績バーを別々に選べるようにするためのキー。 */
+export type BarType = 'planned' | 'actual';
+export const barKeyOf = (rowId: string, barType: BarType) => `${rowId}|${barType}`;
+export const rowIdOfBarKey = (barKey: string) => barKey.slice(0, barKey.lastIndexOf('|'));
+export const barTypeOfBarKey = (barKey: string) => barKey.slice(barKey.lastIndexOf('|') + 1) as BarType;
 
 const uiFlagsSlice = createSlice({
   name: "uiFlags",
@@ -103,55 +111,56 @@ const uiFlagsSlice = createSlice({
     setSelectedAnnotationId(state, action: PayloadAction<string>) {
       state.selectedAnnotationId = action.payload;
     },
-    // 一括移動の選択。anchor は Ctrl+Shift+クリックの起点で、範囲選択のときは
+    // 一括移動の選択。anchor は Shift+クリックの起点で、範囲選択のときは
     // 起点を動かさないので undefined を渡して現状維持にする。
-    setSelectedBarRows(state, action: PayloadAction<{ rowIds: string[]; anchorRowId?: string | null }>) {
-      const { rowIds, anchorRowId } = action.payload;
-      state.selectedBarRowIds = rowIds;
-      if (anchorRowId !== undefined) {
-        state.lastSelectedBarRowId = anchorRowId;
+    setSelectedBars(state, action: PayloadAction<{ barKeys: string[]; anchorBarKey?: string | null }>) {
+      const { barKeys, anchorBarKey } = action.payload;
+      state.selectedBarKeys = barKeys;
+      if (anchorBarKey !== undefined) {
+        state.lastSelectedBarKey = anchorBarKey;
       }
     },
-    toggleSelectedBarRow(state, action: PayloadAction<string>) {
-      const rowId = action.payload;
-      if (state.selectedBarRowIds.includes(rowId)) {
-        state.selectedBarRowIds = state.selectedBarRowIds.filter(id => id !== rowId);
-        // 外した行は起点として残さない(次の範囲選択の基準が消えた行になるのを防ぐ)
-        if (state.lastSelectedBarRowId === rowId) {
-          state.lastSelectedBarRowId = state.selectedBarRowIds[state.selectedBarRowIds.length - 1] ?? null;
+    toggleSelectedBar(state, action: PayloadAction<string>) {
+      const barKey = action.payload;
+      if (state.selectedBarKeys.includes(barKey)) {
+        state.selectedBarKeys = state.selectedBarKeys.filter(key => key !== barKey);
+        // 外したバーは起点として残さない(次の範囲選択の基準が消えたバーになるのを防ぐ)
+        if (state.lastSelectedBarKey === barKey) {
+          state.lastSelectedBarKey = state.selectedBarKeys[state.selectedBarKeys.length - 1] ?? null;
         }
       } else {
-        state.selectedBarRowIds.push(rowId);
-        state.lastSelectedBarRowId = rowId;
+        state.selectedBarKeys.push(barKey);
+        state.lastSelectedBarKey = barKey;
       }
+    },
+    clearSelectedBars(state) {
+      if (state.selectedBarKeys.length > 0) {
+        state.selectedBarKeys = [];
+      }
+      state.lastSelectedBarKey = null;
     },
     setBarSelectionMode(state, action: PayloadAction<boolean>) {
       state.isBarSelectionMode = action.payload;
       // モードを抜けるときは選択も畳む(選択だけ残って一括移動が暴発するのを防ぐ)
       if (!action.payload) {
-        state.selectedBarRowIds = [];
-        state.lastSelectedBarRowId = null;
+        state.selectedBarKeys = [];
+        state.lastSelectedBarKey = null;
       }
     },
-    clearSelectedBarRows(state) {
-      if (state.selectedBarRowIds.length > 0) {
-        state.selectedBarRowIds = [];
-      }
-      state.lastSelectedBarRowId = null;
-    },
-    // 行削除・インポート・undo のあとに、もう存在しない行を選択から落とす。
-    pruneSelectedBarRows(state, action: PayloadAction<string[]>) {
+    // 行削除・インポート・undo のあとに、もう存在しない行のバーを選択から落とす。
+    pruneSelectedBars(state, action: PayloadAction<string[]>) {
       const existingIds = new Set(action.payload);
-      const pruned = state.selectedBarRowIds.filter(id => existingIds.has(id));
-      if (pruned.length !== state.selectedBarRowIds.length) {
-        state.selectedBarRowIds = pruned;
+      const rowIdOf = (barKey: string) => barKey.slice(0, barKey.lastIndexOf('|'));
+      const pruned = state.selectedBarKeys.filter(key => existingIds.has(rowIdOf(key)));
+      if (pruned.length !== state.selectedBarKeys.length) {
+        state.selectedBarKeys = pruned;
       }
-      if (state.lastSelectedBarRowId && !existingIds.has(state.lastSelectedBarRowId)) {
-        state.lastSelectedBarRowId = null;
+      if (state.lastSelectedBarKey && !existingIds.has(rowIdOf(state.lastSelectedBarKey))) {
+        state.lastSelectedBarKey = null;
       }
     },
   },
 });
 
-export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath, setShowAnnotations, setSelectedAnnotationId, setSelectedBarRows, toggleSelectedBarRow, clearSelectedBarRows, pruneSelectedBarRows, setBarSelectionMode } = uiFlagsSlice.actions;
+export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath, setShowAnnotations, setSelectedAnnotationId, setSelectedBars, toggleSelectedBar, clearSelectedBars, pruneSelectedBars, setBarSelectionMode } = uiFlagsSlice.actions;
 export default uiFlagsSlice.reducer;

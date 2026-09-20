@@ -1,6 +1,7 @@
 // 選択モードの矩形選択の当たり判定(純関数)のテスト。
 // 仮想化でマウントされていない行も拾えるよう、判定はデータだけで行う。
-import { collectRowsInMarquee, normalizeMarquee, selectableBarRanges } from './BarMarqueeSelection';
+import { collectBarsInMarquee, normalizeMarquee, selectableBars } from './BarMarqueeSelection';
+import { barKeyOf } from '../reduxStoreAndSlices/uiFlagSlice';
 import { ChartRow, EventRow, SeparatorRow, WBSData } from '../types/DataTypes';
 
 const CELL_WIDTH = 20;
@@ -37,14 +38,17 @@ const separatorRow = (id: string): SeparatorRow => ({
   minStartDate: '2026/07/01', maxEndDate: '2026/07/10',
 } as SeparatorRow);
 
+const planned = (rowId: string) => barKeyOf(rowId, 'planned');
+const actual = (rowId: string) => barKeyOf(rowId, 'actual');
+
 const collect = (filteredData: [string, WBSData][], rect: { x: number; y: number; width: number; height: number }, extend = false) =>
-  collectRowsInMarquee({
+  collectBarsInMarquee({
     filteredData, dateIndex, dateKeys, toKey, rect,
     cellWidth: CELL_WIDTH, rowHeight: ROW_HEIGHT,
     extendActualBarToToday: extend, todayString: '2026/07/08',
   });
 
-describe('collectRowsInMarquee', () => {
+describe('collectBarsInMarquee', () => {
   // row0: 07/01〜07/02 (x 0〜40), row1: 07/04〜07/05 (x 60〜100), row2: 07/08〜07/09 (x 140〜180)
   const rows: [string, WBSData][] = [
     ['row0', chartRow('row0', ['2026/07/01', '2026/07/02'])],
@@ -54,12 +58,12 @@ describe('collectRowsInMarquee', () => {
 
   it('矩形に重なったバーの行だけを表示順で返す', () => {
     // y 0〜63 は全行、x 30〜110 は row0 の右端と row1 に重なる
-    expect(collect(rows, { x: 30, y: 0, width: 80, height: 63 })).toEqual(['row0', 'row1']);
+    expect(collect(rows, { x: 30, y: 0, width: 80, height: 63 })).toEqual([planned('row0'), planned('row1')]);
   });
 
   it('縦方向に外れた行は含めない', () => {
     // 2行目(y 21〜42)だけを通る帯
-    expect(collect(rows, { x: 0, y: 22, width: 200, height: 10 })).toEqual(['row1']);
+    expect(collect(rows, { x: 0, y: 22, width: 200, height: 10 })).toEqual([planned('row1')]);
   });
 
   it('バーのない隙間をなぞっても何も選ばれない', () => {
@@ -69,20 +73,29 @@ describe('collectRowsInMarquee', () => {
 
   it('端が1pxでも重なれば拾う', () => {
     // row0 のバーは x 0〜40。x 39〜40 に掛ける。
-    expect(collect(rows, { x: 39, y: 0, width: 1, height: 21 })).toEqual(['row0']);
+    expect(collect(rows, { x: 39, y: 0, width: 1, height: 21 })).toEqual([planned('row0')]);
     // x 40 以降は次の列なので row0 には当たらない
     expect(collect(rows, { x: 40, y: 0, width: 1, height: 21 })).toEqual([]);
   });
 
-  it('実績バーだけの行も拾う', () => {
+  it('実績バーは実績のキーで拾う', () => {
     const withActual: [string, WBSData][] = [['row0', chartRow('row0', undefined, ['2026/07/04', '2026/07/05'])]];
-    expect(collect(withActual, { x: 60, y: 0, width: 20, height: 21 })).toEqual(['row0']);
+    expect(collect(withActual, { x: 60, y: 0, width: 20, height: 21 })).toEqual([actual('row0')]);
+  });
+
+  it('予定バーだけに掛けたら実績バーは選ばれない(別物として扱う)', () => {
+    // 予定 07/01〜07/02 (x 0〜40) と実績 07/04〜07/05 (x 60〜100) を持つ行
+    const both: [string, WBSData][] = [['row0', chartRow('row0', ['2026/07/01', '2026/07/02'], ['2026/07/04', '2026/07/05'])]];
+    expect(collect(both, { x: 0, y: 0, width: 40, height: 21 })).toEqual([planned('row0')]);
+    expect(collect(both, { x: 60, y: 0, width: 40, height: 21 })).toEqual([actual('row0')]);
+    // 両方に掛かれば両方
+    expect(collect(both, { x: 0, y: 0, width: 200, height: 21 })).toEqual([planned('row0'), actual('row0')]);
   });
 
   it('実績終了日が未入力でも、当日まで伸ばして描いているぶんは拾う', () => {
     const ongoing: [string, WBSData][] = [['row0', chartRow('row0', undefined, ['2026/07/04', ''])]];
     // 当日 07/08 まで伸びているので x 140〜160 に掛かる
-    expect(collect(ongoing, { x: 140, y: 0, width: 20, height: 21 }, true)).toEqual(['row0']);
+    expect(collect(ongoing, { x: 140, y: 0, width: 20, height: 21 }, true)).toEqual([actual('row0')]);
     // 伸ばす設定が OFF なら終了日が無いバーは描かれないので拾わない
     expect(collect(ongoing, { x: 140, y: 0, width: 20, height: 21 }, false)).toEqual([]);
   });
@@ -92,7 +105,7 @@ describe('collectRowsInMarquee', () => {
     // 2つのイベントの間(x 40〜150)には当たらない
     expect(collect(events, { x: 40, y: 0, width: 100, height: 21 })).toEqual([]);
     // 後ろのイベント(x 160〜180)には当たる
-    expect(collect(events, { x: 165, y: 0, width: 5, height: 21 })).toEqual(['event0']);
+    expect(collect(events, { x: 165, y: 0, width: 5, height: 21 })).toEqual([planned('event0')]);
   });
 
   it('セパレータ行は一括移動できないので選択しない', () => {
@@ -102,7 +115,7 @@ describe('collectRowsInMarquee', () => {
 
   it('表示期間をまたぐバーは端でクランプして判定する', () => {
     const spanning: [string, WBSData][] = [['row0', chartRow('row0', ['2026/06/20', '2026/07/03'])]];
-    expect(collect(spanning, { x: 0, y: 0, width: 10, height: 21 })).toEqual(['row0']);
+    expect(collect(spanning, { x: 0, y: 0, width: 10, height: 21 })).toEqual([planned('row0')]);
   });
 
   it('表示期間の外にしかないバーは拾わない', () => {
@@ -115,12 +128,12 @@ describe('collectRowsInMarquee', () => {
   });
 });
 
-describe('selectableBarRanges', () => {
-  it('予定・実績の両方を別々の範囲として返す', () => {
+describe('selectableBars', () => {
+  it('予定・実績を種別つきで別々に返す', () => {
     const row = chartRow('row0', ['2026/07/01', '2026/07/02'], ['2026/07/03', '2026/07/04']);
-    expect(selectableBarRanges(row, false, '2026/07/08')).toEqual([
-      { start: '2026/07/01', end: '2026/07/02' },
-      { start: '2026/07/03', end: '2026/07/04' },
+    expect(selectableBars(row, false, '2026/07/08')).toEqual([
+      { barType: 'planned', start: '2026/07/01', end: '2026/07/02' },
+      { barType: 'actual', start: '2026/07/03', end: '2026/07/04' },
     ]);
   });
 });

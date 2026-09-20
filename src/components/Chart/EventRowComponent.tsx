@@ -111,16 +111,24 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
   const [activeEventIndex, setActiveEventIndex] = useState<number | null>(null);
   const [contextMenu, setContextMenu] = useState<number | null>(null);
   const ganttRowRef = useRef<HTMLDivElement>(null);
-  // 複数選択(Ctrl+クリック)と、その選択行をまとめて動かす一括ドラッグ。
-  // イベント行は掴んだバーと同じ種別(予定/実績)のイベントがまとめて動く。
-  const { isBarSelected, handleSelectionMouseDown } = useBarSelection(entry.id);
+  // バーの複数選択と一括ドラッグ。イベント行も予定/実績で別々に選べ、
+  // 掴んだバーと同じ種別のイベントがまとめて動く。
+  const plannedSelection = useBarSelection(entry.id, 'planned');
+  const actualSelection = useBarSelection(entry.id, 'actual');
+  const selectionOf = useCallback((barType: 'planned' | 'actual') => (
+    barType === 'planned' ? plannedSelection : actualSelection
+  ), [plannedSelection, actualSelection]);
+  const barTypeOfEvent = useCallback((index: number): 'planned' | 'actual' => (
+    localEvents[index]?.isPlanned ? 'planned' : 'actual'
+  ), [localEvents]);
   const { isMultiDragging, tryBeginMultiDrag } = useMultiBarDrag({ gridRef, setCanGridRefDrag });
 
   const handleBarMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, index: number) => {
-    // Ctrl/Ctrl+Shift クリックは選択操作。ドラッグは始めない。
-    if (handleSelectionMouseDown(event)) return;
-    // 選択中の行を掴んだら、選択行すべてをまとめて動かす経路へ渡す
-    if (tryBeginMultiDrag(event, entry.id, localEvents[index]?.isPlanned ? 'planned' : 'actual')) return;
+    // Ctrl/Shift クリックなどの選択操作はここで完結させ、ドラッグは始めない。
+    const barType = barTypeOfEvent(index);
+    if (selectionOf(barType).handleSelectionMouseDown(event)) return;
+    // 選択中のバーを掴んだら、同じ種別の選択バーをまとめて動かす経路へ渡す
+    if (tryBeginMultiDrag(event, entry.id, barType, () => selectionOf(barType).handleSelectionClick(false))) return;
     dispatch(pushPastState());
     setIsBarDragging(true);
     setCanGridRefDrag(false);
@@ -132,11 +140,11 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
     setOriginalStartDate(localEvents[index].startDate);
     setOriginalEndDate(localEvents[index].endDate);
     setActiveEventIndex(index);
-  }, [cellWidth, dispatch, entry.id, gridRef, handleSelectionMouseDown, localEvents, setCanGridRefDrag, tryBeginMultiDrag, wbsWidth]);
+  }, [barTypeOfEvent, cellWidth, dispatch, entry.id, gridRef, localEvents, selectionOf, setCanGridRefDrag, tryBeginMultiDrag, wbsWidth]);
 
   const handleBarEndMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, index: number) => {
     // 端ドラッグ(期間の変更)は一括対象外。選択操作だけ先に拾う。
-    if (handleSelectionMouseDown(event)) return;
+    if (selectionOf(barTypeOfEvent(index)).handleSelectionMouseDown(event)) return;
     dispatch(pushPastState());
     setIsBarEndDragging(true);
     setCanGridRefDrag(false);
@@ -148,11 +156,11 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
     setOriginalStartDate(localEvents[index].startDate);
     setOriginalEndDate(localEvents[index].endDate);
     setActiveEventIndex(index);
-  }, [cellWidth, dispatch, gridRef, handleSelectionMouseDown, localEvents, setCanGridRefDrag, wbsWidth]);
+  }, [barTypeOfEvent, cellWidth, dispatch, gridRef, localEvents, selectionOf, setCanGridRefDrag, wbsWidth]);
 
   const handleBarStartMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, index: number) => {
     // 端ドラッグ(期間の変更)は一括対象外。選択操作だけ先に拾う。
-    if (handleSelectionMouseDown(event)) return;
+    if (selectionOf(barTypeOfEvent(index)).handleSelectionMouseDown(event)) return;
     dispatch(pushPastState());
     setIsBarStartDragging(true);
     setCanGridRefDrag(false);
@@ -164,7 +172,7 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
     setOriginalStartDate(localEvents[index].startDate);
     setOriginalEndDate(localEvents[index].endDate);
     setActiveEventIndex(index);
-  }, [cellWidth, dispatch, gridRef, handleSelectionMouseDown, localEvents, setCanGridRefDrag, wbsWidth]);
+  }, [barTypeOfEvent, cellWidth, dispatch, gridRef, localEvents, selectionOf, setCanGridRefDrag, wbsWidth]);
 
   const calculateDateFromX = useCallback((x: number) => {
     const dateIndex = Math.floor(x / cellWidth);
@@ -298,6 +306,10 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
         if (shouldremovePastState) {
           dispatch(removePastState(1));
         }
+        // 動かさずに離したバードラッグはクリック。そのバーを選択する。
+        if (isBarDragging) {
+          selectionOf(barTypeOfEvent(activeEventIndex)).handleSelectionClick(!shouldremovePastState);
+        }
       }
     }
     syncToStore();
@@ -374,7 +386,7 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
           chartBarColor={event.isPlanned ? plannedChartBarColor : actualChartBarColor}
           // 一括ドラッグ中もラベル入力へ「動かした」と伝える(ChartRowComponent と同じ理由)
           isBarDragged={isBarDragged || isMultiDragging}
-          isBarSelected={isBarSelected}
+          isBarSelected={(event.isPlanned ? plannedSelection : actualSelection).isBarSelected}
           onBarMouseDown={(e) => handleBarMouseDown(e, index)}
           onBarEndMouseDown={(e) => handleBarEndMouseDown(e, index)}
           onBarStartMouseDown={(e) => handleBarStartMouseDown(e, index)}

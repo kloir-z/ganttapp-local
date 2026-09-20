@@ -22,6 +22,7 @@ import {
   updateSeparatorDates,
 } from '../reduxStoreAndSlices/store';
 import { isChartRow, isEventRow } from '../types/DataTypes';
+import { BarType, barKeyOf, barTypeOfBarKey, rowIdOfBarKey } from '../reduxStoreAndSlices/uiFlagSlice';
 import {
   ActualBarSnapshot,
   EventBarSnapshot,
@@ -32,8 +33,6 @@ import {
   toActualBarSnapshot,
 } from '../utils/BarDragShift';
 
-export type BarType = 'planned' | 'actual';
-
 interface UseMultiBarDragParams {
   gridRef: React.RefObject<HTMLDivElement>;
   setCanGridRefDrag: (canGridRefDrag: boolean) => void;
@@ -41,6 +40,8 @@ interface UseMultiBarDragParams {
 
 interface DragSession {
   barType: BarType;
+  /** 動かさずに離した(=クリック)ときに呼ぶ。選択の畳み直しは呼び出し側のルールに任せる。 */
+  onClickWithoutMove: () => void;
   initialMouseX: number;
   planned: PlannedBarSnapshot[];
   actual: ActualBarSnapshot[];
@@ -65,14 +66,20 @@ export const useMultiBarDrag = ({ gridRef, setCanGridRefDrag }: UseMultiBarDragP
   const tryBeginMultiDrag = useCallback((
     event: React.MouseEvent<HTMLDivElement>,
     rowId: string,
-    barType: BarType
+    barType: BarType,
+    onClickWithoutMove: () => void
   ): boolean => {
     if (event.button !== 0) return false;
     const state = store.getState();
     if (state.history?.isViewingPast) return false;
 
-    const selectedBarRowIds = state.uiFlags.selectedBarRowIds;
-    if (selectedBarRowIds.length < 2 || !selectedBarRowIds.includes(rowId)) return false;
+    // 掴んだバーと同じ種別の選択だけを動かす。予定バーのドラッグで実績バーは動かない。
+    const selectedBarKeys = state.uiFlags.selectedBarKeys;
+    if (!selectedBarKeys.includes(barKeyOf(rowId, barType))) return false;
+    const targetRowIds = selectedBarKeys
+      .filter(key => barTypeOfBarKey(key) === barType)
+      .map(rowIdOfBarKey);
+    if (targetRowIds.length < 2) return false;
 
     const { data, holidays, regularDaysOff } = state.wbsData;
     const { cellWidth, wbsWidth, extendActualBarToToday } = state.baseSettings;
@@ -81,7 +88,7 @@ export const useMultiBarDrag = ({ gridRef, setCanGridRefDrag }: UseMultiBarDragP
     const planned: PlannedBarSnapshot[] = [];
     const actual: ActualBarSnapshot[] = [];
     const events: EventBarSnapshot[] = [];
-    selectedBarRowIds.forEach(selectedId => {
+    targetRowIds.forEach(selectedId => {
       const row = data[selectedId];
       if (isChartRow(row)) {
         if (barType === 'planned') {
@@ -111,7 +118,7 @@ export const useMultiBarDrag = ({ gridRef, setCanGridRefDrag }: UseMultiBarDragP
       initialMouseX = Math.floor((event.clientX + gridStartX - 1) / cellWidth) * cellWidth - gridStartX + 1;
     }
 
-    sessionRef.current = { barType, initialMouseX, planned, actual, events, holidays, regularDaysOff, cellWidth };
+    sessionRef.current = { barType, onClickWithoutMove, initialMouseX, planned, actual, events, holidays, regularDaysOff, cellWidth };
     gridStepsRef.current = 0;
     dispatch(pushPastState());
     setCanGridRefDrag(false);
@@ -146,9 +153,11 @@ export const useMultiBarDrag = ({ gridRef, setCanGridRefDrag }: UseMultiBarDragP
     setIsMultiDragging(false);
     setCanGridRefDrag(true);
     if (!session) return;
-    // 一度も動かさずに離したドラッグは、undo 履歴に残さない(単体ドラッグと同じ)
+    // 一度も動かさずに離したドラッグは、undo 履歴に残さない(単体ドラッグと同じ)。
+    // 動かしていないなら操作としてはクリックなので、選択の扱いは呼び出し側へ渡す。
     if (gridStepsRef.current === 0) {
       dispatch(removePastState(1));
+      session.onClickWithoutMove();
     }
     dispatch(updateSeparatorDates());
   }, [dispatch, setCanGridRefDrag]);

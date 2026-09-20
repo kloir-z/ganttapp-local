@@ -92,8 +92,13 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   const [contextMenu, setContextMenu] = useState<'planned' | 'actual' | null>(null);
   const prevDateRef = useRef<ReturnType<typeof cdate> | string>();
   const ganttRowRef = useRef<HTMLDivElement>(null);
-  // 複数選択(Ctrl+クリック)と、その選択行をまとめて動かす一括ドラッグ
-  const { isBarSelected, handleSelectionMouseDown } = useBarSelection(entry.id);
+  // バーの複数選択と、選択したバーをまとめて動かす一括ドラッグ。
+  // 選択は予定バー/実績バーで別々に持つ(片方を選んでももう片方は選ばれない)。
+  const plannedSelection = useBarSelection(entry.id, 'planned');
+  const actualSelection = useBarSelection(entry.id, 'actual');
+  const selectionOf = useCallback((barType: 'planned' | 'actual') => (
+    barType === 'planned' ? plannedSelection : actualSelection
+  ), [plannedSelection, actualSelection]);
   const { isMultiDragging, tryBeginMultiDrag } = useMultiBarDrag({ gridRef, setCanGridRefDrag });
 
   const handleBarMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual') => {
@@ -101,11 +106,11 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
     // builder) must NOT start a bar drag — otherwise isBarDragging stays set, its
     // full-screen overlay lingers, and the chart becomes unresponsive.
     if (event.button !== 0) return;
-    // Ctrl/Ctrl+Shift クリックは選択操作。ドラッグは始めない。
-    if (handleSelectionMouseDown(event)) return;
-    // 選択中の行を掴んだら、選択行すべてをまとめて動かす経路へ渡す
-    // (このときこの行はローカル state に入らず、他の選択行と同じく entry.* で追従する)
-    if (tryBeginMultiDrag(event, entry.id, barType)) return;
+    // Ctrl/Shift クリックなどの選択操作はここで完結させ、ドラッグは始めない。
+    if (selectionOf(barType).handleSelectionMouseDown(event)) return;
+    // 選択中のバーを掴んだら、同じ種別の選択バーをまとめて動かす経路へ渡す
+    // (このとき掴んだ行もローカル state に入らず、他の選択行と同じく entry.* で追従する)
+    if (tryBeginMultiDrag(event, entry.id, barType, () => selectionOf(barType).handleSelectionClick(false))) return;
     setIsBarDragging(barType);
     setCanGridRefDrag(false);
     dispatch(pushPastState());
@@ -122,12 +127,12 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
       originalDateRef.current.start = localActualStartDate ?? '';
       originalDateRef.current.end = effectiveActualEndDate ?? '';
     }
-  }, [cellWidth, dispatch, entry.id, gridRef, effectiveActualEndDate, handleSelectionMouseDown, localActualStartDate, localPlannedEndDate, localPlannedStartDate, setCanGridRefDrag, tryBeginMultiDrag, wbsWidth]);
+  }, [cellWidth, dispatch, entry.id, gridRef, effectiveActualEndDate, localActualStartDate, localPlannedEndDate, localPlannedStartDate, selectionOf, setCanGridRefDrag, tryBeginMultiDrag, wbsWidth]);
 
   const handleBarEndMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual') => {
     if (event.button !== 0) return;
     // 端ドラッグ(期間の変更)は一括対象外。選択操作だけ先に拾う。
-    if (handleSelectionMouseDown(event)) return;
+    if (selectionOf(barType).handleSelectionMouseDown(event)) return;
     setIsBarEndDragging(barType);
     setCanGridRefDrag(false);
     dispatch(pushPastState());
@@ -143,12 +148,12 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
       originalDateRef.current.start = localActualStartDate ?? '';
       originalDateRef.current.end = effectiveActualEndDate ?? '';
     }
-  }, [cellWidth, dispatch, gridRef, effectiveActualEndDate, handleSelectionMouseDown, localActualStartDate, localPlannedEndDate, setCanGridRefDrag, wbsWidth]);
+  }, [cellWidth, dispatch, gridRef, effectiveActualEndDate, localActualStartDate, localPlannedEndDate, selectionOf, setCanGridRefDrag, wbsWidth]);
 
   const handleBarStartMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual') => {
     if (event.button !== 0) return;
     // 端ドラッグ(期間の変更)は一括対象外。選択操作だけ先に拾う。
-    if (handleSelectionMouseDown(event)) return;
+    if (selectionOf(barType).handleSelectionMouseDown(event)) return;
     setIsBarStartDragging(barType);
     setCanGridRefDrag(false);
     dispatch(pushPastState());
@@ -164,7 +169,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
       originalDateRef.current.start = localActualStartDate ?? '';
       originalDateRef.current.end = effectiveActualEndDate ?? '';
     }
-  }, [cellWidth, dispatch, gridRef, effectiveActualEndDate, handleSelectionMouseDown, localActualStartDate, localPlannedStartDate, setCanGridRefDrag, wbsWidth]);
+  }, [cellWidth, dispatch, gridRef, effectiveActualEndDate, localActualStartDate, localPlannedStartDate, selectionOf, setCanGridRefDrag, wbsWidth]);
 
   const calculateDateFromX = useCallback((x: number) => {
     const dateIndex = Math.floor(x / cellWidth);
@@ -348,6 +353,11 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
     if (shouldremovePastState) {
       dispatch(removePastState(1));
     }
+    // 動かさずに離したバードラッグはクリック。そのバーを選択する(端ドラッグや
+    // ダブルクリックからの編集は対象外 — 選択したいのはバーを押したときだけ)。
+    if (isBarDragging) {
+      selectionOf(isBarDragging).handleSelectionClick(!shouldremovePastState);
+    }
     // Flush the final dates to the store synchronously (cancel the pending
     // debounced sync). Otherwise, when the click is released before the 50ms
     // debounce fires, clearing the drag flags lets the reset effect restore the
@@ -371,7 +381,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
     setInitialMouseX(null);
     setCanGridRefDrag(true);
     dispatch(updateSeparatorDates());
-  }, [dispatch, entry.id, isEditing, isBarDragging, isBarEndDragging, isBarStartDragging, effectiveActualEndDate, localActualEndDate, localActualStartDate, localPlannedEndDate, localPlannedStartDate, setCanGridRefDrag]);
+  }, [dispatch, entry.id, isEditing, isBarDragging, isBarEndDragging, isBarStartDragging, effectiveActualEndDate, localActualEndDate, localActualStartDate, localPlannedEndDate, localPlannedStartDate, selectionOf, setCanGridRefDrag]);
 
   // Safety net: finish the drag on a window-level mouseup too. The drag overlay
   // (z 9999) catches mouseup normally, but if the release lands on something
@@ -523,7 +533,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
           isBarDragged={isPlannedBarDragged || isMultiDragging}
           isCpCritical={isCpCritical}
           isCpDimmed={isCpDimmed}
-          isBarSelected={isBarSelected}
+          isBarSelected={plannedSelection.isBarSelected}
           isBarDragging={Boolean(isEditing === "planned" || isBarDragging === "planned" || isBarEndDragging === "planned" || isBarStartDragging === "planned")}
           onBarMouseDown={(e) => handleBarMouseDown(e, 'planned')}
           onBarEndMouseDown={(e) => handleBarEndMouseDown(e, 'planned')}
@@ -540,7 +550,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
           entryId={entry.id}
           chartBarColor={actualChartBarColor}
           isCpDimmed={isCpDimmed}
-          isBarSelected={isBarSelected}
+          isBarSelected={actualSelection.isBarSelected}
           isBarDragging={Boolean(isEditing === "actual" || isBarDragging === "actual" || isBarEndDragging === "actual" || isBarStartDragging === "actual")}
           onBarMouseDown={(e) => handleBarMouseDown(e, 'actual')}
           onBarEndMouseDown={(e) => handleBarEndMouseDown(e, 'actual')}
