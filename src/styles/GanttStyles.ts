@@ -25,8 +25,8 @@ interface StyledBarProps {
   $isCpCritical?: boolean;
   $isCpDimmed?: boolean;
   // 一括移動のために選択されているバー。CP の赤枠と併用できるよう border ではなく
-  // outline で描く(レイアウトにも影響しない)。offset は 0 — 1px でも離すと
-  // バーと枠の間に隙間が見えてしまう。
+  // outline で描く(レイアウトにも影響しない)。offset は枠線ぶんの負値にして
+  // **バーの内側**に引く。外周に描くと、上下に隣り合うバーの枠どうしが重なって見える。
   $isBarSelected?: boolean;
 }
 
@@ -49,7 +49,7 @@ export const StyledBar = styled.div.attrs<StyledBarProps>(({ $left, $width, $hei
   box-shadow: ${props => props.$isCpCritical ? '0 0 4px 1px rgba(229, 57, 53, 0.35)' : 'none'};
   opacity: ${props => props.$isCpDimmed ? 0.25 : 1};
   outline: ${props => props.$isBarSelected ? '2px solid rgba(53, 121, 248, 0.95)' : 'none'};
-  outline-offset: 0;
+  outline-offset: -2px;
   &:hover {
     border: ${props => props.$isCpCritical ? '2px solid rgba(229, 57, 53, 0.9)' : props.$chartBarColor ? '0.2px solid #000dff5f' : '0.2px solid transparent'};
   }

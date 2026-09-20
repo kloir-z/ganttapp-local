@@ -59,7 +59,7 @@ This is an offline-first Gantt chart application built with React 18, TypeScript
 - **ChartRowComponent.tsx**: Individual task bar rendering with dependencies
 - **EventRowComponent.tsx**: Milestone/event marker rendering
 - **SeparatorRowComponent.tsx**: Section header bars in the chart
-- **ChartBar.tsx**: Core task bar component with progress visualization. Carries `data-bar-row-id` (hit-testing for "click the empty chart to clear the selection") and paints the multi-selection with an `outline` rather than a border, so it can coexist with the critical-path border without shifting the bar. The outline's `outline-offset` is 0 — even 1px leaves a visible gap between the bar and its frame
+- **ChartBar.tsx**: Core task bar component with progress visualization. Carries `data-bar-row-id` (hit-testing for "click the empty chart to clear the selection") and paints the multi-selection with an `outline` rather than a border, so it can coexist with the critical-path border without shifting the bar. The outline is drawn **inside** the bar (`outline-offset: -2px`): bars in adjacent rows touch, so an outline on the outside overlaps the neighbouring bar
 - **GridVertical.tsx**: Vertical grid lines for date alignment
 - **ProgressTag.tsx**: Progress percentage display
 - **AutoWidthInputBox.tsx**: Inline editing input for chart elements
