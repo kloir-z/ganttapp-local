@@ -43,6 +43,7 @@ export const useJsonExport = () => {
     const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
     const notesModalState = useSelector((state: RootState) => state.notes.modalState);
     const historySnapshots = useSelector((state: RootState) => state.history?.snapshots || []);
+    const annotations = useSelector((state: RootState) => state.wbsData.annotations);
 
     const exportAndCopyJson = useCallback(async () => {
         try {
@@ -75,6 +76,7 @@ export const useJsonExport = () => {
                 editorStates,
                 selectedNodeKey,
                 historySnapshots,
+                annotations,
             });
 
             const JSZip = (await import('jszip')).default;
@@ -107,7 +109,7 @@ export const useJsonExport = () => {
         regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title,
         showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage,
         scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition,
-        editorStates, selectedNodeKey, historySnapshots, dispatch, t
+        editorStates, selectedNodeKey, historySnapshots, annotations, dispatch, t
     ]);
 
     return { exportAndCopyJson };

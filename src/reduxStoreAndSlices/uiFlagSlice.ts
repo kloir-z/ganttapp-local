@@ -24,6 +24,11 @@ interface UIFlagsState {
   // クリティカルパス(cpPredecessors ネットワークから算出)の強調表示トグル。
   // 表示専用のフラグなので保存ファイルには含めない。
   showCriticalPath: boolean;
+  // チャート注釈の表示トグル。注釈自体はプロジェクトデータだが、「編集中は消して
+  // おきたい」ための表示切替なので、CP 表示と同じくファイルには含めない。
+  showAnnotations: boolean;
+  // 選択中の注釈(編集ハンドルを出す対象)。純粋なUI状態なので保存しない。
+  selectedAnnotationId: string;
 }
 
 const initialState: UIFlagsState = {
@@ -37,6 +42,8 @@ const initialState: UIFlagsState = {
   dependencyChainRowIds: [],
   dependencyBuilder: null,
   showCriticalPath: false,
+  showAnnotations: true,
+  selectedAnnotationId: '',
 };
 
 const uiFlagsSlice = createSlice({
@@ -80,8 +87,14 @@ const uiFlagsSlice = createSlice({
     setShowCriticalPath(state, action: PayloadAction<boolean>) {
       state.showCriticalPath = action.payload;
     },
+    setShowAnnotations(state, action: PayloadAction<boolean>) {
+      state.showAnnotations = action.payload;
+    },
+    setSelectedAnnotationId(state, action: PayloadAction<string>) {
+      state.selectedAnnotationId = action.payload;
+    },
   },
 });
 
-export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath } = uiFlagsSlice.actions;
+export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath, setShowAnnotations, setSelectedAnnotationId } = uiFlagsSlice.actions;
 export default uiFlagsSlice.reducer;

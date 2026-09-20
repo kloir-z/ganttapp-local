@@ -1,5 +1,5 @@
 import { configureStore, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { WBSData, EventRow, RegularDaysOffSettingsType, isChartRow, isEventRow, isSeparatorRow, DateFormatType, HolidayColor, RowType, MessageInfo } from '../types/DataTypes';
+import { WBSData, EventRow, RegularDaysOffSettingsType, isChartRow, isEventRow, isSeparatorRow, DateFormatType, HolidayColor, RowType, MessageInfo, ChartAnnotation, MAX_ANNOTATIONS } from '../types/DataTypes';
 import { calculatePlannedDays, buildDependencyMap, updateDependentRows, resetEndDate, updateSeparatorRowDates, adjustColorOpacity, createNewRow, resolveDependencies, isHoliday, isRegularDaysOff } from '../utils/CommonUtils';
 import copiedRowsReducer from './copiedRowsSlice';
 import colorReducer from './colorSlice'
@@ -26,6 +26,8 @@ export interface ExtendedColumn extends Column {
 export interface UndoableState {
   data: { [id: string]: WBSData },
   columns: ExtendedColumn[],
+  // チャート注釈もプロジェクトデータなので undo の対象に含める。
+  annotations: ChartAnnotation[],
 }
 
 export interface AddRowPayload {
@@ -78,6 +80,7 @@ const initialState: {
   showYear: boolean,
   dateFormat: DateFormatType,
   dependencyMap: { [id: string]: string[] },
+  annotations: ChartAnnotation[],
   past: UndoableState[],
   future: UndoableState[],
   messageInfo: MessageInfo,
@@ -92,9 +95,11 @@ const initialState: {
   dateFormat: "yyyy/M/d",
   columns: initialColumns,
   dependencyMap: buildDependencyMap(initializedEmptyData),
+  annotations: [],
   past: [{
     data: updateSeparatorRowDates(initializedEmptyData),
-    columns: initialColumns
+    columns: initialColumns,
+    annotations: []
   }],
   future: [],
   messageInfo: { message: '', severity: 'info' },
@@ -116,7 +121,7 @@ export const wbsDataSlice = createSlice({
       const data = action.payload;
       const { updatedData, newDependencyMap } = resolveDependencies(data, state.holidays, state.regularDaysOff);
       state.dependencyMap = newDependencyMap;
-      state.past.push({ data: state.data, columns: state.columns });
+      state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
       state.future = [];
       if (state.past.length > 30) {
         state.past.shift();
@@ -143,7 +148,7 @@ export const wbsDataSlice = createSlice({
       const data = assignIds(dataArray);
       const { updatedData, newDependencyMap } = resolveDependencies(data, state.holidays, state.regularDaysOff);
       state.dependencyMap = newDependencyMap;
-      state.past.push({ data: state.data, columns: state.columns });
+      state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
       state.future = [];
       if (state.past.length > 30) {
         state.past.shift();
@@ -165,7 +170,7 @@ export const wbsDataSlice = createSlice({
         const data = assignIds(dataArray);
         const { updatedData, newDependencyMap } = resolveDependencies(data, state.holidays, state.regularDaysOff);
         state.dependencyMap = newDependencyMap;
-        state.past.push({ data: state.data, columns: state.columns });
+        state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
         state.future = [];
         if (state.past.length > 30) {
           state.past.shift();
@@ -188,7 +193,7 @@ export const wbsDataSlice = createSlice({
       const data = assignIds(filteredData);
       const { updatedData, newDependencyMap } = resolveDependencies(data, state.holidays, state.regularDaysOff);
       state.dependencyMap = newDependencyMap;
-      state.past.push({ data: state.data, columns: state.columns });
+      state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
       state.future = [];
       if (state.past.length > 30) {
         state.past.shift();
@@ -222,7 +227,7 @@ export const wbsDataSlice = createSlice({
         const data = assignIds(updatedDataArray);
         const { updatedData, newDependencyMap } = resolveDependencies(data, state.holidays, state.regularDaysOff);
         state.dependencyMap = newDependencyMap;
-        state.past.push({ data: state.data, columns: state.columns });
+        state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
         state.future = [];
         if (state.past.length > 30) {
           state.past.shift();
@@ -420,7 +425,7 @@ export const wbsDataSlice = createSlice({
       }
     },
     toggleColumnVisibility(state, action: PayloadAction<string>) {
-      state.past.push({ data: state.data, columns: state.columns });
+      state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
       state.future = [];
       if (state.past.length > 30) {
         state.past.shift();
@@ -441,7 +446,7 @@ export const wbsDataSlice = createSlice({
         column => column.visible && column.columnId !== 'no' && !idsToHide.includes(column.columnId)
       ).length;
       if (remainingVisible < 1) return;
-      state.past.push({ data: state.data, columns: state.columns });
+      state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
       state.future = [];
       if (state.past.length > 30) {
         state.past.shift();
@@ -457,9 +462,63 @@ export const wbsDataSlice = createSlice({
         state.columns[columnIndex] = { ...state.columns[columnIndex], width: action.payload.width };
       }
     },
+    // --- チャート注釈 ---
+    // 注釈はプロジェクトデータなので、行や列と同じ wbsData スライスに置いて
+    // undo スナップショットに自動的に乗るようにしている。各操作は自前で
+    // past を積む(呼び出し側で pushPastState を挟まなくても undo できる)。
+    addAnnotation: (state, action: PayloadAction<ChartAnnotation>) => {
+      if (state.annotations.length >= MAX_ANNOTATIONS) return;
+      state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
+      state.future = [];
+      if (state.past.length > 30) {
+        state.past.shift();
+      }
+      state.annotations = [...state.annotations, action.payload];
+      state.isSavedChanges = false;
+    },
+    updateAnnotationText: (state, action: PayloadAction<{ id: string; text: string }>) => {
+      const { id, text } = action.payload;
+      const target = state.annotations.find(a => a.id === id);
+      if (!target || target.text === text) return;
+      state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
+      state.future = [];
+      if (state.past.length > 30) {
+        state.past.shift();
+      }
+      state.annotations = state.annotations.map(a => (a.id === id ? { ...a, text } : a));
+      state.isSavedChanges = false;
+    },
+    // カードの手動ずらし。ドラッグ確定時に 1 回だけ飛んでくる想定なので、
+    // 位置が実際に変わったときだけ undo ステップを積む。
+    moveAnnotation: (state, action: PayloadAction<{ id: string; offsetX: number; offsetY: number }>) => {
+      const { id, offsetX, offsetY } = action.payload;
+      const target = state.annotations.find(a => a.id === id);
+      if (!target || (target.offsetX === offsetX && target.offsetY === offsetY)) return;
+      state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
+      state.future = [];
+      if (state.past.length > 30) {
+        state.past.shift();
+      }
+      state.annotations = state.annotations.map(a => (a.id === id ? { ...a, offsetX, offsetY } : a));
+      state.isSavedChanges = false;
+    },
+    deleteAnnotation: (state, action: PayloadAction<string>) => {
+      if (!state.annotations.some(a => a.id === action.payload)) return;
+      state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
+      state.future = [];
+      if (state.past.length > 30) {
+        state.past.shift();
+      }
+      state.annotations = state.annotations.filter(a => a.id !== action.payload);
+      state.isSavedChanges = false;
+    },
+    // ファイル読み込み用。undo 履歴には積まない(読み込みは undo の対象外)。
+    setEntireAnnotations: (state, action: PayloadAction<ChartAnnotation[]>) => {
+      state.annotations = Array.isArray(action.payload) ? action.payload : [];
+    },
     resetStore: () => emptyState,
     pushPastState: (state) => {
-      state.past.push({ data: state.data, columns: state.columns });
+      state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
       state.future = [];
       if (state.past.length > 31) {
         state.past.shift();
@@ -473,9 +532,10 @@ export const wbsDataSlice = createSlice({
       if (state.past.length > 1) {
         const lastPast = state.past.pop();
         if (lastPast) {
-          state.future.unshift({ data: state.data, columns: state.columns });
+          state.future.unshift({ data: state.data, columns: state.columns, annotations: state.annotations });
           state.data = lastPast.data;
           state.columns = lastPast.columns;
+          state.annotations = lastPast.annotations ?? [];
           state.dependencyMap = buildDependencyMap(lastPast.data);
         }
       }
@@ -484,9 +544,10 @@ export const wbsDataSlice = createSlice({
       if (state.future.length > 0) {
         const firstFuture = state.future.shift();
         if (firstFuture) {
-          state.past.push({ data: state.data, columns: state.columns });
+          state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
           state.data = firstFuture.data;
           state.columns = firstFuture.columns;
+          state.annotations = firstFuture.annotations ?? [];
           state.dependencyMap = buildDependencyMap(firstFuture.data);
         }
       }
@@ -716,6 +777,11 @@ export const {
   addCpPredecessors,
   clearCpPredecessors,
   createTaskChain,
+  addAnnotation,
+  updateAnnotationText,
+  moveAnnotation,
+  deleteAnnotation,
+  setEntireAnnotations,
 } = wbsDataSlice.actions;
 
 export const store = configureStore({

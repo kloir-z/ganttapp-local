@@ -97,6 +97,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
   const notesModalState = useSelector((state: RootState) => state.notes.modalState);
   const historySnapshots = useSelector((state: RootState) => state.history?.snapshots || []);
+  const annotations = useSelector((state: RootState) => state.wbsData.annotations);
 
   const handleTabChange = useCallback((_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -137,6 +138,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
         editorStates,
         selectedNodeKey,
         historySnapshots,
+        annotations,
       });
 
       // Extract JSON from ZIP for display
@@ -164,7 +166,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
   }, [
     colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor,
     regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title,
-    showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, historySnapshots, dispatch, t
+    showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, historySnapshots, annotations, dispatch, t
   ]);
 
   const handleImportJson = useCallback(async () => {

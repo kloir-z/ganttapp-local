@@ -1,9 +1,9 @@
 import { AppDispatch, ExtendedColumn, RootState, setColumns, setDateFormat, setIsSavedChangesStore, setShowYear, updateEntireRegularDaysOffSetting, updateHolidayColor } from "../reduxStoreAndSlices/store";
 import { ensureCpPredecessorsColumn, ensureExtendedTextColumns, ensureWbsNumberColumn } from "../reduxStoreAndSlices/initialColumns";
 import { ColorInfo, ColorScheme, setIsSavedChangesColor } from "../reduxStoreAndSlices/colorSlice";
-import { WBSData, DateFormatType, RegularDaysOffSettingsType, HolidayColor } from "../types/DataTypes";
+import { WBSData, DateFormatType, RegularDaysOffSettingsType, HolidayColor, ChartAnnotation } from "../types/DataTypes";
 import { updateEntireColorSettings, setEntireColorState } from "../reduxStoreAndSlices/colorSlice";
-import { setEntireData, setHolidays } from "../reduxStoreAndSlices/store";
+import { setEntireData, setHolidays, setEntireAnnotations } from "../reduxStoreAndSlices/store";
 import { setWbsWidth, setDateRange, setHolidayInput, setTitle, setCalendarWidth, setCellWidth, setExtendActualBarToToday, setLanguage, setIsSavedChangesSettings, setScrollPosition } from "../reduxStoreAndSlices/baseSettingsSlice";
 import JSZip from 'jszip';
 import { parseHolidaysFromInput } from '../components/Setting/utils/settingHelpers';
@@ -50,6 +50,8 @@ export interface ExportData {
   editorStates?: { [key: string]: any };
   selectedNodeKey?: string;
   historySnapshots?: any[];
+  // チャート注釈(複数行を指し示す見せる用のメモ)。後から追加した項目なので省略可。
+  annotations?: ChartAnnotation[];
 }
 
 // Collect the canonical, format-agnostic project model from the export options.
@@ -83,6 +85,7 @@ export const buildProjectData = (options: ExportData) => {
     editorStates,
     selectedNodeKey,
     historySnapshots,
+    annotations,
   } = options;
   // Deferred orphan cleanup: only persist row notes whose row still exists in
   // the current WBS data. Rows deleted earlier leave their notes in state until
@@ -123,6 +126,7 @@ export const buildProjectData = (options: ExportData) => {
     ...(editorStates && { editorStates }),
     ...(selectedNodeKey && { selectedNodeKey }),
     ...(historySnapshots && { historySnapshots }),
+    ...(annotations && annotations.length > 0 && { annotations }),
   };
 };
 
@@ -193,6 +197,10 @@ export const handleImport = createAsyncThunk<void, { file: Blob; skipHistoryImpo
       // (hidden) so they can be turned on from the column settings.
       dispatch(setColumns(ensureExtendedTextColumns(ensureCpPredecessorsColumn(ensureWbsNumberColumn(parsedData.columns)))));
     }
+    // 注釈は後から追加した省略可能な配列。無いファイルは空で読み込む。
+    dispatch(setEntireAnnotations(
+      Array.isArray(parsedData.annotations) ? parsedData.annotations : []
+    ));
     if (parsedData.regularDaysOffSetting) {
       dispatch(updateEntireRegularDaysOffSetting(parsedData.regularDaysOffSetting));
     }

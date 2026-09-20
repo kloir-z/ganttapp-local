@@ -10,6 +10,7 @@ import ChartRowComponent from '../Chart/ChartRowComponent';
 import EventRowComponent from '../Chart/EventRowComponent';
 import SeparatorRowComponent from '../Chart/SeparatorRowComponent';
 import CpArrowsOverlay from '../Chart/CpArrowsOverlay';
+import ChartAnnotationLayer from '../Chart/ChartAnnotationLayer';
 import ResizeBar from '../WbsWidthResizer';
 import WBSInfo from '../Table/WBSInfo';
 import SeparatorRowLabelComponent from '../Table/SeparatorRowLabel';
@@ -555,6 +556,11 @@ function Gantt() {
               }
             })}
             <CpArrowsOverlay filteredData={filteredData} dateArray={dateArray} />
+            <ChartAnnotationLayer
+              filteredData={filteredData}
+              dateArray={dateArray}
+              setCanGridRefDrag={setCanGridRefDrag}
+            />
           </div>
         </div>
       </div>

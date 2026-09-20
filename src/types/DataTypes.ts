@@ -162,3 +162,21 @@ export interface ListFilesResponse {
     };
   };
 }
+
+// チャート注釈: 複数行をまとめて指し示す「見せる用」のメモ。
+// 作業用のノート(notesSlice)とは別物で、プロジェクトデータの一部として保存され、
+// undo/redo の対象にもなる(wbsData スライスのスナップショットに含まれる)。
+export interface ChartAnnotation {
+  id: string;
+  // 対象行は「開始行ID + 終了行ID」で持つ。行インデックスではなくIDなので、
+  // 並べ替えや行挿入があっても端点が追従し、範囲が自然に伸縮する。
+  startRowId: string;
+  endRowId: string;
+  // 数行のプレーンテキスト(改行保持)。リッチテキストは必要になってから。
+  text: string;
+  // 既定位置(対象行群のバー右端の直後)からの手動ずらし。
+  offsetX: number;
+  offsetY: number;
+}
+
+export const MAX_ANNOTATIONS = 50;

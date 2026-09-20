@@ -111,6 +111,7 @@ const TopBarLocal: React.FC = memo(() => {
   const selectedNodeKey = useSelector((state: RootState) => state.notes.selectedNodeKey);
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
   const historySnapshots = useSelector((state: RootState) => state.history?.snapshots || []);
+  const annotations = useSelector((state: RootState) => state.wbsData.annotations);
   const pastLength = useSelector((state: RootState) => state.wbsData.past.length);
   const futureLength = useSelector((state: RootState) => state.wbsData.future.length);
   const showCriticalPath = useSelector((state: RootState) => state.uiFlags.showCriticalPath);
@@ -195,6 +196,7 @@ const TopBarLocal: React.FC = memo(() => {
         editorStates,
         selectedNodeKey,
         historySnapshots,
+        annotations,
       });
 
       const blob = new Blob([zipData], { type: 'application/zip' });
@@ -216,7 +218,7 @@ const TopBarLocal: React.FC = memo(() => {
         : t('Download failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
     }
-  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, notesModalState, historySnapshots, resetIsSavedChangesFlags, handleClose, dispatch, t]);
+  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, notesModalState, historySnapshots, annotations, resetIsSavedChangesFlags, handleClose, dispatch, t]);
 
   const handleSaveAsSubmit = useCallback(async () => {
     if (!newTitle) return;
@@ -255,6 +257,7 @@ const TopBarLocal: React.FC = memo(() => {
         editorStates,
         selectedNodeKey,
         historySnapshots,
+        annotations,
       });
       await exportProjectAsHtml(projectData, title);
       handleClose();
@@ -265,7 +268,7 @@ const TopBarLocal: React.FC = memo(() => {
         : t('HTML export failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
     }
-  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey, historySnapshots, handleClose, dispatch, t]);
+  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey, historySnapshots, annotations, handleClose, dispatch, t]);
 
   const handleLocalOpen = useCallback(() => {
     const input = document.createElement('input');

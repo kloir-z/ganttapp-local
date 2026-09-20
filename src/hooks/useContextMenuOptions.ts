@@ -1,8 +1,8 @@
 import { useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState, deleteRows, convertDisplayNameOnlyRowsToSeparator, toggleColumnVisibility, hideColumns, ExtendedColumn, createTaskChain, createCpChain, addCpPredecessors, clearCpPredecessors, pushPastState, setSeparatorLevel, setMessageInfo } from '../reduxStoreAndSlices/store';
-import { setShowCriticalPath } from '../reduxStoreAndSlices/uiFlagSlice';
+import { RootState, deleteRows, convertDisplayNameOnlyRowsToSeparator, toggleColumnVisibility, hideColumns, ExtendedColumn, createTaskChain, createCpChain, addCpPredecessors, clearCpPredecessors, pushPastState, setSeparatorLevel, setMessageInfo, addAnnotation } from '../reduxStoreAndSlices/store';
+import { setShowCriticalPath, setShowAnnotations } from '../reduxStoreAndSlices/uiFlagSlice';
 import { setCopiedRows } from '../reduxStoreAndSlices/copiedRowsSlice';
 import { openRowDialog } from '../reduxStoreAndSlices/rowDialogSlice';
 import useAddRow from './useAddRow';
@@ -51,6 +51,8 @@ export const useContextMenuOptions = ({
     const insertCopiedRow = useInsertCopiedRow();
     const copiedRows = useSelector((state: RootState) => state.copiedRows.rows);
     const showCriticalPath = useSelector((state: RootState) => state.uiFlags.showCriticalPath);
+    const showAnnotations = useSelector((state: RootState) => state.uiFlags.showAnnotations);
+    const annotationCount = useSelector((state: RootState) => state.wbsData.annotations.length);
     const storeDataArray = useSelector(selectWbsDataArray);
     const { basisColumnId, candidates, switchTo, autoAssign } = useColorBasis();
     const finalDataArray = useMemo(() => {
@@ -62,6 +64,24 @@ export const useContextMenuOptions = ({
     const handleAutoColorSetting = useCallback(() => {
         autoAssign(selectedRowIds);
     }, [autoAssign, selectedRowIds]);
+
+    // 選択行をまとめて指し示す注釈を追加する。選択が無ければ右クリックした行 1 行。
+    const handleAddAnnotation = useCallback(() => {
+        const rowIds = (selectedRowIds && selectedRowIds.length > 0)
+            ? selectedRowIds
+            : (entry ? [entry.id] : []);
+        if (rowIds.length === 0) return;
+        dispatch(addAnnotation({
+            id: `annotation-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            startRowId: rowIds[0],
+            endRowId: rowIds[rowIds.length - 1],
+            text: '',
+            offsetX: 0,
+            offsetY: 0,
+        }));
+        // 追加した注釈が見えないと何も起きていないように見えるので、非表示なら点ける。
+        if (!showAnnotations) dispatch(setShowAnnotations(true));
+    }, [dispatch, entry, selectedRowIds, showAnnotations]);
 
     const menuOptions = useMemo(() => {
         const createAddRowItems = (type: 'Chart' | 'Event') => {
@@ -359,6 +379,24 @@ export const useContextMenuOptions = ({
             });
         }
 
+        // 選択行をまとめて指し示す注釈の追加。見せる用の注記なので、作成導線は
+        // 行の右クリックに置く(対象行がそのまま注釈の範囲になる)。
+        baseOptions.push({
+            children: t("Add Annotation"),
+            onClick: handleAddAnnotation,
+            path: String(pathCounter++)
+        });
+
+        // 注釈の表示トグル。編集中は消しておきたい場面があるので CP 表示と並べる。
+        if (annotationCount > 0) {
+            baseOptions.push({
+                children: t("Show Annotations"),
+                onClick: () => dispatch(setShowAnnotations(!showAnnotations)),
+                checked: showAnnotations,
+                path: String(pathCounter++)
+            });
+        }
+
         // クリティカルパス表示のトグル。テーブル・チャートどちらの右クリックからも
         // 切り替えられるようにトップレベルに置く(設定メニューのトグルと同じ状態)。
         baseOptions.push({
@@ -462,7 +500,7 @@ export const useContextMenuOptions = ({
         });
 
         return baseOptions;
-    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, onEditDependency, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting, showCriticalPath, basisColumnId, candidates, switchTo, headerColumn, onRenameColumn]);
+    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, onEditDependency, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting, showCriticalPath, handleAddAnnotation, showAnnotations, annotationCount, basisColumnId, candidates, switchTo, headerColumn, onRenameColumn]);
 
     return menuOptions;
 };
