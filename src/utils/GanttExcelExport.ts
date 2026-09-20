@@ -432,6 +432,28 @@ const addNotesWorksheet = (
   }
 };
 
+// チャートバーの名前の右に出る進捗タグ(ProgressTag.tsx)の文字色。画面側の分岐を
+// そのまま写している。画面は new Date()(時刻つき)で比較しているが、ここは日付
+// キー同士の比較に置き換えた: 実時刻は必ず 0 時より後なので「today > plannedEnd」
+// は「todayKey >= plannedEndKey」と同値になる(真夜中ちょうどを除く)。空の日付は
+// 画面側では Invalid Date になりどの比較も false になるので、'' も同じく扱う。
+export const progressTagColor = (row: ChartRow, todayKey: string): string => {
+  const NEUTRAL = '#c8c8c8';
+  const percentage = row.progress ? parseFloat(row.progress.replace('%', '')) : null;
+  if (percentage === null || Number.isNaN(percentage)) return NEUTRAL;
+  const pStart = toKey(row.plannedStartDate);
+  const pEnd = toKey(row.plannedEndDate);
+  const aStart = toKey(row.actualStartDate);
+  const aEnd = toKey(row.actualEndDate);
+  const onOrAfter = (key: string) => key !== '' && todayKey >= key;
+  if (percentage === 100) return '#7a7a7abb';
+  if (onOrAfter(pEnd)) return '#ff0000bb';
+  if (!aStart && !aEnd && onOrAfter(pStart)) return '#ff5e00c5';
+  if ((aStart || aEnd || (percentage >= 1 && percentage < 100))
+    && (onOrAfter(pStart) || aStart || percentage > 0)) return '#0051ffbb';
+  return NEUTRAL;
+};
+
 // Map a stored WBS column id to its display text for a given row.
 const cellTextFor = (
   columnId: string,
@@ -541,18 +563,16 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
     resolveActualEndDate(row.actualStartDate, row.actualEndDate, params.extendActualBarToToday === true, params.today || '');
   const basisValueOf = (row: ChartRow | EventRow): string =>
     getColorSourceValue(row, colorBasisColumn);
+  // 進捗タグの色は「今日」との比較で決まる。params.today は実績バー延長用と共用。
+  const todayKey = toKey(params.today) || toKey(cdate().format('YYYY/MM/DD'));
 
-  // Drop the on-screen 'No' column (Excel's own row numbers replace it). Always
-  // emit the mechanical WBS-number column up front, even when it's hidden on
-  // screen — it carries the hierarchy ("1" / "1-1" / "1-1-1").
-  const dataColumns = columns.filter(
-    (c) => c.visible !== false && c.columnId !== 'no' && c.columnId !== 'wbsNumber',
-  );
-  const wbsNumberCol = columns.find((c) => c.columnId === 'wbsNumber');
-  const wbsColumns: { columnId: string; columnName: string; width: number }[] = [
-    { columnId: 'wbsNumber', columnName: wbsNumberCol?.columnName || 'WBS', width: wbsNumberCol?.width || 50 },
-    ...dataColumns.map((c) => ({ columnId: c.columnId, columnName: c.columnName, width: c.width || 50 })),
-  ];
+  // Drop the on-screen 'No' column (Excel's own row numbers replace it). The
+  // mechanical WBS-number column follows the on-screen setting like any other
+  // column: hidden in the app means absent here too. The number itself is still
+  // computed — it drives the name indent, the empty-row test and the Notes sheet.
+  const dataColumns = columns.filter((c) => c.visible !== false && c.columnId !== 'no');
+  const wbsColumns: { columnId: string; columnName: string; width: number }[] =
+    dataColumns.map((c) => ({ columnId: c.columnId, columnName: c.columnName, width: c.width || 50 }));
   const rows = collectVisibleRows(data);
   const wbsNumbers = computeWbsNumbers(rows);
   const fullDates = generateDates(dateRange.startDate, dateRange.endDate);
@@ -813,12 +833,27 @@ export const buildGanttWorkbook = async (params: BuildGanttWorkbookParams): Prom
     // Label the planned bar with the task name, like the chart's bar label. The
     // text is written into the bar's first cell and overflows across the (empty)
     // colored cells to its right, mirroring the on-bar label.
-    if (isChartRow(row) && plannedColor && row.displayName) {
+    if (isChartRow(row) && plannedColor && (row.displayName || row.progress)) {
       const firstIdx = dayInfos.findIndex((info) => info.key >= pStart && info.key <= pEnd && pStart !== '');
       if (firstIdx !== -1) {
         const labelCell = excelRow.getCell(wbsColCount + firstIdx + 1);
-        labelCell.value = row.displayName;
-        labelCell.font = { name: FONT, size: 9, color: { argb: 'FF000000' } };
+        const nameFont = { name: FONT, size: 9, color: { argb: 'FF000000' } };
+        if (row.progress) {
+          // On screen the progress tag sits right after the name in its own color
+          // (gray / red / orange / blue by schedule state), so the cell holds two
+          // separately colored runs rather than one flat string. The tag color is
+          // composited over white because Excel renders font colors opaque.
+          const tagArgb = toARGB(composite(WHITE, parseColor(progressTagColor(row, todayKey))));
+          labelCell.value = {
+            richText: [
+              ...(row.displayName ? [{ text: `${row.displayName} `, font: nameFont }] : []),
+              { text: row.progress, font: { ...nameFont, color: { argb: tagArgb } } },
+            ],
+          };
+        } else {
+          labelCell.value = row.displayName;
+          labelCell.font = nameFont;
+        }
         labelCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: false, indent: 0 };
       }
     }

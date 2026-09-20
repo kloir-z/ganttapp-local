@@ -7,6 +7,7 @@ const t = ((key: string) => key) as any;
 
 const columns: ExtendedColumn[] = [
   { columnId: 'no', columnName: 'No', width: 37, visible: true } as ExtendedColumn,
+  { columnId: 'wbsNumber', columnName: 'WBS', width: 50, visible: true } as ExtendedColumn,
   { columnId: 'displayName', columnName: 'DisplayName', width: 100, visible: true } as ExtendedColumn,
   { columnId: 'plannedStartDate', columnName: 'PlanS', width: 50, visible: true } as ExtendedColumn,
   { columnId: 'plannedEndDate', columnName: 'PlanE', width: 50, visible: true } as ExtendedColumn,
@@ -148,7 +149,7 @@ describe('buildGanttWorkbook', () => {
   });
 
   it('fills separator rows with the light-blue band across both panes and labels chart bars', async () => {
-    const data: { [id: string]: WBSData } = { s1: sepRow({ no: 1 }), r1: chartRow({ no: 2 }) };
+    const data: { [id: string]: WBSData } = { s1: sepRow({ no: 1 }), r1: chartRow({ no: 2, progress: '' }) };
     const wb = await buildGanttWorkbook(baseParams(data));
     const ws = wb.worksheets[0];
 
@@ -162,6 +163,40 @@ describe('buildGanttWorkbook', () => {
     expect(ws.getRow(4).getCell(7).value).toBe('Task A');
   });
 
+  it('appends the progress tag after the bar label, colored like the on-screen tag', async () => {
+    // 画面では表示名の右に進捗タグ(ProgressTag)が別色で並ぶ。Excel でも同じセルに
+    // 2つのランとして書き、名前は黒・タグは状態色にする。
+    const data: { [id: string]: WBSData } = { r1: chartRow({ progress: '50%' }) };
+    const ws = (await buildGanttWorkbook({ ...baseParams(data), today: '2024/06/05' })).worksheets[0];
+    const cell = ws.getRow(3).getCell(7).value as any;
+    expect(cell.richText.map((r: any) => r.text)).toEqual(['Task A ', '50%']);
+    expect(cell.richText[0].font.color.argb).toBe('FF000000');
+    // 進行中(実績開始済み・期限内)は青系。名前の黒とは別色になっている。
+    expect(cell.richText[1].font.color.argb).not.toBe('FF000000');
+  });
+
+  it('colors the progress tag by schedule state (overdue vs complete)', async () => {
+    const overdue: { [id: string]: WBSData } = {
+      r1: chartRow({ progress: '30%', actualStartDate: '', actualEndDate: '' }),
+    };
+    const done: { [id: string]: WBSData } = { r1: chartRow({ progress: '100%' }) };
+    // 計画終了 2024/06/07 を過ぎている -> 赤
+    const wsOverdue = (await buildGanttWorkbook({ ...baseParams(overdue), today: '2024/06/20' })).worksheets[0];
+    const wsDone = (await buildGanttWorkbook({ ...baseParams(done), today: '2024/06/20' })).worksheets[0];
+    const argbOf = (ws: any) => (ws.getRow(3).getCell(7).value as any).richText[1].font.color.argb;
+    expect(argbOf(wsOverdue)).toBe('FFFF4444');  // #ff0000bb を白に合成
+    expect(argbOf(wsDone)).toBe('FF9D9D9D');     // #7a7a7abb を白に合成(完了はグレー)
+  });
+
+  it('writes a plain label when the row has no progress, and the tag alone when it has no name', async () => {
+    const noProgress: { [id: string]: WBSData } = { r1: chartRow({ progress: '' }) };
+    const nameless: { [id: string]: WBSData } = { r1: chartRow({ displayName: '', progress: '40%' }) };
+    const wsPlain = (await buildGanttWorkbook({ ...baseParams(noProgress), today: '2024/06/05' })).worksheets[0];
+    const wsTagOnly = (await buildGanttWorkbook({ ...baseParams(nameless), today: '2024/06/05' })).worksheets[0];
+    expect(wsPlain.getRow(3).getCell(7).value).toBe('Task A');
+    expect((wsTagOnly.getRow(3).getCell(7).value as any).richText.map((r: any) => r.text)).toEqual(['40%']);
+  });
+
   it('drops the No column and assigns hierarchical WBS numbers', async () => {
     const data: { [id: string]: WBSData } = {
       s1: sepRow({ no: 1, id: 's1', displayName: 'A', level: 0 }),
@@ -172,7 +207,7 @@ describe('buildGanttWorkbook', () => {
     };
     const wb = await buildGanttWorkbook(baseParams(data));
     const ws = wb.worksheets[0];
-    // Column 1 is the always-on WBS number column (header "WBS"); the old No column is gone.
+    // Column 1 is the WBS number column (header "WBS"); the old No column is gone.
     expect(ws.getRow(2).getCell(1).value).toBe('WBS');
     expect(ws.getRow(3).getCell(1).value).toBe('1');     // separator A
     expect(ws.getRow(4).getCell(1).value).toBe('1-1');   // task under A
@@ -191,6 +226,7 @@ describe('buildGanttWorkbook', () => {
   it('paints the color cell for content rows but leaves wholly-empty rows uncolored', async () => {
     const colsWithColor: ExtendedColumn[] = [
       { columnId: 'no', columnName: 'No', width: 37, visible: true } as ExtendedColumn,
+      { columnId: 'wbsNumber', columnName: 'WBS', width: 50, visible: true } as ExtendedColumn,
       { columnId: 'displayName', columnName: 'DisplayName', width: 100, visible: true } as ExtendedColumn,
       { columnId: 'color', columnName: 'Color', width: 50, visible: true } as ExtendedColumn,
     ];
@@ -206,6 +242,23 @@ describe('buildGanttWorkbook', () => {
     // Color column is the 3rd WBS cell. Content row -> filled; empty row -> no fill.
     expect((ws.getRow(3).getCell(3).fill as any)?.fgColor?.argb).toBeTruthy();
     expect((ws.getRow(4).getCell(3).fill as any)?.fgColor?.argb).toBeFalsy();
+  });
+
+  it('omits the WBS number column when it is hidden on screen', async () => {
+    // 画面で非表示にしている WBS 列は Excel にも出さない。ただし WBS 番号自体は
+    // 表示名のインデントや空行判定に使い続ける。
+    const hidden = columns.map((c) => (c.columnId === 'wbsNumber' ? { ...c, visible: false } : c));
+    const data: { [id: string]: WBSData } = {
+      s1: sepRow({ no: 1, id: 's1', displayName: 'A', level: 0 }),
+      r1: chartRow({ no: 2, id: 'r1', displayName: 'T1' }),
+    };
+    const ws = (await buildGanttWorkbook({ ...baseParams(data), columns: hidden })).worksheets[0];
+    // 1列目は WBS 番号ではなく DisplayName になる。
+    expect(ws.getRow(2).getCell(1).value).toBe('DisplayName');
+    expect(ws.getRow(3).getCell(1).value).toBe('A');
+    expect(ws.getRow(4).getCell(1).value).toBe('T1');
+    // 階層インデントは WBS 列を出していなくてもそのまま効く("1-1" = 1段)。
+    expect((ws.getRow(4).getCell(1).alignment as any)?.indent ?? 0).toBe(1);
   });
 
   it('injects ignoredErrors so Excel suppresses the number/text-date warnings', async () => {
