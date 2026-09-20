@@ -1,5 +1,5 @@
 import { configureStore, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { WBSData, EventRow, RegularDaysOffSettingsType, isChartRow, isEventRow, isSeparatorRow, DateFormatType, HolidayColor, RowType, MessageInfo, ChartAnnotation, MAX_ANNOTATIONS } from '../types/DataTypes';
+import { WBSData, EventRow, EventData, RegularDaysOffSettingsType, isChartRow, isEventRow, isSeparatorRow, DateFormatType, HolidayColor, RowType, MessageInfo, ChartAnnotation, MAX_ANNOTATIONS } from '../types/DataTypes';
 import { calculatePlannedDays, buildDependencyMap, updateDependentRows, resetEndDate, updateSeparatorRowDates, adjustColorOpacity, createNewRow, resolveDependencies, isHoliday, isRegularDaysOff } from '../utils/CommonUtils';
 import copiedRowsReducer from './copiedRowsSlice';
 import colorReducer from './colorSlice'
@@ -287,6 +287,21 @@ export const wbsDataSlice = createSlice({
       state.data = updateSeparatorRowDates(state.data);
       state.isSavedChanges = false;
     },
+    // 複数バーの一括移動用。実績日には依存計算が無いので、値を入れるだけの素直な一括版。
+    setActualDates: (state, action: PayloadAction<{ id: string; startDate: string; endDate: string }[]>) => {
+      let changed = false;
+      action.payload.forEach(({ id, startDate, endDate }) => {
+        const chartRow = state.data[id];
+        if (isChartRow(chartRow) && (chartRow.actualStartDate !== startDate || chartRow.actualEndDate !== endDate)) {
+          chartRow.actualStartDate = startDate;
+          chartRow.actualEndDate = endDate;
+          changed = true;
+        }
+      });
+      if (changed) {
+        state.isSavedChanges = false;
+      }
+    },
     setActualDate: (state, action: PayloadAction<{ id: string; startDate: string; endDate: string }>) => {
       const { id, startDate, endDate } = action.payload;
       const chartRow = state.data[id];
@@ -353,6 +368,22 @@ export const wbsDataSlice = createSlice({
         state.data[id] = updatedEventRow;
         const updatedData = updateSeparatorRowDates(state.data);
         state.data = updatedData;
+        state.isSavedChanges = false;
+      }
+    },
+    // 複数イベント行の一括移動用。updateEventRow を行ごとに撃つと行数ぶん
+    // updateSeparatorRowDates が走るので、まとめて入れてから最後に1回だけ集計し直す。
+    updateEventRows: (state, action: PayloadAction<{ id: string; eventData: EventData[] }[]>) => {
+      let changed = false;
+      action.payload.forEach(({ id, eventData }) => {
+        const eventRow = state.data[id];
+        if (isEventRow(eventRow) && JSON.stringify(eventRow.eventData) !== JSON.stringify(eventData)) {
+          eventRow.eventData = eventData;
+          changed = true;
+        }
+      });
+      if (changed) {
+        state.data = updateSeparatorRowDates(state.data);
         state.isSavedChanges = false;
       }
     },
@@ -750,6 +781,7 @@ export const {
   setPlannedDate,
   setPlannedDates,
   setActualDate,
+  setActualDates,
   setDisplayName,
   toggleSeparatorCollapsed,
   setSeparatorLevel,
@@ -757,6 +789,7 @@ export const {
   updateHolidayColor,
   setEventDisplayName,
   updateEventRow,
+  updateEventRows,
   updateSeparatorDates,
   updateEntireRegularDaysOffSetting,
   updateRegularDaysOffSetting,

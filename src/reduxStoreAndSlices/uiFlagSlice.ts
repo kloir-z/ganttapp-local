@@ -29,6 +29,11 @@ interface UIFlagsState {
   showAnnotations: boolean;
   // 選択中の注釈(編集ハンドルを出す対象)。純粋なUI状態なので保存しない。
   selectedAnnotationId: string;
+  // チャートバーの複数選択(一括移動の対象行)。表示順を保つため配列で持つ。
+  // 純粋なUI状態なので保存もundoもしない(selectedAnnotationId と同じ扱い)。
+  selectedBarRowIds: string[];
+  // Ctrl+Shift+クリックの範囲選択の起点。直前に単独で選び直した行を覚えておく。
+  lastSelectedBarRowId: string | null;
 }
 
 const initialState: UIFlagsState = {
@@ -44,6 +49,8 @@ const initialState: UIFlagsState = {
   showCriticalPath: false,
   showAnnotations: true,
   selectedAnnotationId: '',
+  selectedBarRowIds: [],
+  lastSelectedBarRowId: null,
 };
 
 const uiFlagsSlice = createSlice({
@@ -93,8 +100,47 @@ const uiFlagsSlice = createSlice({
     setSelectedAnnotationId(state, action: PayloadAction<string>) {
       state.selectedAnnotationId = action.payload;
     },
+    // 一括移動の選択。anchor は Ctrl+Shift+クリックの起点で、範囲選択のときは
+    // 起点を動かさないので undefined を渡して現状維持にする。
+    setSelectedBarRows(state, action: PayloadAction<{ rowIds: string[]; anchorRowId?: string | null }>) {
+      const { rowIds, anchorRowId } = action.payload;
+      state.selectedBarRowIds = rowIds;
+      if (anchorRowId !== undefined) {
+        state.lastSelectedBarRowId = anchorRowId;
+      }
+    },
+    toggleSelectedBarRow(state, action: PayloadAction<string>) {
+      const rowId = action.payload;
+      if (state.selectedBarRowIds.includes(rowId)) {
+        state.selectedBarRowIds = state.selectedBarRowIds.filter(id => id !== rowId);
+        // 外した行は起点として残さない(次の範囲選択の基準が消えた行になるのを防ぐ)
+        if (state.lastSelectedBarRowId === rowId) {
+          state.lastSelectedBarRowId = state.selectedBarRowIds[state.selectedBarRowIds.length - 1] ?? null;
+        }
+      } else {
+        state.selectedBarRowIds.push(rowId);
+        state.lastSelectedBarRowId = rowId;
+      }
+    },
+    clearSelectedBarRows(state) {
+      if (state.selectedBarRowIds.length > 0) {
+        state.selectedBarRowIds = [];
+      }
+      state.lastSelectedBarRowId = null;
+    },
+    // 行削除・インポート・undo のあとに、もう存在しない行を選択から落とす。
+    pruneSelectedBarRows(state, action: PayloadAction<string[]>) {
+      const existingIds = new Set(action.payload);
+      const pruned = state.selectedBarRowIds.filter(id => existingIds.has(id));
+      if (pruned.length !== state.selectedBarRowIds.length) {
+        state.selectedBarRowIds = pruned;
+      }
+      if (state.lastSelectedBarRowId && !existingIds.has(state.lastSelectedBarRowId)) {
+        state.lastSelectedBarRowId = null;
+      }
+    },
   },
 });
 
-export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath, setShowAnnotations, setSelectedAnnotationId } = uiFlagsSlice.actions;
+export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath, setShowAnnotations, setSelectedAnnotationId, setSelectedBarRows, toggleSelectedBarRow, clearSelectedBarRows, pruneSelectedBarRows } = uiFlagsSlice.actions;
 export default uiFlagsSlice.reducer;

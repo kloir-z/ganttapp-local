@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, undo, redo } from '../../reduxStoreAndSlices/store';
 import { setWbsWidth, setMaxWbsWidth, setScrollPosition } from '../../reduxStoreAndSlices/baseSettingsSlice';
-import { isChartRow, isEventRow, isSeparatorRow, WBSData } from '../../types/DataTypes';
+import { isChartRow, isEventRow, isSeparatorRow } from '../../types/DataTypes';
 import Calendar from '../Chart/Calendar';
 import GridVertical from '../Chart/GridVertical';
 import ChartRowComponent from '../Chart/ChartRowComponent';
@@ -14,12 +14,12 @@ import ChartAnnotationLayer from '../Chart/ChartAnnotationLayer';
 import ResizeBar from '../WbsWidthResizer';
 import WBSInfo from '../Table/WBSInfo';
 import SeparatorRowLabelComponent from '../Table/SeparatorRowLabel';
-import { generateDates } from '../../utils/CommonUtils';
+import { filterVisibleRows, generateDates } from '../../utils/CommonUtils';
 import { cdate } from 'cdate';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTranslation } from 'react-i18next';
 import ErrorMessage from '../MessageInfo';
-import { setActiveModal } from '../../reduxStoreAndSlices/uiFlagSlice';
+import { clearSelectedBarRows, pruneSelectedBarRows, setActiveModal } from '../../reduxStoreAndSlices/uiFlagSlice';
 import CustomRowCountDialogContainer from '../ContextMenu/CustomRowCountDialogContainer';
 import ChartDependencyBuilder from '../Chart/ChartDependencyBuilder';
 import { useLocation } from 'react-router-dom';
@@ -55,6 +55,7 @@ function Gantt() {
   const isExporting = useSelector((state: RootState) => state.uiFlags.isExporting);
   const isDependencyEditing = useSelector((state: RootState) => state.uiFlags.isDependencyEditing);
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
+  const selectedBarRowIds = useSelector((state: RootState) => state.uiFlags.selectedBarRowIds);
   const [isGridRefDragging, setIsGridRefDragging] = useState(false);
   // Drag-scroll bookkeeping is kept in refs (not state) so the window mousemove
   // listener always reads the current values synchronously. With state, the
@@ -65,6 +66,10 @@ function Gantt() {
   const canGridRefDragRef = useRef(true);
   const startXRef = useRef(0);
   const startYRef = useRef(0);
+  // バーの複数選択を「チャートの空白をクリックしただけ」のときに解除するための記録。
+  // パン操作(ドラッグ)と区別したいので、押した位置とバー上かどうかを覚えておく。
+  const downClientRef = useRef({ x: 0, y: 0 });
+  const isMouseDownOnBarRef = useRef(false);
   const setCanGridRefDrag = useCallback((value: boolean) => { canGridRefDragRef.current = value; }, []);
   const [gridHeight, setGridHeight] = useState<number>(0);
   const [indicatorPosition, setIndicatorPosition] = useState({ x: 0, y: 0 });
@@ -83,30 +88,7 @@ function Gantt() {
   const location = useLocation();
   const isLocalMode = location.pathname.startsWith('/local');
 
-  const filteredData = useMemo(() => {
-    const result: [string, WBSData][] = [];
-    const collapseStack: number[] = [];
-    Object.entries(data).forEach(([key, entry]) => {
-      if (isSeparatorRow(entry)) {
-        while (collapseStack.length > 0 && collapseStack[collapseStack.length - 1] >= (entry.level || 0)) {
-          collapseStack.pop();
-        }
-        if (collapseStack.length > 0) {
-          return;
-        }
-        result.push([key, entry]);
-        if (entry.isCollapsed) {
-          collapseStack.push(entry.level || 0);
-        }
-      } else {
-        if (collapseStack.length > 0) {
-          return;
-        }
-        result.push([key, entry]);
-      }
-    });
-    return result;
-  }, [data]);
+  const filteredData = useMemo(() => filterVisibleRows(data), [data]);
 
   // When exporting, render every row (bypass virtualization) and size the panes to
   // the full chart so html2canvas can capture the whole thing in one shot.
@@ -175,6 +157,8 @@ function Gantt() {
   const handleMouseDown = useCallback((event: MouseEvent) => {
     if (event.button === 0) {
       isMouseDownRef.current = true;
+      downClientRef.current = { x: event.clientX, y: event.clientY };
+      isMouseDownOnBarRef.current = Boolean((event.target as HTMLElement | null)?.closest?.('[data-bar-row-id]'));
       if (canGridRefDragRef.current && gridRef.current) {
         startXRef.current = event.clientX + gridRef.current.scrollLeft;
         startYRef.current = event.clientY + gridRef.current.scrollTop;
@@ -183,6 +167,14 @@ function Gantt() {
   }, []);
 
   const handleMouseUp = useCallback((event: MouseEvent) => {
+    // バー以外の場所を(ドラッグせずに)クリックしたらバーの選択を解除する。
+    // パン操作で選択が消えないよう、動いた距離で押しっぱなしのドラッグと区別する。
+    if (isMouseDownRef.current && !isMouseDownOnBarRef.current && selectedBarRowIds.length > 0) {
+      const movedDistance = Math.abs(event.clientX - downClientRef.current.x) + Math.abs(event.clientY - downClientRef.current.y);
+      if (movedDistance < 3) {
+        dispatch(clearSelectedBarRows());
+      }
+    }
     isMouseDownRef.current = false;
     // Safety net: re-enable drag-scroll on any mouse release. A bar-drag sets
     // canGridRefDrag=false and resets it on its own overlay's mouseup; but if that
@@ -190,7 +182,28 @@ function Gantt() {
     // dependency builder), the overlay misses it and drag-scroll stays disabled.
     canGridRefDragRef.current = true;
     calculateAndSetIndicatorPosition(event)
-  }, [calculateAndSetIndicatorPosition]);
+  }, [calculateAndSetIndicatorPosition, dispatch, selectedBarRowIds.length]);
+
+  // Esc でバーの選択を解除する。行メモのウィンドウは capture フェーズで Esc を
+  // 止めて自分を閉じるので、そちらが開いているときはここまで届かない(メモ閉じが優先)。
+  useEffect(() => {
+    if (selectedBarRowIds.length === 0) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        dispatch(clearSelectedBarRows());
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [dispatch, selectedBarRowIds.length]);
+
+  // 行の削除・ファイル読み込み・undo で消えた行を選択から落とす
+  useEffect(() => {
+    if (selectedBarRowIds.length === 0) return;
+    if (selectedBarRowIds.some(id => !data[id])) {
+      dispatch(pruneSelectedBarRows(Object.keys(data)));
+    }
+  }, [data, dispatch, selectedBarRowIds]);
 
   const updateVisibleRange = useCallback(() => {
     if (!gridRef.current) return;

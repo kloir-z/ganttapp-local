@@ -20,13 +20,14 @@ interface ChartBarProps {
   isBarDragging?: boolean;
   isCpCritical?: boolean;
   isCpDimmed?: boolean;
+  isBarSelected?: boolean;
   onBarMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   onBarEndMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   onBarStartMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   onContextMenu?: (event: React.MouseEvent<HTMLDivElement>) => void;
 }
 
-const MemoedChartBar: React.FC<ChartBarProps> = ({ startDate, endDate, dateArray, isActual, entryId, eventIndex, chartBarColor, isBarDragging, isBarDragged, isCpCritical, isCpDimmed, onBarMouseDown, onBarEndMouseDown, onBarStartMouseDown, onContextMenu }) => {
+const MemoedChartBar: React.FC<ChartBarProps> = ({ startDate, endDate, dateArray, isActual, entryId, eventIndex, chartBarColor, isBarDragging, isBarDragged, isCpCritical, isCpDimmed, isBarSelected, onBarMouseDown, onBarEndMouseDown, onBarStartMouseDown, onContextMenu }) => {
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const startCDate = useMemo(() => cdate(startDate ? startDate : ''), [startDate]);
   const endCDate = useMemo(() => cdate(endDate ? endDate : ''), [endDate]);
@@ -56,13 +57,17 @@ const MemoedChartBar: React.FC<ChartBarProps> = ({ startDate, endDate, dateArray
           style={{ position: 'absolute', left: `${leftPosition - 6}px`, width: '5px', height: '21px', cursor: 'ew-resize', opacity: 0 }}
           {...{ onMouseDown: onBarStartMouseDown }}
         ></div>
+        {/* data-bar-row-id はバーの当たり判定用。チャートの空白クリックで選択を解除するときと、
+            選択モードの矩形選択でバーを拾うときに使う。 */}
         <StyledBar
+          data-bar-row-id={entryId}
           $chartBarColor={chartBarColor}
           $width={width}
           $left={leftPosition}
           $isBarDragging={isBarDragging}
           $isCpCritical={isCpCritical}
           $isCpDimmed={isCpDimmed}
+          $isBarSelected={isBarSelected}
           {...{ onMouseDown: onBarMouseDown, onContextMenu: onContextMenu }}
         >
           {(!isActual && entryId) && (

@@ -3,6 +3,35 @@ import { cdate } from "cdate";
 import { RowType, ChartRow, SeparatorRow, WBSData, isChartRow, isEventRow, isSeparatorRow, EventRow, DateFormatType } from "../types/DataTypes";
 import { parseHolidaysFromInput } from "../components/Setting/utils/settingHelpers";
 
+/**
+ * 折りたたまれたセパレータの配下を除いた、画面に出ている行を表示順で返す。
+ * チャートの描画(Gantt)と、バーの範囲選択・矩形選択が同じ行順を見るための共通処理。
+ */
+export const filterVisibleRows = (data: { [id: string]: WBSData }): [string, WBSData][] => {
+  const result: [string, WBSData][] = [];
+  const collapseStack: number[] = [];
+  Object.entries(data).forEach(([key, entry]) => {
+    if (isSeparatorRow(entry)) {
+      while (collapseStack.length > 0 && collapseStack[collapseStack.length - 1] >= (entry.level || 0)) {
+        collapseStack.pop();
+      }
+      if (collapseStack.length > 0) {
+        return;
+      }
+      result.push([key, entry]);
+      if (entry.isCollapsed) {
+        collapseStack.push(entry.level || 0);
+      }
+    } else {
+      if (collapseStack.length > 0) {
+        return;
+      }
+      result.push([key, entry]);
+    }
+  });
+  return result;
+};
+
 export const generateDates = (start: string, end: string): ReturnType<typeof cdate>[] => {
   const startDate = cdate(start);
   const endDate = cdate(end);

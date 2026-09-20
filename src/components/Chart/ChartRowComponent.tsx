@@ -12,6 +12,8 @@ import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { ColorInfo, getColorSourceValue, resolveColorFromPalette } from '../../reduxStoreAndSlices/colorSlice';
 import { openDependencyBuilder } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { selectCriticalPath } from '../../reduxStoreAndSlices/criticalPathSelectors';
+import { useBarSelection } from '../../hooks/useBarSelection';
+import { useMultiBarDrag } from '../../hooks/useMultiBarDrag';
 import { useTranslation } from 'react-i18next';
 
 interface ChartRowProps {
@@ -90,12 +92,20 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   const [contextMenu, setContextMenu] = useState<'planned' | 'actual' | null>(null);
   const prevDateRef = useRef<ReturnType<typeof cdate> | string>();
   const ganttRowRef = useRef<HTMLDivElement>(null);
+  // 複数選択(Ctrl+クリック)と、その選択行をまとめて動かす一括ドラッグ
+  const { isBarSelected, handleSelectionMouseDown } = useBarSelection(entry.id);
+  const { isMultiDragging, tryBeginMultiDrag } = useMultiBarDrag({ gridRef, setCanGridRefDrag });
 
   const handleBarMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual') => {
     // Left button only. A right-click (to open the context menu / dependency
     // builder) must NOT start a bar drag — otherwise isBarDragging stays set, its
     // full-screen overlay lingers, and the chart becomes unresponsive.
     if (event.button !== 0) return;
+    // Ctrl/Ctrl+Shift クリックは選択操作。ドラッグは始めない。
+    if (handleSelectionMouseDown(event)) return;
+    // 選択中の行を掴んだら、選択行すべてをまとめて動かす経路へ渡す
+    // (このときこの行はローカル state に入らず、他の選択行と同じく entry.* で追従する)
+    if (tryBeginMultiDrag(event, entry.id, barType)) return;
     setIsBarDragging(barType);
     setCanGridRefDrag(false);
     dispatch(pushPastState());
@@ -112,10 +122,12 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
       originalDateRef.current.start = localActualStartDate ?? '';
       originalDateRef.current.end = effectiveActualEndDate ?? '';
     }
-  }, [cellWidth, dispatch, gridRef, effectiveActualEndDate, localActualStartDate, localPlannedEndDate, localPlannedStartDate, setCanGridRefDrag, wbsWidth]);
+  }, [cellWidth, dispatch, entry.id, gridRef, effectiveActualEndDate, handleSelectionMouseDown, localActualStartDate, localPlannedEndDate, localPlannedStartDate, setCanGridRefDrag, tryBeginMultiDrag, wbsWidth]);
 
   const handleBarEndMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual') => {
     if (event.button !== 0) return;
+    // 端ドラッグ(期間の変更)は一括対象外。選択操作だけ先に拾う。
+    if (handleSelectionMouseDown(event)) return;
     setIsBarEndDragging(barType);
     setCanGridRefDrag(false);
     dispatch(pushPastState());
@@ -131,10 +143,12 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
       originalDateRef.current.start = localActualStartDate ?? '';
       originalDateRef.current.end = effectiveActualEndDate ?? '';
     }
-  }, [cellWidth, dispatch, gridRef, effectiveActualEndDate, localActualStartDate, localPlannedEndDate, setCanGridRefDrag, wbsWidth]);
+  }, [cellWidth, dispatch, gridRef, effectiveActualEndDate, handleSelectionMouseDown, localActualStartDate, localPlannedEndDate, setCanGridRefDrag, wbsWidth]);
 
   const handleBarStartMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual') => {
     if (event.button !== 0) return;
+    // 端ドラッグ(期間の変更)は一括対象外。選択操作だけ先に拾う。
+    if (handleSelectionMouseDown(event)) return;
     setIsBarStartDragging(barType);
     setCanGridRefDrag(false);
     dispatch(pushPastState());
@@ -150,7 +164,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
       originalDateRef.current.start = localActualStartDate ?? '';
       originalDateRef.current.end = effectiveActualEndDate ?? '';
     }
-  }, [cellWidth, dispatch, gridRef, effectiveActualEndDate, localActualStartDate, localPlannedStartDate, setCanGridRefDrag, wbsWidth]);
+  }, [cellWidth, dispatch, gridRef, effectiveActualEndDate, handleSelectionMouseDown, localActualStartDate, localPlannedStartDate, setCanGridRefDrag, wbsWidth]);
 
   const calculateDateFromX = useCallback((x: number) => {
     const dateIndex = Math.floor(x / cellWidth);
@@ -485,6 +499,9 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
         </div>
       )}
       <RowNoteButton rowId={entry.id} displayName={entry.displayName} rowNo={entry.no} anchorLeftPx={noteAnchorLeft} barRect={noteBarRect} rowRef={ganttRowRef} />
+      {isMultiDragging && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: 'calc(100vh - 12px)', zIndex: 9999, cursor: 'pointer' }} />
+      )}
       {(isEditing || isBarDragging || isBarEndDragging || isBarStartDragging) && (
         <div
           style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: 'calc(100vh - 12px)', zIndex: 9999, cursor: 'pointer' }}
@@ -503,6 +520,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
           isBarDragged={isPlannedBarDragged}
           isCpCritical={isCpCritical}
           isCpDimmed={isCpDimmed}
+          isBarSelected={isBarSelected}
           isBarDragging={Boolean(isEditing === "planned" || isBarDragging === "planned" || isBarEndDragging === "planned" || isBarStartDragging === "planned")}
           onBarMouseDown={(e) => handleBarMouseDown(e, 'planned')}
           onBarEndMouseDown={(e) => handleBarEndMouseDown(e, 'planned')}
@@ -519,6 +537,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
           entryId={entry.id}
           chartBarColor={actualChartBarColor}
           isCpDimmed={isCpDimmed}
+          isBarSelected={isBarSelected}
           isBarDragging={Boolean(isEditing === "actual" || isBarDragging === "actual" || isBarEndDragging === "actual" || isBarStartDragging === "actual")}
           onBarMouseDown={(e) => handleBarMouseDown(e, 'actual')}
           onBarEndMouseDown={(e) => handleBarEndMouseDown(e, 'actual')}
