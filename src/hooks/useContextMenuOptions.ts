@@ -150,13 +150,15 @@ export const useContextMenuOptions = ({
             });
         }
 
-        if (onEditDependency) {
-            baseOptions.push({
-                children: t("Edit dependency"),
-                onClick: onEditDependency,
-                path: String(pathCounter++)
-            });
-        }
+        // バーの選択モード。ONの間はチャートの空白ドラッグが矩形選択になる
+        // (バーは Ctrl+クリックでも選べるので、モードは「まとめて囲みたい」ときの入口)。
+        // よく使う操作なので上の方に置く(あまり使わない「依存関係を編集」は下へ回した)。
+        baseOptions.push({
+            children: t("Bar Selection Mode"),
+            onClick: () => dispatch(setBarSelectionMode(!isBarSelectionMode)),
+            checked: isBarSelectionMode,
+            path: String(pathCounter++)
+        });
 
         const shouldShowLevelMenu = () => {
             if (entry && isSeparatorRow(entry)) {
@@ -403,14 +405,14 @@ export const useContextMenuOptions = ({
             });
         }
 
-        // バーの選択モード。ONの間はチャートの空白ドラッグが矩形選択になる
-        // (バーは Ctrl+クリックでも選べるので、モードは「まとめて囲みたい」ときの入口)。
-        baseOptions.push({
-            children: t("Bar Selection Mode"),
-            onClick: () => dispatch(setBarSelectionMode(!isBarSelectionMode)),
-            checked: isBarSelectionMode,
-            path: String(pathCounter++)
-        });
+        // チャートのバーから依存関係を編集する。使う頻度が低いので下の方に置く。
+        if (onEditDependency) {
+            baseOptions.push({
+                children: t("Edit dependency"),
+                onClick: onEditDependency,
+                path: String(pathCounter++)
+            });
+        }
 
         // クリティカルパス表示のトグル。テーブル・チャートどちらの右クリックからも
         // 切り替えられるようにトップレベルに置く(設定メニューのトグルと同じ状態)。
