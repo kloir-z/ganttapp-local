@@ -1,4 +1,4 @@
-import { memo, useCallback, useState, useRef, useEffect } from 'react';
+import { memo, useCallback, useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { css, styled } from 'styled-components';
 import { MdCheckBox, MdCheckBoxOutlineBlank, MdChevronRight } from 'react-icons/md';
 import { useDispatch, useSelector } from 'react-redux';
@@ -68,6 +68,7 @@ export const MenuItem: React.FC<MenuItemProps> = memo(({ onClick, children, item
   const openSubMenus = useSelector((state: RootState) => state.subMenu.openSubMenus);
   const isSubMenuVisible = !!(path && items && items.length > 0 && openSubMenus.includes(path));
   const itemRef = useRef<HTMLDivElement>(null);
+  const subMenuRef = useRef<HTMLDivElement>(null);
   const [adjustLeft, setAdjustLeft] = useState(false);
   const [adjustTop, setAdjustTop] = useState(0);
   const enterTimeout = useRef<number | null>(null);
@@ -84,19 +85,10 @@ export const MenuItem: React.FC<MenuItemProps> = memo(({ onClick, children, item
     enterTimeout.current = window.setTimeout(() => {
       if (path) {
         dispatch(setOpenSubMenu(path));
-        if (items && items.length > 0) {
-          const rect = itemRef.current?.getBoundingClientRect();
-          const subMenuWidth = 170;
-          const subMenuHeight = (items.length - 1) * 34;
-          const overflowRight = rect ? rect.right + subMenuWidth > window.innerWidth : false;
-          const overflowBottom = rect ? rect.bottom + subMenuHeight > window.innerHeight : false;
-          setAdjustLeft(overflowRight);
-          setAdjustTop(overflowBottom ? -(subMenuHeight) : 0);
-        }
       }
       isProcessing.current = false;
     }, 150);
-  }, [dispatch, items, path, isSubMenuVisible]);
+  }, [dispatch, path, isSubMenuVisible]);
 
   const handleMouseLeave = useCallback(() => {
     if (enterTimeout.current) {
@@ -105,6 +97,21 @@ export const MenuItem: React.FC<MenuItemProps> = memo(({ onClick, children, item
     }
     isProcessing.current = false;
   }, []);
+
+  // サブメニューを実寸で画面内に収める(開いた直後、描画前に測る)。項目数や文言の
+  // 長さで大きさが変わるので、決め打ちの見積もりだと下や右が画面外に切れる。
+  // 右に収まらなければ左側に開き、下にはみ出す分だけ上へずらす(親項目より上には
+  // 画面上端までしか上げない)。
+  useLayoutEffect(() => {
+    const item = itemRef.current;
+    const subMenu = subMenuRef.current;
+    if (!isSubMenuVisible || !item || !subMenu) return;
+    const margin = 4;
+    const rect = item.getBoundingClientRect();
+    setAdjustLeft(rect.right + subMenu.offsetWidth > window.innerWidth - margin);
+    const overflowBottom = rect.top + subMenu.offsetHeight - (window.innerHeight - margin);
+    setAdjustTop(overflowBottom > 0 ? -Math.min(overflowBottom, Math.max(0, rect.top - margin)) : 0);
+  }, [isSubMenuVisible, items]);
 
   useEffect(() => {
     return () => {
@@ -138,7 +145,7 @@ export const MenuItem: React.FC<MenuItemProps> = memo(({ onClick, children, item
         {items && items.length > 0 && <SubMenuIndicator><MdChevronRight /></SubMenuIndicator>}
       </MenuItemContent>
       {isSubMenuVisible && (
-        <SubMenu $adjustLeft={adjustLeft} $adjustTop={adjustTop}>
+        <SubMenu ref={subMenuRef} $adjustLeft={adjustLeft} $adjustTop={adjustTop}>
           {items?.map((item, index) => (
             <MenuItem key={index} closeMenu={closeMenu} {...item} />
           ))}
