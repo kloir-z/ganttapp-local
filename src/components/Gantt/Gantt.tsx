@@ -78,6 +78,11 @@ function Gantt() {
   // 矩形が内容に貼り付いたままになる。
   const marqueeStartRef = useRef<{ x: number; y: number } | null>(null);
   const [marqueeRect, setMarqueeRect] = useState<MarqueeRect | null>(null);
+  // 矩形選択は引いている最中に選択を更新する(掛かった瞬間に枠が出て、外れたら消える)。
+  // additive のときの土台と、直前に反映した内容(無駄な dispatch を避けるため)を覚えておく。
+  const marqueeBaseRef = useRef<string[]>([]);
+  const marqueeAdditiveRef = useRef(false);
+  const marqueeAppliedRef = useRef<string[]>([]);
   const setCanGridRefDrag = useCallback((value: boolean) => { canGridRefDragRef.current = value; }, []);
   const [gridHeight, setGridHeight] = useState<number>(0);
   const [indicatorPosition, setIndicatorPosition] = useState({ x: 0, y: 0 });
@@ -184,6 +189,9 @@ function Gantt() {
         const point = toContentPoint(event);
         if (point) {
           marqueeStartRef.current = point;
+          marqueeAdditiveRef.current = event.ctrlKey || event.metaKey || event.shiftKey;
+          marqueeBaseRef.current = marqueeAdditiveRef.current ? selectedBarKeys : [];
+          marqueeAppliedRef.current = selectedBarKeys;
           canGridRefDragRef.current = false;
           return;
         }
@@ -193,41 +201,51 @@ function Gantt() {
         startYRef.current = event.clientY + gridRef.current.scrollTop;
       }
     }
-  }, [isBarSelectionMode, toContentPoint]);
+  }, [isBarSelectionMode, selectedBarKeys, toContentPoint]);
+
+  // 矩形に掛かっているバーを求めて選択へ反映する。ドラッグ中に毎回呼ぶので、
+  // 内容が変わらないときは dispatch しない(再レンダーを増やさないため)。
+  const applyMarqueeSelection = useCallback((rect: MarqueeRect) => {
+    const dateIndex: { [key: string]: number } = {};
+    const dateKeys: string[] = [];
+    dateArray.forEach((date, index) => {
+      const key = date.format('YYYY-MM-DD');
+      dateIndex[key] = index;
+      dateKeys.push(key);
+    });
+    const hitBarKeys = collectBarsInMarquee({
+      filteredData, dateIndex, dateKeys,
+      toKey: (dateStr: string) => {
+        if (!dateStr) return '';
+        const parsed = cdate(dateStr);
+        return isNaN(+parsed.toDate()) ? '' : parsed.format('YYYY-MM-DD');
+      },
+      rect, cellWidth, rowHeight, extendActualBarToToday,
+      todayString: cdate().format('YYYY/MM/DD'),
+    });
+    const base = marqueeBaseRef.current;
+    const merged = marqueeAdditiveRef.current
+      ? [...base, ...hitBarKeys.filter(key => !base.includes(key))]
+      : hitBarKeys;
+    const applied = marqueeAppliedRef.current;
+    if (merged.length === applied.length && merged.every((key, index) => key === applied[index])) {
+      return;
+    }
+    marqueeAppliedRef.current = merged;
+    dispatch(setSelectedBars({ barKeys: merged, anchorBarKey: merged[merged.length - 1] ?? null }));
+  }, [cellWidth, dateArray, dispatch, extendActualBarToToday, filteredData, rowHeight]);
 
   const handleMouseUp = useCallback((event: MouseEvent) => {
-    // 矩形選択の確定。重なったバーを持つ行を表示順で選ぶ(Ctrl 併用で今の選択に追加)。
+    // 矩形選択の終了。掛かったバーはドラッグ中に反映済みなので、ここでは
+    // 「引かずにクリックしただけ」= 選択を外す、だけを見る。
     if (marqueeStartRef.current) {
       const start = marqueeStartRef.current;
       const current = toContentPoint(event);
       marqueeStartRef.current = null;
       setMarqueeRect(null);
-      if (current) {
-        const rect = normalizeMarquee(start, current);
-        const dateIndex: { [key: string]: number } = {};
-        const dateKeys: string[] = [];
-        dateArray.forEach((date, index) => {
-          const key = date.format('YYYY-MM-DD');
-          dateIndex[key] = index;
-          dateKeys.push(key);
-        });
-        const hitBarKeys = collectBarsInMarquee({
-          filteredData, dateIndex, dateKeys,
-          toKey: (dateStr: string) => {
-            if (!dateStr) return '';
-            const parsed = cdate(dateStr);
-            return isNaN(+parsed.toDate()) ? '' : parsed.format('YYYY-MM-DD');
-          },
-          rect, cellWidth, rowHeight, extendActualBarToToday,
-          todayString: cdate().format('YYYY/MM/DD'),
-        });
-        if (hitBarKeys.length > 0 || rect.width > 2 || rect.height > 2) {
-          const isAdditive = event.ctrlKey || event.metaKey || event.shiftKey;
-          const merged = isAdditive
-            ? [...selectedBarKeys, ...hitBarKeys.filter(key => !selectedBarKeys.includes(key))]
-            : hitBarKeys;
-          dispatch(setSelectedBars({ barKeys: merged, anchorBarKey: merged[merged.length - 1] ?? null }));
-        }
+      const isClick = !current || (Math.abs(current.x - start.x) <= 2 && Math.abs(current.y - start.y) <= 2);
+      if (isClick && !marqueeAdditiveRef.current && selectedBarKeys.length > 0) {
+        dispatch(clearSelectedBars());
       }
       isMouseDownRef.current = false;
       canGridRefDragRef.current = true;
@@ -249,7 +267,7 @@ function Gantt() {
     // dependency builder), the overlay misses it and drag-scroll stays disabled.
     canGridRefDragRef.current = true;
     calculateAndSetIndicatorPosition(event)
-  }, [calculateAndSetIndicatorPosition, cellWidth, dateArray, dispatch, extendActualBarToToday, filteredData, rowHeight, selectedBarKeys, toContentPoint]);
+  }, [calculateAndSetIndicatorPosition, dispatch, selectedBarKeys.length, toContentPoint]);
 
   // Esc でバーの選択を解除し、選択モード中ならモードごと抜ける。行メモのウィンドウは
   // capture フェーズで Esc を止めて自分を閉じるので、そちらが開いているときは
@@ -298,7 +316,9 @@ function Gantt() {
     if (marqueeStartRef.current) {
       const current = toContentPoint(event);
       if (current) {
-        setMarqueeRect(normalizeMarquee(marqueeStartRef.current, current));
+        const rect = normalizeMarquee(marqueeStartRef.current, current);
+        setMarqueeRect(rect);
+        applyMarqueeSelection(rect);
       }
       return;
     }
@@ -312,7 +332,7 @@ function Gantt() {
     } else if (isGridRefDragging && !isMouseDownRef.current) {
       setIsGridRefDragging(false);
     }
-  }, [isGridRefDragging, calculateAndSetIndicatorPosition, toContentPoint]);
+  }, [isGridRefDragging, applyMarqueeSelection, calculateAndSetIndicatorPosition, toContentPoint]);
 
   const resetDragTimeout = useCallback(() => {
     if (dragTimeoutRef.current) {

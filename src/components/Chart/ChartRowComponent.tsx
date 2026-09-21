@@ -12,7 +12,7 @@ import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { ColorInfo, getColorSourceValue, resolveColorFromPalette } from '../../reduxStoreAndSlices/colorSlice';
 import { openDependencyBuilder } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { selectCriticalPath } from '../../reduxStoreAndSlices/criticalPathSelectors';
-import { useBarSelection } from '../../hooks/useBarSelection';
+import { useBarSelection, useSelectedBarRowIds } from '../../hooks/useBarSelection';
 import { useMultiBarDrag } from '../../hooks/useMultiBarDrag';
 import { useTranslation } from 'react-i18next';
 
@@ -100,6 +100,8 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
     barType === 'planned' ? plannedSelection : actualSelection
   ), [plannedSelection, actualSelection]);
   const { isMultiDragging, tryBeginMultiDrag } = useMultiBarDrag({ gridRef, setCanGridRefDrag });
+  // 選択中のバーの行を右クリックメニューへ渡し、選択した行に対して操作できるようにする
+  const selectedBarRowIds = useSelectedBarRowIds();
 
   const handleBarMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual') => {
     // Left button only. A right-click (to open the context menu / dependency
@@ -424,6 +426,8 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
 
   const menuOptions = useContextMenuOptions({
     entry,
+    // 選択が無いときは undefined。空配列を渡すと「コピーした行を挿入」が無効化されてしまう
+    selectedRowIds: selectedBarRowIds.length > 0 ? selectedBarRowIds : undefined,
     onDeleteBar: handleDeleteBar,
     onEditDependency: handleEditDependency,
     contextMenu

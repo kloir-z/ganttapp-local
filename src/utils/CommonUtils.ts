@@ -75,9 +75,17 @@ export const resolveActualEndDate = (
   return +cdate(startDate) > +cdate(todayString) ? startDate : todayString;
 };
 
-export const calculatePlannedDays = (startString: string, endString: string, holidays: string[], isIncludeHolidays: boolean, regularDaysOff: number[]): number => {
+// 予定日数(稼働日ベース)。開始・終了のどちらかが空なら **null** を返す。
+// 0 を返すと「日数 0」として列に居座り、日付を消しても消えない値になってしまう。
+export const calculatePlannedDays = (startString: string, endString: string, holidays: string[], isIncludeHolidays: boolean, regularDaysOff: number[]): number | null => {
+  if (!startString || !endString) {
+    return null;
+  }
   const start = cdate(startString);
   const end = cdate(endString);
+  if (isNaN(+start.toDate()) || isNaN(+end.toDate())) {
+    return null;
+  }
   if (+start > +end) {
     return 0;
   }

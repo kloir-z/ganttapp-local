@@ -13,7 +13,7 @@
 //
 // 選択モード(uiFlags.isBarSelectionMode)中だけは、修飾なしクリックも追加/解除になる。
 // 囲んで選ぶためのモードなので、選択を積み増す操作のほうが自然なため。
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useDispatch, useSelector, useStore } from 'react-redux';
 import { RootState } from '../reduxStoreAndSlices/store';
 import {
@@ -119,4 +119,22 @@ export const useBarSelection = (rowId: string, barType: BarType) => {
   }, [barKey, dispatch, store]);
 
   return { isBarSelected, handleSelectionMouseDown, handleSelectionClick };
+};
+
+/**
+ * 選択中のバーが属する行IDを、重複なく選択順で返す。
+ * チャートの右クリックメニューに渡して、選択したバーの行に対して
+ * 行削除・コピー・色分け・注釈追加などの操作をかけられるようにする。
+ * data は購読しない(全行が再レンダーされるのを避けるため)。
+ */
+export const useSelectedBarRowIds = (): string[] => {
+  const selectedBarKeys = useSelector((state: RootState) => state.uiFlags.selectedBarKeys);
+  return useMemo(() => {
+    const rowIds: string[] = [];
+    selectedBarKeys.forEach(key => {
+      const rowId = rowIdOfBarKey(key);
+      if (!rowIds.includes(rowId)) rowIds.push(rowId);
+    });
+    return rowIds;
+  }, [selectedBarKeys]);
 };

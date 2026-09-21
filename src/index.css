@@ -169,3 +169,11 @@ input {
   background-color: transparent;
   outline: none;
 }
+
+/* チャートでバーを選択した行を、WBS表でも「選択中」と分かるように薄く塗る。
+   ReactGrid の highlights は各セルの上に重ねて描かれるので、文字が読めるよう
+   pointer-events は切り、枠線は出さずに背景だけを載せる。 */
+.rg-bar-selected-cell {
+  background-color: rgba(53, 121, 248, 0.12) !important;
+  pointer-events: none;
+}

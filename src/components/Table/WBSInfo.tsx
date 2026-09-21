@@ -1,7 +1,7 @@
 // WBSInfo.tsx
 import React, { useCallback, useMemo, memo, useRef, useEffect, useState } from 'react';
 import { WBSData, isChartRow, isSeparatorRow, isEventRow, MyRange } from '../../types/DataTypes';
-import { ReactGrid, Row, DefaultCellTypes, Id, HeaderCell, MenuOption, SelectionMode } from "@silevis/reactgrid";
+import { Highlight, ReactGrid, Row, DefaultCellTypes, Id, HeaderCell, MenuOption, SelectionMode } from "@silevis/reactgrid";
 import { createChartRow, createSeparatorRow, createEventRow } from './utils/wbsRowCreators';
 import { handleGridChanges } from './utils/gridHandlers';
 import { useSelector, useDispatch } from 'react-redux';
@@ -19,6 +19,7 @@ import useInsertCopiedRow from '../../hooks/useInsertCopiedRow';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { useImeCellOverlay } from '../../hooks/useImeCellOverlay';
 import { PasteRange, useRangePasteFill } from '../../hooks/useRangePasteFill';
+import { useSelectedBarRowIds } from '../../hooks/useBarSelection';
 import { useRangeClipboardCopy } from '../../hooks/useRangeClipboardCopy';
 import { ClipboardCell, cellToClipboardText } from './utils/clipboardCopy';
 import { buildWbsNumberMap } from '../../utils/wbsNumber';
@@ -62,6 +63,11 @@ const WBSInfo: React.FC = memo(() => {
   const isCpColumnSelected = useMemo(() => {
     return selectedRanges.selectedColumnIds.includes('cpPredecessors');
   }, [selectedRanges.selectedColumnIds]);
+
+  // チャート側でバーを選んだ行を、表でも「選択中」と分かるようにハイライトする。
+  // ReactGrid には選択範囲を外から与える API が無いので、セルのハイライトで代用する
+  // (右クリックメニューの操作対象は、チャート側のメニューへ行IDを渡して揃えている)。
+  const selectedBarRowIds = useSelectedBarRowIds();
 
   const { visibleColumns, visibleColumnIds } = useMemo(() => {
     let filteredColumns = columns.filter(column => column.visible);
@@ -234,6 +240,19 @@ const WBSInfo: React.FC = memo(() => {
     onRenameColumn: setRenameColumnTarget
   });
 
+  const barSelectionHighlights = useMemo<Highlight[]>(() => {
+    // 数が多いときは描画コストが見合わないので諦める(選択自体は効いている)
+    if (selectedBarRowIds.length === 0 || selectedBarRowIds.length > 200) return [];
+    const highlights: Highlight[] = [];
+    selectedBarRowIds.forEach(rowId => {
+      if (!data[rowId]) return;
+      visibleColumnIds.forEach(columnId => {
+        highlights.push({ rowId, columnId, className: 'rg-bar-selected-cell', borderColor: 'transparent' });
+      });
+    });
+    return highlights;
+  }, [selectedBarRowIds, visibleColumnIds, data]);
+
   const handleSelectionChanged = useCallback((selectedRanges: MyRange[]) => {
     const selectedRowIds: Set<string> = new Set();
     const selectedColumnIds: Set<string> = new Set();
@@ -360,6 +379,7 @@ const WBSInfo: React.FC = memo(() => {
         columns={visibleColumns}
         onCellsChanged={isViewingPast ? undefined : (changes) => handleGridChanges(dispatch, data, changes, columns, holidays, regularDaysOff, consumePastedRowIds(), dateFormat)}
         onColumnResized={isViewingPast ? undefined : onColumnResize}
+        highlights={barSelectionHighlights}
         stickyTopRows={1}
         stickyLeftColumns={1}
         enableRangeSelection

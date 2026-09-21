@@ -84,6 +84,19 @@ export const useContextMenuOptions = ({
         if (!showAnnotations) dispatch(setShowAnnotations(true));
     }, [dispatch, entry, selectedRowIds, showAnnotations]);
 
+    // 操作対象の行。右クリックした行が選択に含まれていれば選択全体を、
+    // 含まれていなければその行だけを対象にする(Excel などと同じ感覚)。
+    // チャート側のメニューは entry を渡してくるが、バーを複数選んでいるときは
+    // その選択に対して操作できないと「選んだ意味が無い」ため。
+    const targetRowIds = useMemo(() => {
+        const hasSelection = Boolean(selectedRowIds && selectedRowIds.length > 0);
+        if (hasSelection && (!entry || selectedRowIds?.includes(entry.id))) {
+            return selectedRowIds as string[];
+        }
+        if (entry) return [entry.id];
+        return selectedRowIds ?? [];
+    }, [entry, selectedRowIds]);
+
     const menuOptions = useMemo(() => {
         const createAddRowItems = (type: 'Chart' | 'Event') => {
             const items = [];
@@ -252,34 +265,26 @@ export const useContextMenuOptions = ({
             {
                 children: t("Copy Row"),
                 onClick: () => {
-                    if (entry) {
-                        dispatch(setCopiedRows([entry]));
-                    } else if (selectedRowIds) {
-                        const copiedRows = selectedRowIds.reduce((acc, currId) => {
-                            const foundRow = finalDataArray.find(row => row.id === currId);
-                            if (foundRow) acc.push(foundRow);
-                            return acc;
-                        }, [] as WBSData[]);
-                        dispatch(setCopiedRows(copiedRows));
-                    }
+                    const rows = targetRowIds.reduce((acc, currId) => {
+                        const foundRow = finalDataArray.find(row => row.id === currId);
+                        if (foundRow) acc.push(foundRow);
+                        return acc;
+                    }, [] as WBSData[]);
+                    if (rows.length > 0) dispatch(setCopiedRows(rows));
                 },
                 path: String(pathCounter++)
             },
             {
                 children: t("Cut Row"),
                 onClick: () => {
-                    if (entry) {
-                        dispatch(deleteRows([entry.id]));
-                        dispatch(setCopiedRows([entry]));
-                    } else if (selectedRowIds) {
-                        const copiedRows = selectedRowIds.reduce((acc, currId) => {
-                            const foundRow = finalDataArray.find(row => row.id === currId);
-                            if (foundRow) acc.push(foundRow);
-                            return acc;
-                        }, [] as WBSData[]);
-                        dispatch(setCopiedRows(copiedRows));
-                        dispatch(deleteRows(selectedRowIds));
-                    }
+                    const rows = targetRowIds.reduce((acc, currId) => {
+                        const foundRow = finalDataArray.find(row => row.id === currId);
+                        if (foundRow) acc.push(foundRow);
+                        return acc;
+                    }, [] as WBSData[]);
+                    if (rows.length === 0) return;
+                    dispatch(setCopiedRows(rows));
+                    dispatch(deleteRows(targetRowIds));
                 },
                 path: String(pathCounter++)
             },
@@ -510,7 +515,7 @@ export const useContextMenuOptions = ({
         });
 
         return baseOptions;
-    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, onEditDependency, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting, showCriticalPath, handleAddAnnotation, showAnnotations, annotationCount, isBarSelectionMode, basisColumnId, candidates, switchTo, headerColumn, onRenameColumn]);
+    }, [addRow, contextMenu, copiedRows, dispatch, entry, insertCopiedRow, onDeleteBar, onEditDependency, selectedRowIds, selectedColumnIds, t, includeColumnSettings, columns, finalDataArray, handleAutoColorSetting, showCriticalPath, handleAddAnnotation, showAnnotations, annotationCount, isBarSelectionMode, targetRowIds, basisColumnId, candidates, switchTo, headerColumn, onRenameColumn]);
 
     return menuOptions;
 };

@@ -10,7 +10,7 @@ import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { ColorInfo, DEFAULT_FALLBACK_COLOR, getColorSourceValue, resolveColorFromPalette } from '../../reduxStoreAndSlices/colorSlice';
-import { useBarSelection } from '../../hooks/useBarSelection';
+import { useBarSelection, useSelectedBarRowIds } from '../../hooks/useBarSelection';
 import { useMultiBarDrag } from '../../hooks/useMultiBarDrag';
 
 type Action =
@@ -122,6 +122,8 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
     localEvents[index]?.isPlanned ? 'planned' : 'actual'
   ), [localEvents]);
   const { isMultiDragging, tryBeginMultiDrag } = useMultiBarDrag({ gridRef, setCanGridRefDrag });
+  // 選択中のバーの行を右クリックメニューへ渡し、選択した行に対して操作できるようにする
+  const selectedBarRowIds = useSelectedBarRowIds();
 
   const handleBarMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, index: number) => {
     // Ctrl/Shift クリックなどの選択操作はここで完結させ、ドラッグは始めない。
@@ -344,6 +346,8 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
 
   const menuOptions = useContextMenuOptions({
     entry,
+    // 選択が無いときは undefined。空配列を渡すと「コピーした行を挿入」が無効化されてしまう
+    selectedRowIds: selectedBarRowIds.length > 0 ? selectedBarRowIds : undefined,
     onDeleteBar: handleDeleteBar,
     contextMenu
   });
