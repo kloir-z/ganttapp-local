@@ -187,6 +187,10 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
   }, [cellWidth, dateArray]);
 
   const handleDoubleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    // チャートの上に浮いている UI(右クリックメニュー・注釈カード)の上でのダブルクリックは、
+    // 行のダブルクリック(その位置にバーを作る)として扱わない。メニューは行の DOM の中に
+    // 描かれているので、素通しすると右クリックした場所にバーができてしまう。
+    if ((event.target as HTMLElement | null)?.closest?.('[data-chart-overlay]')) return;
     dispatch(pushPastState());
     setCanGridRefDrag(false);
     const rect = event.currentTarget.getBoundingClientRect();

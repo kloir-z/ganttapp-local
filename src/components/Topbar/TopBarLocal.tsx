@@ -9,7 +9,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import TextField from '@mui/material/TextField';
 import { useDispatch, useSelector } from 'react-redux';
-import { setActiveModal, setIsLoading, setShowCriticalPath } from '../../reduxStoreAndSlices/uiFlagSlice';
+import { setActiveModal, setBarSelectionMode, setIsLoading, setShowCriticalPath } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { selectCriticalPath } from '../../reduxStoreAndSlices/criticalPathSelectors';
 import { RootState, undo, redo, setMessageInfo, removePastState } from '../../reduxStoreAndSlices/store';
 import { setTitle } from '../../reduxStoreAndSlices/baseSettingsSlice';
@@ -47,6 +47,24 @@ const MenuButton = styled.button`
   }
 `;
 
+// バー選択モードのトグル。ON の間はひと目で分かるよう色を変える。
+const ToggleMenuButton = styled.button<{ $active?: boolean }>`
+  border: none;
+  border-radius: 3px;
+  height: 100%;
+  padding: 0px 15px;
+  background-color: ${props => props.$active ? 'rgba(53, 121, 248, 0.95)' : 'transparent'};
+  color: ${props => props.$active ? '#fff' : 'inherit'};
+  transition: background-color 0.3s ease;
+  &:hover:not(:disabled) {
+    background-color: ${props => props.$active ? 'rgba(53, 121, 248, 0.8)' : '#d6d6d6'};
+  }
+  &:disabled {
+    color: #999;
+    cursor: not-allowed;
+  }
+`;
+
 const ReturnButton = styled.button`
   border: none;
   border-radius: 3px;
@@ -73,6 +91,7 @@ const TopBarLocal: React.FC = memo(() => {
   const [includeNotesInExcel, setIncludeNotesInExcel] = useState(true);
 
   // Redux state
+  const isBarSelectionMode = useSelector((state: RootState) => state.uiFlags.isBarSelectionMode);
   const currentRegularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
   const currentColors = useSelector((state: RootState) => state.color.colors);
   const colorSchemes = useSelector((state: RootState) => state.color.schemes);
@@ -337,13 +356,18 @@ const TopBarLocal: React.FC = memo(() => {
         path: '4'
       },
       {
+        children: t('History'),
+        onClick: () => dispatch(setActiveModal('history')),
+        path: '5'
+      },
+      {
         children: t('Export'),
-        path: '5',
+        path: '6',
         items: [
           {
             children: t('Export PDF'),
             onClick: () => exportPdf(),
-            path: '5.0'
+            path: '6.0'
           },
           {
             children: t('Export Excel'),
@@ -358,18 +382,18 @@ const TopBarLocal: React.FC = memo(() => {
                 exportExcel();
               }
             },
-            path: '5.1'
+            path: '6.1'
           },
           {
             children: t('Export HTML'),
             onClick: () => handleExportHtml(),
-            path: '5.2'
+            path: '6.2'
           }
         ]
       }
     ];
     return options;
-  }, [t, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, exportExcel, handleExportHtml, treeData, rowNoteData]);
+  }, [t, dispatch, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, exportExcel, handleExportHtml, treeData, rowNoteData]);
 
   // 色分け基準列のクイック切替メニュー。列名はユーザーのリネームをそのまま表示する。
   const coloringMenuOptions = useMemo(() => {
@@ -530,9 +554,20 @@ const TopBarLocal: React.FC = memo(() => {
         <MenuButton onClick={handleNotesClick}>
           {t('Notes')}
         </MenuButton>
-        <MenuButton onClick={() => dispatch(setActiveModal('history'))}>
-          {t('History')}
-        </MenuButton>
+        <ToggleMenuButton
+          $active={isBarSelectionMode}
+          disabled={isViewingPast}
+          onClick={() => dispatch(setBarSelectionMode(!isBarSelectionMode))}
+          title={t('Bar Selection Mode')}
+        >
+          {t('Bar Selection Mode')}
+        </ToggleMenuButton>
+        {isViewingPast && (
+          // 過去を閲覧中はファイルメニューが無効なので、履歴だけは単独で出しておく
+          <MenuButton onClick={() => dispatch(setActiveModal('history'))}>
+            {t('History')}
+          </MenuButton>
+        )}
         <MenuButton onClick={() => dispatch(setActiveModal('help'))}>
           {t('Help')}
         </MenuButton>
