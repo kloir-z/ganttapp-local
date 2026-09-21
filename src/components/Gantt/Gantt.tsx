@@ -26,6 +26,17 @@ import ChartDependencyBuilder from '../Chart/ChartDependencyBuilder';
 import { useLocation } from 'react-router-dom';
 import TopBarLocal from '../Topbar/TopBarLocal';
 
+// 選択モード中のカーソル。標準の crosshair は環境によって細い白線で描かれ、明るいチャートの上だと
+// ほとんど見えないので、白いフチ付きの濃い十字を SVG で描いて使う(中心がクリック位置)。
+// data: URI は CSP の img-src で許可済み。読めない環境では標準の crosshair に戻る。
+const SELECTION_MODE_CURSOR = (() => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">'
+    + '<path d="M12 2v20M2 12h20" stroke="#fff" stroke-width="4" stroke-linecap="round"/>'
+    + '<path d="M12 2v20M2 12h20" stroke="#1a1a1a" stroke-width="1.6" stroke-linecap="round"/>'
+    + '</svg>';
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 12 12, crosshair`;
+})();
+
 function Gantt() {
   const activeModal = useSelector((state: RootState) => state.uiFlags.activeModal);
   const { t } = useTranslation();
@@ -649,7 +660,7 @@ function Gantt() {
 
         <ResizeBar setIsGridRefDragging={setIsGridRefDragging} />
 
-        <div style={{ position: 'absolute', top: `${topbarHeight + (rowHeight * 2)}px`, left: `${wbsWidth}px`, width: isExporting ? `${exportDateWidth}px` : `calc(100vw - ${wbsWidth}px)`, height: isExporting ? `${fullContentHeight - (topbarHeight + rowHeight * 2)}px` : `calc(100vh - ${topbarHeight + rowHeight * 2}px)`, overflow: isExporting ? 'visible' : 'scroll', borderLeft: '1px solid transparent', scrollBehavior: 'auto', cursor: isBarSelectionMode ? 'crosshair' : undefined }} ref={gridRef} id="gantt-grid-scroll">
+        <div style={{ position: 'absolute', top: `${topbarHeight + (rowHeight * 2)}px`, left: `${wbsWidth}px`, width: isExporting ? `${exportDateWidth}px` : `calc(100vw - ${wbsWidth}px)`, height: isExporting ? `${fullContentHeight - (topbarHeight + rowHeight * 2)}px` : `calc(100vh - ${topbarHeight + rowHeight * 2}px)`, overflow: isExporting ? 'visible' : 'scroll', borderLeft: '1px solid transparent', scrollBehavior: 'auto', cursor: isBarSelectionMode ? SELECTION_MODE_CURSOR : undefined }} ref={gridRef} id="gantt-grid-scroll">
           <div style={{ height: `${(filteredData.length * rowHeight) - topbarHeight}px`, width: `${(dateArray.length * cellWidth)}px` }}>
             {filteredData.map(([key, entry], filteredIndex) => {
               if (gridRef.current) {
