@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { MAX_ROWS } from '../types/DataTypes';
 
 interface RowDialogState {
     isOpen: boolean;
@@ -11,7 +12,7 @@ const initialState: RowDialogState = {
     isOpen: false,
     rowType: null,
     insertAtId: '',
-    maxRows: 500,
+    maxRows: MAX_ROWS,
 };
 
 const rowDialogSlice = createSlice({

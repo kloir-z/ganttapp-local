@@ -1,5 +1,5 @@
 import { configureStore, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { WBSData, EventRow, EventData, RegularDaysOffSettingsType, isChartRow, isEventRow, isSeparatorRow, DateFormatType, HolidayColor, RowType, MessageInfo, ChartAnnotation, MAX_ANNOTATIONS } from '../types/DataTypes';
+import { WBSData, EventRow, EventData, RegularDaysOffSettingsType, isChartRow, isEventRow, isSeparatorRow, DateFormatType, HolidayColor, RowType, MessageInfo, ChartAnnotation, MAX_ANNOTATIONS, MAX_ROWS } from '../types/DataTypes';
 import { calculatePlannedDays, buildDependencyMap, updateDependentRows, resetEndDate, updateSeparatorRowDates, adjustColorOpacity, createNewRow, resolveDependencies, isHoliday, isRegularDaysOff } from '../utils/CommonUtils';
 import copiedRowsReducer from './copiedRowsSlice';
 import colorReducer from './colorSlice'
@@ -37,7 +37,6 @@ export interface AddRowPayload {
   maxRowsMessage: string;
 }
 
-const MAX_ROWS = 999;
 
 const isDisplayNameOnlyRow = (row: WBSData): boolean => {
   if (!isChartRow(row) && !isEventRow(row)) {
@@ -141,7 +140,7 @@ export const wbsDataSlice = createSlice({
           dataArray.push(newRow);
         }
       }
-      if (dataArray.length >= MAX_ROWS) {
+      if (dataArray.length > MAX_ROWS) {
         state.messageInfo = { message: maxRowsMessage, severity: 'error' };
         return;
       }
@@ -161,7 +160,7 @@ export const wbsDataSlice = createSlice({
       if (!copiedRows || copiedRows.length === 0) return;
       const dataArray: WBSData[] = Object.values(state.data);
       const insertAtIndex = dataArray.findIndex(item => item.id === insertAtId);
-      if (dataArray.length + copiedRows.length > 999) {
+      if (dataArray.length + copiedRows.length > MAX_ROWS) {
         state.messageInfo = { message: maxRowsMessage, severity: 'error' };
         return;
       }

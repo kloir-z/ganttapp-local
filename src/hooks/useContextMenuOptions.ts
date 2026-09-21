@@ -8,7 +8,7 @@ import { openRowDialog } from '../reduxStoreAndSlices/rowDialogSlice';
 import useAddRow from './useAddRow';
 import useInsertCopiedRow from './useInsertCopiedRow';
 import { useColorBasis } from './useColorBasis';
-import { WBSData, isSeparatorRow, SeparatorRow } from '../types/DataTypes';
+import { WBSData, isSeparatorRow, SeparatorRow, MAX_ROWS } from '../types/DataTypes';
 import { MenuItemProps } from '../components/MenuItem';
 import { createSelector } from '@reduxjs/toolkit';
 
@@ -105,7 +105,7 @@ export const useContextMenuOptions = ({
                 onClick: () => {
                     const insertAtId = entry?.id || selectedRowIds?.[0] || "";
                     const currentRowCount = finalDataArray.length;
-                    const maxRowsToAdd = Math.max(1, 500 - currentRowCount);
+                    const maxRowsToAdd = Math.max(1, MAX_ROWS - currentRowCount);
                     dispatch(openRowDialog({
                         rowType: type,
                         insertAtId,

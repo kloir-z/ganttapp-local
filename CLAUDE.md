@@ -260,7 +260,7 @@ NotesModal (90 lines)
 
 ## Important Notes
 - **Content-Security-Policy**: injected at build time by the `inject-csp-meta` plugin in `vite.config.ts` (not present in dev because HMR needs inline scripts/WebSockets). The policy contains no external hosts — its purpose is a verifiable "data cannot leave the browser" guarantee, not XSS hardening (production is the single-file build, so `script-src` must allow `'unsafe-inline'`). `scripts/verify-csp.mjs` / `verify-csp-export.mjs` / `verify-exported-html.mjs` boot the built file headlessly (puppeteer) and assert zero CSP violations including all three exports.
-- MAX_ROWS limit of 999 tasks per project
+- MAX_ROWS limit of 999 rows per project (`MAX_ROWS` in `types/DataTypes.ts`; the store's `addRow`/`insertCopiedRow` and the "Add Row > Custom" dialog's upper bound all read it — the dialog used to hard-code 500 while the help said 999). Exactly 999 rows is allowed; only going past it is rejected
 - Undo/redo system maintains 30 states maximum (row, column and annotation edits share this one history)
 - MAX_ANNOTATIONS limit of 50 chart annotations per project. Annotations are **not** part of the history (`StateBackupUtils`) snapshots, so they are hidden while a past revision is being previewed
 - Holiday and weekend calculations affect dependency resolution

@@ -180,3 +180,6 @@ export interface ChartAnnotation {
 }
 
 export const MAX_ANNOTATIONS = 50;
+
+/** 1 プロジェクトに持てる行数の上限(パフォーマンス上の制限)。ヘルプの記載もこの値に合わせている。 */
+export const MAX_ROWS = 999;
