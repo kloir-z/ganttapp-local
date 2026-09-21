@@ -16,7 +16,7 @@ import {
   RootState,
   pushPastState,
   removePastState,
-  setPlannedDates,
+  setPlannedDatesFromDrag,
   setActualDates,
   updateEventRows,
   updateSeparatorDates,
@@ -132,9 +132,9 @@ export const useMultiBarDrag = ({ gridRef, setCanGridRefDrag }: UseMultiBarDragP
     const { barType, planned, actual, events, holidays, regularDaysOff } = session;
 
     if (barType === 'planned' && planned.length > 0) {
-      // 選択行どうしの依存再計算はこの reducer 側でスキップされるので、
-      // 一括移動でも二重シフトにならない(選択外の依存行だけ追従する)
-      dispatch(setPlannedDates(computeShiftedPlannedDates(planned, gridSteps, holidays, regularDaysOff)));
+      // 依存を優先して並べ直す版へ渡す。連鎖の上流で掴んだ行が起点になり、
+      // 前工程は引っ張られ、後続は定義どおりの位置へ並ぶ(reducer 側のコメント参照)。
+      dispatch(setPlannedDatesFromDrag(computeShiftedPlannedDates(planned, gridSteps, holidays, regularDaysOff)));
     }
     if (barType === 'actual' && actual.length > 0) {
       dispatch(setActualDates(computeShiftedActualDates(actual, gridSteps)));

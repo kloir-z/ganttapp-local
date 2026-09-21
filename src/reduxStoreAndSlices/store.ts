@@ -287,6 +287,61 @@ export const wbsDataSlice = createSlice({
       state.data = updateSeparatorRowDates(state.data);
       state.isSavedChanges = false;
     },
+    // バーのドラッグ(単体・一括どちらも)で予定日を確定するときの版。
+    //
+    // 貼り付け用の setPlannedDates と違い、**依存関係を優先して並べ直す**。
+    // 置いた位置をそのまま正とすると、ドラッグはカレンダー日数でずらすのに依存は
+    // 稼働日で計算されるため、週末をまたぐ位置に動かしたときに「定義と食い違った行」が
+    // 残ってしまう(あとで前工程を触った瞬間にスナップバックする)。
+    //
+    // 連鎖の中で複数行を掴んでいても、正になるのは **連鎖の一番上流で動かした行(anchor)**
+    // だけ。そこから updateDependentRows を走らせると、前工程は引っ張られて動き(既存の
+    // 振る舞い)、後続は定義どおりの位置へ並び直す。anchor 以外の動かした行も、連鎖の中に
+    // あれば定義どおりの位置になる。
+    setPlannedDatesFromDrag: (state, action: PayloadAction<{ id: string; startDate: string; endDate: string }[]>) => {
+      const updates = action.payload.filter(({ id }) => isChartRow(state.data[id]));
+      if (updates.length === 0) {
+        return;
+      }
+      let changed = false;
+      updates.forEach(({ id, startDate, endDate }) => {
+        const chartRow = state.data[id];
+        if (!isChartRow(chartRow) || (chartRow.plannedStartDate === startDate && chartRow.plannedEndDate === endDate)) {
+          return;
+        }
+        chartRow.plannedStartDate = startDate;
+        chartRow.plannedEndDate = endDate;
+        chartRow.plannedDays = calculatePlannedDays(startDate, endDate, state.holidays, chartRow.isIncludeHolidays, state.regularDaysOff);
+        changed = true;
+      });
+      if (!changed) {
+        return;
+      }
+      // 動かした行のうち「自分より上流に、動かした行がいない」ものを anchor にする。
+      // 連鎖の途中を掴んだときは、その行が上流側を引っ張る起点になる。
+      const movedIds = new Set(updates.map(update => update.id));
+      const hasMovedAncestor = (id: string): boolean => {
+        const seen = new Set<string>([id]);
+        let current = state.data[id];
+        while (isChartRow(current) && current.dependentId) {
+          const parentId: string = current.dependentId;
+          if (seen.has(parentId)) break; // 循環していたら打ち切る
+          if (movedIds.has(parentId)) return true;
+          seen.add(parentId);
+          current = state.data[parentId];
+        }
+        return false;
+      };
+      const visited = new Set<string>();
+      updates.forEach(({ id }) => {
+        if (hasMovedAncestor(id)) return;
+        const chartRow = state.data[id];
+        if (!isChartRow(chartRow)) return;
+        updateDependentRows(state, id, chartRow.plannedStartDate, chartRow.plannedEndDate, visited);
+      });
+      state.data = updateSeparatorRowDates(state.data);
+      state.isSavedChanges = false;
+    },
     // 複数バーの一括移動用。実績日には依存計算が無いので、値を入れるだけの素直な一括版。
     setActualDates: (state, action: PayloadAction<{ id: string; startDate: string; endDate: string }[]>) => {
       let changed = false;
@@ -780,6 +835,7 @@ export const {
   clearMessageInfo,
   setPlannedDate,
   setPlannedDates,
+  setPlannedDatesFromDrag,
   setActualDate,
   setActualDates,
   setDisplayName,
