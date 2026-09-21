@@ -27,12 +27,13 @@ interface UIFlagsState {
   // チャート注釈の表示トグル。注釈自体はプロジェクトデータだが、「編集中は消して
   // おきたい」ための表示切替なので、CP 表示と同じくファイルには含めない。
   showAnnotations: boolean;
-  // 選択中の注釈(編集ハンドルを出す対象)。純粋なUI状態なので保存しない。
-  selectedAnnotationId: string;
+  // 選択中の注釈(Delete キー・右クリックメニューの対象)。複数選べる。
+  // 純粋なUI状態なので保存もundoもしない。
+  selectedAnnotationIds: string[];
   // チャートバーの複数選択(一括移動の対象)。選択は行ではなく **バー単位** で、
   // `<行ID>|planned` / `<行ID>|actual` のキーで持つ。予定バーを選んでも実績バーは
   // 選ばれない(別物として扱う)。表示順を保つため配列。
-  // 純粋なUI状態なので保存もundoもしない(selectedAnnotationId と同じ扱い)。
+  // 純粋なUI状態なので保存もundoもしない(selectedAnnotationIds と同じ扱い)。
   selectedBarKeys: string[];
   // Shift+クリックの範囲選択の起点。直前に単独で選び直したバーを覚えておく。
   lastSelectedBarKey: string | null;
@@ -52,7 +53,7 @@ const initialState: UIFlagsState = {
   dependencyBuilder: null,
   showCriticalPath: false,
   showAnnotations: true,
-  selectedAnnotationId: '',
+  selectedAnnotationIds: [],
   selectedBarKeys: [],
   lastSelectedBarKey: null,
   isBarSelectionMode: false,
@@ -108,8 +109,19 @@ const uiFlagsSlice = createSlice({
     setShowAnnotations(state, action: PayloadAction<boolean>) {
       state.showAnnotations = action.payload;
     },
-    setSelectedAnnotationId(state, action: PayloadAction<string>) {
-      state.selectedAnnotationId = action.payload;
+    setSelectedAnnotationIds(state, action: PayloadAction<string[]>) {
+      state.selectedAnnotationIds = action.payload;
+    },
+    toggleSelectedAnnotation(state, action: PayloadAction<string>) {
+      const id = action.payload;
+      state.selectedAnnotationIds = state.selectedAnnotationIds.includes(id)
+        ? state.selectedAnnotationIds.filter(selected => selected !== id)
+        : [...state.selectedAnnotationIds, id];
+    },
+    clearSelectedAnnotations(state) {
+      if (state.selectedAnnotationIds.length > 0) {
+        state.selectedAnnotationIds = [];
+      }
     },
     // 一括移動の選択。anchor は Shift+クリックの起点で、範囲選択のときは
     // 起点を動かさないので undefined を渡して現状維持にする。
@@ -162,5 +174,5 @@ const uiFlagsSlice = createSlice({
   },
 });
 
-export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath, setShowAnnotations, setSelectedAnnotationId, setSelectedBars, toggleSelectedBar, clearSelectedBars, pruneSelectedBars, setBarSelectionMode } = uiFlagsSlice.actions;
+export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath, setShowAnnotations, setSelectedAnnotationIds, toggleSelectedAnnotation, clearSelectedAnnotations, setSelectedBars, toggleSelectedBar, clearSelectedBars, pruneSelectedBars, setBarSelectionMode } = uiFlagsSlice.actions;
 export default uiFlagsSlice.reducer;

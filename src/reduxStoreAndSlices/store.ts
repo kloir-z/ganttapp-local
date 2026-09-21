@@ -597,6 +597,18 @@ export const wbsDataSlice = createSlice({
       state.annotations = state.annotations.filter(a => a.id !== action.payload);
       state.isSavedChanges = false;
     },
+    // 複数選択した注釈をまとめて消す。undo 1 回で全部戻るよう、スナップショットは 1 つだけ。
+    deleteAnnotations: (state, action: PayloadAction<string[]>) => {
+      const ids = new Set(action.payload);
+      if (!state.annotations.some(a => ids.has(a.id))) return;
+      state.past.push({ data: state.data, columns: state.columns, annotations: state.annotations });
+      state.future = [];
+      if (state.past.length > 30) {
+        state.past.shift();
+      }
+      state.annotations = state.annotations.filter(a => !ids.has(a.id));
+      state.isSavedChanges = false;
+    },
     // ファイル読み込み用。undo 履歴には積まない(読み込みは undo の対象外)。
     setEntireAnnotations: (state, action: PayloadAction<ChartAnnotation[]>) => {
       state.annotations = Array.isArray(action.payload) ? action.payload : [];
@@ -869,6 +881,7 @@ export const {
   updateAnnotationText,
   moveAnnotation,
   deleteAnnotation,
+  deleteAnnotations,
   setEntireAnnotations,
 } = wbsDataSlice.actions;
 

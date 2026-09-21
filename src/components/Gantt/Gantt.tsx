@@ -117,6 +117,7 @@ function Gantt() {
   const isLocalMode = location.pathname.startsWith('/local');
 
   const filteredData = useMemo(() => filterVisibleRows(data), [data]);
+  const allRowIds = useMemo(() => Object.keys(data), [data]);
 
   // When exporting, render every row (bypass virtualization) and size the panes to
   // the full chart so html2canvas can capture the whole thing in one shot.
@@ -737,6 +738,7 @@ function Gantt() {
             <CpArrowsOverlay filteredData={filteredData} dateArray={dateArray} />
             <ChartAnnotationLayer
               filteredData={filteredData}
+              allRowIds={allRowIds}
               dateArray={dateArray}
               setCanGridRefDrag={setCanGridRefDrag}
             />

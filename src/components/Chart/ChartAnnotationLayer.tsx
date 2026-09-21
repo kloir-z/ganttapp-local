@@ -17,10 +17,17 @@ import { RootState } from '../../reduxStoreAndSlices/store';
 import { WBSData, ChartAnnotation } from '../../types/DataTypes';
 import {
   deleteAnnotation,
+  deleteAnnotations,
   moveAnnotation,
   updateAnnotationText,
 } from '../../reduxStoreAndSlices/store';
-import { setSelectedAnnotationId } from '../../reduxStoreAndSlices/uiFlagSlice';
+import {
+  clearSelectedAnnotations,
+  setSelectedAnnotationIds,
+  toggleSelectedAnnotation,
+} from '../../reduxStoreAndSlices/uiFlagSlice';
+import ContextMenu from '../ContextMenu/ContextMenu';
+import { MenuItemProps } from '../MenuItem';
 import {
   BRACKET_WIDTH,
   CARD_WIDTH,
@@ -33,18 +40,22 @@ import {
 const ACCENT = '#5f6b7a';
 const ACCENT_SELECTED = '#2f3b4a';
 const CARD_BG = '#fffdf0';
+// 選択中の注釈が指す対象バーの目印。バー自身の濃い枠と見分けがつくよう、薄い赤系にする。
+const TARGET_MARK = 'rgba(229, 72, 77, 0.6)';
 
 interface ChartAnnotationLayerProps {
   filteredData: [string, WBSData][];
+  // 折りたたみ前の全行ID(表示順)。隠れた端点をセパレータへ付け替えるため。
+  allRowIds: string[];
   dateArray: ReturnType<typeof cdate>[];
   setCanGridRefDrag: (value: boolean) => void;
 }
 
-const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filteredData, dateArray, setCanGridRefDrag }) => {
+const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filteredData, allRowIds, dateArray, setCanGridRefDrag }) => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const annotations = useSelector((state: RootState) => state.wbsData.annotations);
-  const selectedId = useSelector((state: RootState) => state.uiFlags.selectedAnnotationId);
+  const selectedIds = useSelector((state: RootState) => state.uiFlags.selectedAnnotationIds);
   const showAnnotations = useSelector((state: RootState) => state.uiFlags.showAnnotations);
   const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
   const isExporting = useSelector((state: RootState) => state.uiFlags.isExporting);
@@ -60,12 +71,17 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
   const [dragOffset, setDragOffset] = useState<{ id: string; dx: number; dy: number } | null>(null);
   const dragStateRef = useRef<{ id: string; startX: number; startY: number; baseX: number; baseY: number } | null>(null);
 
+  // カードと右クリックメニューをまとめる入れ物。右クリックの受け口であり、
+  // 「注釈の外を押したら選択を外す」判定の境界でもある。
+  const containerRef = useRef<HTMLDivElement>(null);
+
   // 履歴プレビュー中は描かない。注釈はまだ履歴スナップショットに含めていないので、
   // 過去データの上に現在の注釈を重ねると対応がずれて見える(CP 表示と同じ判断)。
   const isActive = showAnnotations && !isViewingPast;
 
-  const geometries = useMemo(() => {
-    if (!isActive || annotations.length === 0) return [];
+  // 日付キーの索引は dateArray が変わったときだけ作る。geometries はカードのドラッグ中に
+  // マウス移動ごと再計算されるので、そのたびに全日付を format し直さないようにする。
+  const dateLookup = useMemo(() => {
     const dateIndex: { [key: string]: number } = {};
     const dateKeys: string[] = [];
     dateArray.forEach((date, index) => {
@@ -73,6 +89,29 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
       dateIndex[key] = index;
       dateKeys.push(key);
     });
+    return { dateIndex, dateKeys };
+  }, [dateArray]);
+
+  // バーのラベル幅の計測。ブラケットをラベルの先に置くために使う。フォントは
+  // チャートが継承している body のもの。同じ文字列は何度も測らない。
+  const measureText = useMemo(() => {
+    const context = document.createElement('canvas').getContext('2d');
+    if (!context) return undefined;
+    const style = getComputedStyle(document.body);
+    context.font = `${style.fontSize} ${style.fontFamily}`;
+    const cache = new Map<string, number>();
+    return (text: string) => {
+      const cached = cache.get(text);
+      if (cached !== undefined) return cached;
+      const width = context.measureText(text).width;
+      cache.set(text, width);
+      return width;
+    };
+  }, []);
+
+  const geometries = useMemo(() => {
+    if (!isActive || annotations.length === 0) return [];
+    const { dateIndex, dateKeys } = dateLookup;
     const toKey = (dateStr: string) => {
       if (!dateStr) return '';
       const parsed = cdate(dateStr);
@@ -84,12 +123,60 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
           ? { ...annotation, offsetX: dragOffset.dx, offsetY: dragOffset.dy }
           : annotation;
         const geometry = computeAnnotationGeometry({
-          annotation: applied, filteredData, dateIndex, dateKeys, toKey, cellWidth, rowHeight,
+          annotation: applied, filteredData, allRowIds, dateIndex, dateKeys, toKey, cellWidth, rowHeight, measureText,
         });
         return geometry ? { annotation, geometry } : null;
       })
       .filter((entry): entry is { annotation: ChartAnnotation; geometry: AnnotationGeometry } => entry !== null);
-  }, [isActive, annotations, dateArray, filteredData, cellWidth, rowHeight, dragOffset]);
+  }, [isActive, annotations, dateLookup, filteredData, allRowIds, cellWidth, rowHeight, dragOffset, measureText]);
+
+  // undo などで消えた注釈は選択として数えない。
+  const effectiveSelectedIds = useMemo(
+    () => selectedIds.filter(id => annotations.some(a => a.id === id)),
+    [annotations, selectedIds],
+  );
+  const selectedIdSet = useMemo(() => new Set(effectiveSelectedIds), [effectiveSelectedIds]);
+
+  const removeSelected = useCallback(() => {
+    if (effectiveSelectedIds.length === 0) return;
+    dispatch(deleteAnnotations(effectiveSelectedIds));
+    dispatch(clearSelectedAnnotations());
+  }, [dispatch, effectiveSelectedIds]);
+
+  // 注釈の外(チャートの空白・表・メニューバーなど)を押したら注釈の選択を外す。
+  // 選択が残っていると、あとで表のセルで押した Delete が注釈まで消してしまう。
+  useEffect(() => {
+    if (selectedIds.length === 0) return undefined;
+    const handleMouseDown = (event: MouseEvent) => {
+      const container = containerRef.current;
+      if (container && container.contains(event.target as Node)) return;
+      dispatch(clearSelectedAnnotations());
+    };
+    document.addEventListener('mousedown', handleMouseDown, true);
+    return () => document.removeEventListener('mousedown', handleMouseDown, true);
+  }, [dispatch, selectedIds.length]);
+
+  // Delete / Backspace で選択中の注釈を消し、Esc で選択を外す。capture で受けて
+  // 伝播を止めるのは、フォーカスが表(ReactGrid)に残っていても、セルの内容まで
+  // 一緒に消させないため。入力欄での Backspace は普通の文字削除なので触らない。
+  useEffect(() => {
+    if (effectiveSelectedIds.length === 0 || editingId) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTextInput = !!target && !target.classList?.contains('rg-hidden-element')
+        && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+      if (isTextInput) return;
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        event.stopPropagation();
+        removeSelected();
+      } else if (event.key === 'Escape') {
+        dispatch(clearSelectedAnnotations());
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [dispatch, editingId, effectiveSelectedIds.length, removeSelected]);
 
   // カードのドラッグ移動。window で受けるのは、カード外へポインタが出ても
   // 追従させるため。
@@ -128,8 +215,18 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
     // グリッドのドラッグスクロールを止める(バーのドラッグと同じ作法)。編集中も
     // テキスト選択がスクロールに化けないよう止めておく。
     event.stopPropagation();
+    if (event.button !== 0) return;
     setCanGridRefDrag(false);
     if (editingId === annotation.id) return;
+    // Ctrl(⌘)/Shift+クリックは選択の出し入れだけ。ドラッグは始めない。
+    if (event.ctrlKey || event.metaKey || event.shiftKey) {
+      dispatch(toggleSelectedAnnotation(annotation.id));
+      return;
+    }
+    // 選択済みのカードを掴んだときは選択を保つ(複数選択を崩さない)。
+    if (!selectedIdSet.has(annotation.id)) {
+      dispatch(setSelectedAnnotationIds([annotation.id]));
+    }
     dragStateRef.current = {
       id: annotation.id,
       startX: event.clientX,
@@ -139,8 +236,29 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
     };
     setDragOffset({ id: annotation.id, dx: annotation.offsetX, dy: annotation.offsetY });
     setDraggingId(annotation.id);
-    dispatch(setSelectedAnnotationId(annotation.id));
-  }, [dispatch, editingId, setCanGridRefDrag]);
+  }, [dispatch, editingId, selectedIdSet, setCanGridRefDrag]);
+
+  const startEdit = useCallback((annotation: ChartAnnotation) => {
+    setDraft(annotation.text);
+    setEditingId(annotation.id);
+  }, []);
+
+  // 右クリックメニュー。対象は右クリック時点の選択(未選択のカードを右クリックすると
+  // そのカードだけが選ばれる)。編集は 1 件のときだけ出す。
+  const menuItems: MenuItemProps[] = useMemo(() => {
+    const count = effectiveSelectedIds.length;
+    const single = count === 1 ? annotations.find(a => a.id === effectiveSelectedIds[0]) : undefined;
+    const items: MenuItemProps[] = [];
+    if (single) {
+      items.push({ children: t('Edit Annotation'), onClick: () => startEdit(single) });
+    }
+    items.push({
+      children: count > 1 ? t('Delete Selected Annotations', { count }) : t('Delete Annotation'),
+      onClick: removeSelected,
+      disabled: count === 0,
+    });
+    return items;
+  }, [annotations, effectiveSelectedIds, removeSelected, startEdit, t]);
 
   const commitDraft = useCallback(() => {
     if (!editingId) return;
@@ -160,23 +278,24 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
         }}
       >
         {geometries.map(({ annotation, geometry }) => {
-          const isSelected = annotation.id === selectedId && !isExporting;
+          const isSelected = selectedIdSet.has(annotation.id) && !isExporting;
           const color = isSelected ? ACCENT_SELECTED : ACCENT;
           const cardAnchorX = geometry.cardX;
           return (
             <g key={annotation.id}>
-              {/* 指し示す対象のバーを枠線で強調する。塗りは載せないので
-                  バー本来の色はそのまま見える。 */}
-              {geometry.bars.map((bar, index) => (
+              {/* 選択中の注釈だけ、指し示す対象のバーを薄い赤の細線で示す。常時出すと
+                  バー自身の枠と重なって太い二重線に見えるので、範囲はふだん
+                  ブラケットだけで表す。 */}
+              {isSelected && geometry.bars.map((bar, index) => (
                 <rect
                   key={index}
-                  x={bar.x + 0.5}
-                  y={bar.y + 0.5}
-                  width={Math.max(1, bar.width - 1)}
-                  height={Math.max(1, bar.height - 1)}
+                  x={bar.x + 1.5}
+                  y={bar.y + 1.5}
+                  width={Math.max(1, bar.width - 3)}
+                  height={Math.max(1, bar.height - 3)}
                   fill="none"
-                  stroke={color}
-                  strokeWidth={isSelected ? 1.6 : 1}
+                  stroke={TARGET_MARK}
+                  strokeWidth={1}
                 />
               ))}
               {/* 対象行を括る右向きブラケット */}
@@ -203,9 +322,12 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
         })}
       </svg>
 
-      {/* 本文カード */}
+      {/* 本文カードと右クリックメニュー。入れ物は大きさを持たない原点の div で、
+          カードの座標は今までどおりグリッド内容の左上基準。z-index を付けないのは、
+          スタッキングコンテキストを作ってメニュー(fixed)を閉じ込めないため。 */}
+      <div ref={containerRef} style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0 }}>
       {geometries.map(({ annotation, geometry }) => {
-        const isSelected = annotation.id === selectedId && !isExporting;
+        const isSelected = selectedIdSet.has(annotation.id) && !isExporting;
         const isEditing = annotation.id === editingId;
         return (
           <div
@@ -233,11 +355,13 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
               zIndex: 9,
             }}
             onMouseDown={(event) => startDrag(event, annotation)}
-            onClick={(event) => { event.stopPropagation(); dispatch(setSelectedAnnotationId(annotation.id)); }}
+            onClick={(event) => event.stopPropagation()}
+            onContextMenu={() => {
+              if (!selectedIdSet.has(annotation.id)) dispatch(setSelectedAnnotationIds([annotation.id]));
+            }}
             onDoubleClick={(event) => {
               event.stopPropagation();
-              setDraft(annotation.text);
-              setEditingId(annotation.id);
+              startEdit(annotation);
             }}
           >
             {isEditing ? (
@@ -263,7 +387,7 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
             ) : (
               annotation.text || <span style={{ color: '#9a9a9a' }}>{t('Double-click to edit')}</span>
             )}
-            {isSelected && !isEditing && (
+            {isSelected && !isEditing && effectiveSelectedIds.length === 1 && (
               <button
                 type="button"
                 title={t('Delete') ?? 'Delete'}
@@ -281,6 +405,8 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
           </div>
         );
       })}
+      {!editingId && <ContextMenu items={menuItems} targetRef={containerRef} />}
+      </div>
     </>
   );
 });
