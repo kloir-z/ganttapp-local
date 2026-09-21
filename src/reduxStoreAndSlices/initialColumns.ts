@@ -9,18 +9,20 @@ export const initialColumns = [
   { columnId: "actualStartDate", columnName: "ActS", width: 50, resizable: true, reorderable: true, visible: true },
   { columnId: "actualEndDate", columnName: "ActE", width: 50, resizable: true, reorderable: true, visible: true },
   { columnId: "progress", columnName: "Prog", width: 50, resizable: true, reorderable: true, visible: true },
-  { columnId: "dependency", columnName: "Dep", width: 60, resizable: true, reorderable: true, visible: true },
-  { columnId: "cpPredecessors", columnName: "CP", width: 60, resizable: true, reorderable: true, visible: true },
-  { columnId: "textColumn1", columnName: "Text1", width: 50, resizable: true, reorderable: true, visible: true },
-  { columnId: "textColumn2", columnName: "Text2", width: 50, resizable: true, reorderable: true, visible: true },
-  { columnId: "textColumn3", columnName: "Text3", width: 50, resizable: true, reorderable: true, visible: true },
-  // Text4〜7 は後から追加された拡張テキスト列。既存レイアウトを乱さないよう
-  // デフォルト非表示(列設定から表示できる)。
+  // 「進捗」より右の列は、使い始めに表を広げすぎないようデフォルト非表示
+  // (列設定から表示できる)。
+  { columnId: "dependency", columnName: "Dep", width: 60, resizable: true, reorderable: true, visible: false },
+  { columnId: "cpPredecessors", columnName: "CP", width: 60, resizable: true, reorderable: true, visible: false },
+  { columnId: "textColumn1", columnName: "Text1", width: 50, resizable: true, reorderable: true, visible: false },
+  { columnId: "textColumn2", columnName: "Text2", width: 50, resizable: true, reorderable: true, visible: false },
+  { columnId: "textColumn3", columnName: "Text3", width: 50, resizable: true, reorderable: true, visible: false },
+  // Text4〜7 は後から追加された拡張テキスト列(古いプロジェクトには
+  // ensureExtendedTextColumns が非表示で差し込む)。
   { columnId: "textColumn4", columnName: "Text4", width: 50, resizable: true, reorderable: true, visible: false },
   { columnId: "textColumn5", columnName: "Text5", width: 50, resizable: true, reorderable: true, visible: false },
   { columnId: "textColumn6", columnName: "Text6", width: 50, resizable: true, reorderable: true, visible: false },
   { columnId: "textColumn7", columnName: "Text7", width: 50, resizable: true, reorderable: true, visible: false },
-  { columnId: "isIncludeHolidays", columnName: "IncHol", width: 50, resizable: true, reorderable: true, visible: true },
+  { columnId: "isIncludeHolidays", columnName: "IncHol", width: 50, resizable: true, reorderable: true, visible: false },
 ]
 
 // All text-column ids, in order. Shared by the color-basis feature and the
