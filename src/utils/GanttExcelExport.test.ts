@@ -618,11 +618,11 @@ describe('チャート注釈のオートシェイプ', () => {
     expect(sheet).not.toContain('<drawing ');
   });
 
-  it('対象バーの強調枠・括弧・引き出し線・カードを図形として出す', async () => {
+  it('括弧・引き出し線・カードを図形として出す(対象バーの枠は出さない)', async () => {
     const xml = (await drawingOf({ ...baseParams(twoRows), annotations: [annotation()] }))!;
     expect(xml).toBeTruthy();
-    // バー2本分の rect + rightBracket + line + roundRect
-    expect((xml.match(/prst="rect"/g) || [])).toHaveLength(2);
+    // 画面と同じく、選択していない注釈には対象バーの枠を付けない
+    expect(xml).not.toContain('prst="rect"');
     expect(xml).toContain('prst="rightBracket"');
     expect(xml).toContain('prst="line"');
     expect(xml).toContain('prst="roundRect"');
@@ -630,6 +630,13 @@ describe('チャート注釈のオートシェイプ', () => {
     expect(xml).toContain('<a:t>承認待ち</a:t>');
     expect(xml).toContain('<xdr:oneCellAnchor>');
     expect(xml).not.toContain('twoCellAnchor');
+  });
+
+  it('カードを括弧より上に動かした引き出し線は上下反転して右上がりに描く', async () => {
+    const up = (await drawingOf({ ...baseParams(twoRows), annotations: [annotation({ offsetY: -40 })] }))!;
+    expect(up).toContain('flipV="1"');
+    const down = (await drawingOf({ ...baseParams(twoRows), annotations: [annotation({ offsetY: 40 })] }))!;
+    expect(down).not.toContain('flipV');
   });
 
   it('図形パートの参照(rels/コンテンツタイプ/シート)が揃っている', async () => {

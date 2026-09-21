@@ -78,6 +78,67 @@ describe('computeAnnotationGeometry', () => {
     expect(g.bars).toHaveLength(1);
   });
 
+  it('折りたたみ中のセパレータは枠を付けず、集計範囲をブラケット位置にだけ使う', () => {
+    const rows: [string, WBSData][] = [
+      ['r1', chartRow({ id: 'r1' })],
+      ['s1', sepRow({ id: 's1', isCollapsed: true, minStartDate: '2024/06/03', maxEndDate: '2024/06/20' })],
+    ];
+    const g = compute(annotation({ startRowId: 'r1', endRowId: 's1' }), rows)!;
+    expect(g.bars).toHaveLength(1);
+    // 06/20 は index 19 → 右端 200
+    expect(g.bracketX).toBe(200 + BRACKET_GAP);
+  });
+
+  it('展開中のセパレータの集計範囲は、範囲外の配下タスクを含むので位置決めに使わない', () => {
+    const rows: [string, WBSData][] = [
+      ['r1', chartRow({ id: 'r1' })],
+      ['s1', sepRow({ id: 's1', minStartDate: '2024/06/03', maxEndDate: '2024/06/20' })],
+      ['r2', chartRow({ id: 'r2' })],
+    ];
+    const g = compute(annotation({ startRowId: 'r1', endRowId: 'r2' }), rows)!;
+    // r1/r2 とも 06/07(index 6)まで → 右端 70
+    expect(g.bracketX).toBe(70 + BRACKET_GAP);
+  });
+
+  it('折りたたみで隠れた端点は、それを畳んでいるセパレータへ付け替える', () => {
+    const allRowIds = ['r1', 's1', 'r2', 'r3', 's2'];
+    const visible: [string, WBSData][] = [
+      ['r1', chartRow({ id: 'r1' })],
+      ['s1', sepRow({ id: 's1', isCollapsed: true, minStartDate: '2024/06/05', maxEndDate: '2024/06/12' })],
+      ['s2', sepRow({ id: 's2' })],
+    ];
+    const g = computeAnnotationGeometry({
+      annotation: annotation({ startRowId: 'r1', endRowId: 'r3' }),
+      filteredData: visible, allRowIds, dateIndex, dateKeys, toKey, cellWidth: CELL, rowHeight: ROW_H,
+    })!;
+    expect(g.rowStart).toBe(0);
+    expect(g.rowEnd).toBe(1);
+    // 両端とも隠れていればセパレータ1行を指す
+    const both = computeAnnotationGeometry({
+      annotation: annotation({ startRowId: 'r2', endRowId: 'r3' }),
+      filteredData: visible, allRowIds, dateIndex, dateKeys, toKey, cellWidth: CELL, rowHeight: ROW_H,
+    })!;
+    expect([both.rowStart, both.rowEnd]).toEqual([1, 1]);
+    expect(both.bars).toHaveLength(0);
+    expect(both.bracketX).toBe(120 + BRACKET_GAP);
+  });
+
+  it('ラベルがバーからはみ出すときは、ブラケットをラベルの先に置く', () => {
+    const rows: [string, WBSData][] = [
+      // 06/03〜06/04 の短いバー(右端 40px)に長い名前。1文字 10px とする。
+      ['r1', chartRow({ id: 'r1', plannedStartDate: '2024/06/03', plannedEndDate: '2024/06/04', displayName: 'abcdefghij', progress: '50%' })],
+    ];
+    const g = computeAnnotationGeometry({
+      annotation: annotation({ startRowId: 'r1', endRowId: 'r1' }),
+      filteredData: rows, dateIndex, dateKeys, toKey, cellWidth: CELL, rowHeight: ROW_H,
+      measureText: (text) => text.length * 10,
+    })!;
+    // 左端 20 + 名前 100 + 進捗 30 + 余白 8×2 = 166
+    expect(g.bracketX).toBe(166 + BRACKET_GAP);
+    // バーの強調矩形はバーそのものの幅のまま
+    expect(g.bars[0].width).toBe(20);
+  });
+
   it('両方の端点が無ければ描画しない', () => {
     expect(compute(annotation({ startRowId: 'x', endRowId: 'y' }), threeRows)).toBeNull();
   });

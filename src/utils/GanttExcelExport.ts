@@ -91,7 +91,7 @@ const ANNOTATION_CARD_BG = 'FFFDF0';
 const ANNOTATION_TEXT = '333333';
 
 export interface AnnotationShape {
-  kind: 'rect' | 'bracket' | 'line' | 'card';
+  kind: 'bracket' | 'line' | 'card';
   // oneCellAnchor の起点(0-based の列・行)とセル内オフセット(EMU)
   col: number;
   colOff: number;
@@ -101,6 +101,9 @@ export interface AnnotationShape {
   cx: number;
   cy: number;
   text?: string;
+  // 線を上下反転する(右上がり・左下がりの線)。図形の枠は常に左上から右下へ
+  // 広がるので、そのままだと線は必ず左上→右下の向きになる。
+  flipV?: boolean;
 }
 
 const xmlEscape = (value: string): string =>
@@ -240,6 +243,8 @@ const annotationAnchor = (
 export interface AnnotationShapeParams {
   annotations: ChartAnnotation[];
   rows: WBSData[];
+  // 折りたたみ前の全行ID(表示順)。隠れた端点をセパレータへ付け替えるため。
+  allRowIds?: string[];
   dateKeys: string[];
   wbsColCount: number;
   cellWidth: number;
@@ -248,7 +253,7 @@ export interface AnnotationShapeParams {
 // 注釈をオートシェイプの仕様リストに変換する。座標計算は画面描画と共通の
 // computeAnnotationGeometry を使い、行高だけ Excel の 15pt(=20px)に読み替える。
 export const buildAnnotationShapes = ({
-  annotations, rows, dateKeys, wbsColCount, cellWidth,
+  annotations, rows, allRowIds, dateKeys, wbsColCount, cellWidth,
 }: AnnotationShapeParams): AnnotationShape[] => {
   if (!annotations || annotations.length === 0 || dateKeys.length === 0) return [];
   const dateIndex: { [key: string]: number } = {};
@@ -258,36 +263,45 @@ export const buildAnnotationShapes = ({
   const shapes: AnnotationShape[] = [];
   annotations.forEach((annotation) => {
     const geometry = computeAnnotationGeometry({
-      annotation, filteredData, dateIndex, dateKeys, toKey,
+      annotation, filteredData, allRowIds, dateIndex, dateKeys, toKey,
       cellWidth, rowHeight: EXCEL_ROW_HEIGHT_PX,
+      // バーのラベルは 9pt = 12px。displayWidth は全角 1・半角 0.5 で数えるので、
+      // 全角 ≒ 12px・半角 ≒ 6px になる。括弧をラベルの先に置くための目安。
+      measureText: (text) => displayWidth(text) * 12,
     });
     if (!geometry) return;
 
-    const push = (kind: AnnotationShape['kind'], x: number, y: number, w: number, h: number, text?: string) => {
+    const push = (
+      kind: AnnotationShape['kind'], x: number, y: number, w: number, h: number,
+      text?: string, flipV?: boolean,
+    ) => {
       shapes.push({
         kind,
         ...annotationAnchor(x, y, wbsColCount, cellWidth, dateKeys.length),
         cx: Math.max(0, Math.round(w * EMU_PER_PX)),
         cy: Math.max(0, Math.round(h * EMU_PER_PX)),
         ...(text !== undefined ? { text } : {}),
+        ...(flipV ? { flipV } : {}),
       });
     };
 
-    // 指し示す対象のバーを枠線だけの矩形で強調する。図形はセルの上に浮くので、
-    // 罫線と違ってバーの塗りを切らない。
-    geometry.bars.forEach((bar) => push('rect', bar.x, bar.y, bar.width, bar.height));
+    // 対象バーの枠は出さない。画面でも枠は注釈を選択している間だけの目印で、
+    // ふだんの見た目は括弧だけ。Excel は「選択していない」状態の写しなのでそれに揃える。
     push('bracket', geometry.bracketX, geometry.bracketY, BRACKET_WIDTH, geometry.bracketHeight);
 
     const cardHeight = estimateAnnotationCardHeight(annotation.text, CARD_WIDTH);
     const cardTop = geometry.cardCenterY - cardHeight / 2;
     // 引き出し線はブラケット右辺の中央からカード左辺の中央へ。カードを動かすと
-    // 斜めになるが、oneCellAnchor は負のサイズを持てないので左上から描く。
+    // 斜めになるが、oneCellAnchor は負のサイズを持てないので左上から描き、
+    // 右上がり(または左下がり)のときは上下反転で向きを直す。
     const leadX1 = geometry.leaderX;
     const leadY1 = geometry.leaderY;
     const leadX2 = geometry.cardX;
     const leadY2 = geometry.cardCenterY;
+    const dx = leadX2 - leadX1;
+    const dy = leadY2 - leadY1;
     push('line', Math.min(leadX1, leadX2), Math.min(leadY1, leadY2),
-      Math.abs(leadX2 - leadX1), Math.abs(leadY2 - leadY1));
+      Math.abs(dx), Math.abs(dy), undefined, dx !== 0 && dy !== 0 && (dx < 0) !== (dy < 0));
     push('card', geometry.cardX, cardTop, CARD_WIDTH, cardHeight, annotation.text);
   });
   return shapes;
@@ -295,7 +309,7 @@ export const buildAnnotationShapes = ({
 
 const shapeXml = (shape: AnnotationShape, id: number): string => {
   const geom = shape.kind === 'bracket' ? 'rightBracket' : shape.kind === 'line' ? 'line'
-    : shape.kind === 'card' ? 'roundRect' : 'rect';
+    : 'roundRect';
   const fill = shape.kind === 'card'
     ? `<a:solidFill><a:srgbClr val="${ANNOTATION_CARD_BG}"/></a:solidFill>`
     : '<a:noFill/>';
@@ -309,7 +323,7 @@ const shapeXml = (shape: AnnotationShape, id: number): string => {
     + `<xdr:ext cx="${shape.cx}" cy="${shape.cy}"/>`
     + `<xdr:sp macro="" textlink="">`
     + `<xdr:nvSpPr><xdr:cNvPr id="${id}" name="Annotation ${shape.kind} ${id}"/><xdr:cNvSpPr txBox="1"/></xdr:nvSpPr>`
-    + `<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${shape.cx}" cy="${shape.cy}"/></a:xfrm>`
+    + `<xdr:spPr><a:xfrm${shape.flipV ? ' flipV="1"' : ''}><a:off x="0" y="0"/><a:ext cx="${shape.cx}" cy="${shape.cy}"/></a:xfrm>`
     + `<a:prstGeom prst="${geom}"><a:avLst/></a:prstGeom>${fill}`
     + `<a:ln w="9525"><a:solidFill><a:srgbClr val="${ANNOTATION_ACCENT}"/></a:solidFill></a:ln></xdr:spPr>`
     + `<xdr:txBody><a:bodyPr vertOverflow="clip" wrap="square" lIns="45720" tIns="27432" rIns="45720" bIns="27432" anchor="ctr"/>`
@@ -1132,6 +1146,7 @@ export const buildGanttXlsxBuffer = async (params: BuildGanttWorkbookParams): Pr
   const shapes = buildAnnotationShapes({
     annotations: params.annotations || [],
     rows: layout.rows,
+    allRowIds: Object.keys(params.data),
     // toKey と同じ 'YYYYMMDD' 形式で揃える。
     dateKeys: layout.dates.map((d) => d.format('YYYYMMDD')),
     wbsColCount: layout.wbsColumns.length,
