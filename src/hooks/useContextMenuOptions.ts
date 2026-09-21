@@ -438,24 +438,24 @@ export const useContextMenuOptions = ({
             children: t("Functions"),
             items: [
                 {
-                    children: selectedRowIds && selectedRowIds.length > 1
+                    children: targetRowIds.length > 1
                         ? t("Convert selected DisplayName only rows to separators")
                         : t("Convert DisplayName only rows to separators"),
                     onClick: () => {
-                        const targetIds = selectedRowIds && selectedRowIds.length > 1 ? selectedRowIds : undefined;
-                        dispatch(convertDisplayNameOnlyRowsToSeparator(targetIds));
+                        // 2行以上選んでいるときだけ範囲を絞る(それ以外は全行が対象)
+                        dispatch(convertDisplayNameOnlyRowsToSeparator(targetRowIds.length > 1 ? targetRowIds : undefined));
                     },
                     path: `${pathCounter}.1`
                 },
                 {
                     children: t("Create task chain"),
                     onClick: () => {
-                        if (selectedRowIds && selectedRowIds.length >= 2) {
+                        if (targetRowIds.length >= 2) {
                             dispatch(pushPastState());
-                            dispatch(createTaskChain(selectedRowIds));
+                            dispatch(createTaskChain(targetRowIds));
                         }
                     },
-                    disabled: !selectedRowIds || selectedRowIds.length < 2,
+                    disabled: targetRowIds.length < 2,
                     path: `${pathCounter}.2`
                 },
                 {
@@ -474,13 +474,13 @@ export const useContextMenuOptions = ({
                     // 完了後は結果がすぐ見えるようクリティカルパス表示も ON にする。
                     children: t("Create critical path chain"),
                     onClick: () => {
-                        if (selectedRowIds && selectedRowIds.length >= 2) {
+                        if (targetRowIds.length >= 2) {
                             dispatch(pushPastState());
-                            dispatch(createCpChain(selectedRowIds));
+                            dispatch(createCpChain(targetRowIds));
                             dispatch(setShowCriticalPath(true));
                         }
                     },
-                    disabled: !selectedRowIds || selectedRowIds.length < 2,
+                    disabled: targetRowIds.length < 2,
                     path: `${pathCounter}.4`
                 },
                 {
@@ -488,25 +488,22 @@ export const useContextMenuOptions = ({
                     // createCpChain と違い既存の CP 先行を上書きしない。
                     children: t("Add critical path predecessors"),
                     onClick: () => {
-                        if (selectedRowIds && selectedRowIds.length >= 2) {
+                        if (targetRowIds.length >= 2) {
                             dispatch(pushPastState());
-                            dispatch(addCpPredecessors(selectedRowIds));
+                            dispatch(addCpPredecessors(targetRowIds));
                             dispatch(setShowCriticalPath(true));
                         }
                     },
-                    disabled: !selectedRowIds || selectedRowIds.length < 2,
+                    disabled: targetRowIds.length < 2,
                     path: `${pathCounter}.5`
                 },
                 {
-                    children: (selectedRowIds && selectedRowIds.length > 0) || entry
+                    children: targetRowIds.length > 0
                         ? t("Clear critical path links for selected rows")
                         : t("Clear critical path links for all rows"),
                     onClick: () => {
-                        const targetIds = selectedRowIds && selectedRowIds.length > 0
-                            ? selectedRowIds
-                            : entry ? [entry.id] : undefined;
                         dispatch(pushPastState());
-                        dispatch(clearCpPredecessors(targetIds));
+                        dispatch(clearCpPredecessors(targetRowIds.length > 0 ? targetRowIds : undefined));
                     },
                     path: `${pathCounter}.6`
                 }

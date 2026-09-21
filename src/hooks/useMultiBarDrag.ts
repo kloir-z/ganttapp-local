@@ -73,13 +73,12 @@ export const useMultiBarDrag = ({ gridRef, setCanGridRefDrag }: UseMultiBarDragP
     const state = store.getState();
     if (state.history?.isViewingPast) return false;
 
-    // 掴んだバーと同じ種別の選択だけを動かす。予定バーのドラッグで実績バーは動かない。
+    // 掴んだバーが選択に入っているときだけ一括ドラッグ。動かすのは **選択しているバー全部**
+    // で、掴んだ種別には限らない。予定と実績の両方を選んでいれば両方が同じ日数だけ動く
+    // (片方しか動かないと「選んだのに動かない」ことになるため)。
     const selectedBarKeys = state.uiFlags.selectedBarKeys;
+    if (selectedBarKeys.length < 2) return false;
     if (!selectedBarKeys.includes(barKeyOf(rowId, barType))) return false;
-    const targetRowIds = selectedBarKeys
-      .filter(key => barTypeOfBarKey(key) === barType)
-      .map(rowIdOfBarKey);
-    if (targetRowIds.length < 2) return false;
 
     const { data, holidays, regularDaysOff } = state.wbsData;
     const { cellWidth, wbsWidth, extendActualBarToToday } = state.baseSettings;
@@ -87,11 +86,13 @@ export const useMultiBarDrag = ({ gridRef, setCanGridRefDrag }: UseMultiBarDragP
 
     const planned: PlannedBarSnapshot[] = [];
     const actual: ActualBarSnapshot[] = [];
-    const events: EventBarSnapshot[] = [];
-    targetRowIds.forEach(selectedId => {
+    const eventsByRow = new Map<string, EventBarSnapshot>();
+    selectedBarKeys.forEach(barKey => {
+      const selectedId = rowIdOfBarKey(barKey);
+      const selectedType = barTypeOfBarKey(barKey);
       const row = data[selectedId];
       if (isChartRow(row)) {
-        if (barType === 'planned') {
+        if (selectedType === 'planned') {
           planned.push({
             id: selectedId,
             startDate: row.plannedStartDate ?? '',
@@ -106,9 +107,15 @@ export const useMultiBarDrag = ({ gridRef, setCanGridRefDrag }: UseMultiBarDragP
           if (snapshot) actual.push(snapshot);
         }
       } else if (isEventRow(row)) {
-        events.push({ id: selectedId, eventData: row.eventData });
+        // 同じ行で予定・実績の両方を選んでいることがあるので、1行1エントリにまとめる
+        const existing = eventsByRow.get(selectedId)
+          ?? { id: selectedId, eventData: row.eventData, movePlanned: false, moveActual: false };
+        if (selectedType === 'planned') existing.movePlanned = true;
+        else existing.moveActual = true;
+        eventsByRow.set(selectedId, existing);
       }
     });
+    const events = Array.from(eventsByRow.values());
     if (planned.length === 0 && actual.length === 0 && events.length === 0) return false;
 
     // 掴んだ位置をセルの左端にスナップする(単体ドラッグと同じ式)
@@ -129,18 +136,18 @@ export const useMultiBarDrag = ({ gridRef, setCanGridRefDrag }: UseMultiBarDragP
   const applyGridSteps = useCallback((gridSteps: number) => {
     const session = sessionRef.current;
     if (!session) return;
-    const { barType, planned, actual, events, holidays, regularDaysOff } = session;
+    const { planned, actual, events, holidays, regularDaysOff } = session;
 
-    if (barType === 'planned' && planned.length > 0) {
+    if (planned.length > 0) {
       // 依存を優先して並べ直す版へ渡す。連鎖の上流で掴んだ行が起点になり、
       // 前工程は引っ張られ、後続は定義どおりの位置へ並ぶ(reducer 側のコメント参照)。
       dispatch(setPlannedDatesFromDrag(computeShiftedPlannedDates(planned, gridSteps, holidays, regularDaysOff)));
     }
-    if (barType === 'actual' && actual.length > 0) {
+    if (actual.length > 0) {
       dispatch(setActualDates(computeShiftedActualDates(actual, gridSteps)));
     }
     if (events.length > 0) {
-      const shifted = computeShiftedEventRows(events, gridSteps, barType === 'planned');
+      const shifted = computeShiftedEventRows(events, gridSteps);
       if (shifted.length > 0) {
         dispatch(updateEventRows(shifted));
       }

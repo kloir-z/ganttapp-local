@@ -29,6 +29,9 @@ export interface ActualBarSnapshot {
 export interface EventBarSnapshot {
   id: string;
   eventData: EventData[];
+  /** この行で動かすイベントの種別。選択しているバーだけを動かすための指定。 */
+  movePlanned: boolean;
+  moveActual: boolean;
 }
 
 export interface ShiftedDates {
@@ -84,19 +87,19 @@ export const computeShiftedActualDates = (
 };
 
 /**
- * イベント行の平行移動。掴んだバーの種別(予定/実績)と同じ isPlanned のイベントだけを動かす。
- * 選択の粒度は「行」なので、同じ行に同種のイベントが複数あればまとめて動く。
+ * イベント行の平行移動。選択しているバーの種別(予定/実績)のイベントだけを動かす。
+ * 同じ行の同じ種別のイベントが複数あれば、それらはまとめて動く。
  */
 export const computeShiftedEventRows = (
   snapshots: EventBarSnapshot[],
-  gridSteps: number,
-  isPlanned: boolean
+  gridSteps: number
 ): { id: string; eventData: EventData[] }[] => {
   const results: { id: string; eventData: EventData[] }[] = [];
-  snapshots.forEach(({ id, eventData }) => {
+  snapshots.forEach(({ id, eventData, movePlanned, moveActual }) => {
     let changed = false;
     const shifted = eventData.map(event => {
-      if (event.isPlanned !== isPlanned || !event.startDate || !event.endDate) {
+      const shouldMove = event.isPlanned ? movePlanned : moveActual;
+      if (!shouldMove || !event.startDate || !event.endDate) {
         return event;
       }
       changed = true;

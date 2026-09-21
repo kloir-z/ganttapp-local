@@ -149,12 +149,17 @@ describe('複数バーの一括移動と依存関係', () => {
     };
     store.dispatch(setEntireData({ ...data, event0: eventRow }));
 
-    const snapshot = [{ id: 'event0', eventData: (store.getState().wbsData.data['event0'] as EventRow).eventData }];
-    store.dispatch(updateEventRows(computeShiftedEventRows(snapshot, 3, true)));
+    const snapshot = [{
+      id: 'event0',
+      eventData: (store.getState().wbsData.data['event0'] as EventRow).eventData,
+      movePlanned: true,
+      moveActual: false,
+    }];
+    store.dispatch(updateEventRows(computeShiftedEventRows(snapshot, 3)));
 
     const updated = store.getState().wbsData.data['event0'] as EventRow;
     expect(updated.eventData[0].startDate).toBe('2026/07/13');
-    // 予定バーを掴んだドラッグでは、実績イベントは動かない
+    // 予定イベントだけを選んでいるので、実績イベントは動かない
     expect(updated.eventData[1].startDate).toBe('2026/07/12');
   });
 });

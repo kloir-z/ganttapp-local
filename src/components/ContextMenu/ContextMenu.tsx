@@ -77,6 +77,10 @@ const ContextMenu: React.FC<ContextMenuProps> = memo(({ items, targetRef }) => {
   return isVisible ? (
     <StyledMenu
       ref={menuRef}
+      // チャートの上に浮いている UI の印。チャート側の「空白を押した」判定から除外され、
+      // 矩形選択の開始やバー選択の解除が起きないようにする(メニュー操作の途中で
+      // 選択が消えると、その再描画で項目が無効化されてしまう)。
+      data-chart-overlay="true"
       style={{ top: `${menuPosition.y}px`, left: `${menuPosition.x}px` }}
     >
       {items?.map((item, index) => (

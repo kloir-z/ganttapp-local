@@ -74,6 +74,7 @@ function Gantt() {
   // パン操作(ドラッグ)と区別したいので、押した位置とバー上かどうかを覚えておく。
   const downClientRef = useRef({ x: 0, y: 0 });
   const isMouseDownOnBarRef = useRef(false);
+  const isMouseDownOnOverlayRef = useRef(false);
   // 矩形選択。始点はチャート内容座標(スクロール込み)で持つので、選択中にスクロールしても
   // 矩形が内容に貼り付いたままになる。
   const marqueeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -183,7 +184,15 @@ function Gantt() {
     if (event.button === 0) {
       isMouseDownRef.current = true;
       downClientRef.current = { x: event.clientX, y: event.clientY };
-      isMouseDownOnBarRef.current = Boolean((event.target as HTMLElement | null)?.closest?.('[data-bar-row-id]'));
+      const target = event.target as HTMLElement | null;
+      isMouseDownOnBarRef.current = Boolean(target?.closest?.('[data-bar-row-id]'));
+      // チャートの上に浮いている UI(右クリックメニュー・注釈カード)を押したときは、
+      // 「チャートの空白を押した」とは扱わない。矩形選択も始めず、選択も解除しない。
+      if (target?.closest?.('[data-chart-overlay]')) {
+        isMouseDownOnOverlayRef.current = true;
+        return;
+      }
+      isMouseDownOnOverlayRef.current = false;
       // 選択モード中にバー以外を掴んだら、パンではなく矩形選択を始める
       if (isBarSelectionMode && !isMouseDownOnBarRef.current) {
         const point = toContentPoint(event);
@@ -236,6 +245,12 @@ function Gantt() {
   }, [cellWidth, dateArray, dispatch, extendActualBarToToday, filteredData, rowHeight]);
 
   const handleMouseUp = useCallback((event: MouseEvent) => {
+    // 浮いている UI を押して離したときは何もしない(選択をそのまま保つ)
+    if (isMouseDownOnOverlayRef.current) {
+      isMouseDownOnOverlayRef.current = false;
+      isMouseDownRef.current = false;
+      return;
+    }
     // 矩形選択の終了。掛かったバーはドラッグ中に反映済みなので、ここでは
     // 「引かずにクリックしただけ」= 選択を外す、だけを見る。
     if (marqueeStartRef.current) {

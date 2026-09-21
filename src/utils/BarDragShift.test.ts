@@ -114,8 +114,8 @@ describe('computeShiftedEventRows', () => {
     { startDate: '2026/07/20', endDate: '2026/07/21', isPlanned: true, eachDisplayName: 'review' },
   ];
 
-  it('掴んだバーと同じ種別のイベントだけ動かす(同じ行の同種は全部動く)', () => {
-    const result = computeShiftedEventRows([{ id: 'e1', eventData }], 2, true);
+  it('選択している種別のイベントだけ動かす(同じ行の同種は全部動く)', () => {
+    const result = computeShiftedEventRows([{ id: 'e1', eventData, movePlanned: true, moveActual: false }], 2);
 
     expect(result[0].eventData).toEqual([
       { startDate: '2026/07/08', endDate: '2026/07/09', isPlanned: true, eachDisplayName: 'kickoff' },
@@ -124,15 +124,23 @@ describe('computeShiftedEventRows', () => {
     ]);
   });
 
-  it('実績側を掴んだときは isPlanned=false のイベントだけ動く', () => {
-    const result = computeShiftedEventRows([{ id: 'e1', eventData }], 2, false);
+  it('実績だけ選んでいるときは isPlanned=false のイベントだけ動く', () => {
+    const result = computeShiftedEventRows([{ id: 'e1', eventData, movePlanned: false, moveActual: true }], 2);
 
     expect(result[0].eventData[0].startDate).toBe('2026/07/06');
     expect(result[0].eventData[1].startDate).toBe('2026/07/10');
   });
 
+  it('予定と実績の両方を選んでいれば両方動く', () => {
+    const result = computeShiftedEventRows([{ id: 'e1', eventData, movePlanned: true, moveActual: true }], 2);
+
+    expect(result[0].eventData.map(event => event.startDate)).toEqual([
+      '2026/07/08', '2026/07/10', '2026/07/22',
+    ]);
+  });
+
   it('動くイベントが1つも無い行は結果に含めない', () => {
     const onlyPlanned: EventData[] = [{ startDate: '2026/07/06', endDate: '2026/07/07', isPlanned: true, eachDisplayName: '' }];
-    expect(computeShiftedEventRows([{ id: 'e1', eventData: onlyPlanned }], 2, false)).toEqual([]);
+    expect(computeShiftedEventRows([{ id: 'e1', eventData: onlyPlanned, movePlanned: false, moveActual: true }], 2)).toEqual([]);
   });
 });

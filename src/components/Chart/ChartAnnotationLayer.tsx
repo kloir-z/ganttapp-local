@@ -211,6 +211,7 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
           <div
             key={annotation.id}
             data-annotation-id={annotation.id}
+            data-chart-overlay="true"
             style={{
               position: 'absolute',
               left: `${geometry.cardX}px`,
