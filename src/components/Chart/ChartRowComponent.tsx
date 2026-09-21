@@ -8,11 +8,10 @@ import RowNoteButton from './RowNoteButton';
 import { GanttRow } from '../../styles/GanttStyles';
 import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
-import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { ColorInfo, getColorSourceValue, resolveColorFromPalette } from '../../reduxStoreAndSlices/colorSlice';
 import { openDependencyBuilder } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { selectCriticalPath } from '../../reduxStoreAndSlices/criticalPathSelectors';
-import { useBarSelection, useSelectedBarRowIds } from '../../hooks/useBarSelection';
+import { useBarSelection } from '../../hooks/useBarSelection';
 import { useMultiBarDrag } from '../../hooks/useMultiBarDrag';
 import { useTranslation } from 'react-i18next';
 
@@ -100,8 +99,6 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
     barType === 'planned' ? plannedSelection : actualSelection
   ), [plannedSelection, actualSelection]);
   const { isMultiDragging, tryBeginMultiDrag } = useMultiBarDrag({ gridRef, setCanGridRefDrag });
-  // 選択中のバーの行を右クリックメニューへ渡し、選択した行に対して操作できるようにする
-  const selectedBarRowIds = useSelectedBarRowIds();
 
   const handleBarMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>, barType: 'planned' | 'actual') => {
     // Left button only. A right-click (to open the context menu / dependency
@@ -428,14 +425,15 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
     }
   }, [contextMenu, dispatch, entry.id]);
 
-  const menuOptions = useContextMenuOptions({
+  // メニュー項目はメニューが開いている間だけ組み立てる(LazyContextMenuItems)。
+  // 選択中のバーの行が操作対象になるので、選択した行に対してまとめて操作できる。
+  const menuOptions = useMemo(() => ({
     entry,
-    // 選択が無いときは undefined。空配列を渡すと「コピーした行を挿入」が無効化されてしまう
-    selectedRowIds: selectedBarRowIds.length > 0 ? selectedBarRowIds : undefined,
+    useBarSelectionAsRows: true,
     onDeleteBar: handleDeleteBar,
     onEditDependency: handleEditDependency,
     contextMenu
-  });
+  }), [contextMenu, entry, handleDeleteBar, handleEditDependency]);
 
   // 依存ハイライトの矩形(対象タスクのバーが占めるセル範囲)。ChartBar と同じ式で算出する。
   const dependencyHighlightRect = useMemo(() => {
@@ -568,7 +566,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
       )}
       <ContextMenu
         targetRef={ganttRowRef}
-        items={menuOptions}
+        options={menuOptions}
       />
     </GanttRow >
   );

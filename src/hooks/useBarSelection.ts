@@ -13,7 +13,7 @@
 //
 // 選択モード(uiFlags.isBarSelectionMode)中だけは、修飾なしクリックも追加/解除になる。
 // 囲んで選ぶためのモードなので、選択を積み増す操作のほうが自然なため。
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useDispatch, useSelector, useStore } from 'react-redux';
 import { RootState } from '../reduxStoreAndSlices/store';
 import {
@@ -118,23 +118,45 @@ export const useBarSelection = (rowId: string, barType: BarType) => {
     dispatch(setSelectedBars({ barKeys: [barKey], anchorBarKey: barKey }));
   }, [barKey, dispatch, store]);
 
-  return { isBarSelected, handleSelectionMouseDown, handleSelectionClick };
+  // 返り値の同一性を保つ。呼び出し側はこれを useCallback の依存に入れているので、
+  // 毎回新しいオブジェクトを返すと行のハンドラが再レンダーのたびに作り直される。
+  return useMemo(
+    () => ({ isBarSelected, handleSelectionMouseDown, handleSelectionClick }),
+    [isBarSelected, handleSelectionMouseDown, handleSelectionClick]
+  );
 };
+
+const EMPTY_BAR_KEYS: string[] = [];
 
 /**
  * 選択中のバーが属する行IDを、重複なく選択順で返す。
  * チャートの右クリックメニューに渡して、選択したバーの行に対して
  * 行削除・コピー・色分け・注釈追加などの操作をかけられるようにする。
  * data は購読しない(全行が再レンダーされるのを避けるため)。
+ * 行コンポーネントで直接使わないこと。矩形選択中はマウス移動ごとに選択が変わるので、
+ * 表示中の全行が毎回再レンダーされる(チャートの行は LazyContextMenuItems 経由で、
+ * メニューが開いている間だけ使っている)。
+ *
+ * 行の集合が変わらない選択変更(同じ行の実績バーを足した等)では前回の配列をそのまま返し、
+ * 受け取り側の useMemo を無駄に走らせない。
  */
 export const useSelectedBarRowIds = (): string[] => {
   const selectedBarKeys = useSelector((state: RootState) => state.uiFlags.selectedBarKeys);
+  const previousRef = useRef<string[]>(EMPTY_BAR_KEYS);
   return useMemo(() => {
+    const seen = new Set<string>();
     const rowIds: string[] = [];
     selectedBarKeys.forEach(key => {
       const rowId = rowIdOfBarKey(key);
-      if (!rowIds.includes(rowId)) rowIds.push(rowId);
+      if (seen.has(rowId)) return;
+      seen.add(rowId);
+      rowIds.push(rowId);
     });
+    const previous = previousRef.current;
+    if (previous.length === rowIds.length && previous.every((id, index) => id === rowIds[index])) {
+      return previous;
+    }
+    previousRef.current = rowIds;
     return rowIds;
   }, [selectedBarKeys]);
 };

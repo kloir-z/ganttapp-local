@@ -1,7 +1,7 @@
 // WBSInfo.tsx
 import React, { useCallback, useMemo, memo, useRef, useEffect, useState } from 'react';
 import { WBSData, isChartRow, isSeparatorRow, isEventRow, MyRange } from '../../types/DataTypes';
-import { Highlight, ReactGrid, Row, DefaultCellTypes, Id, HeaderCell, MenuOption, SelectionMode } from "@silevis/reactgrid";
+import { ReactGrid, Row, DefaultCellTypes, Id, HeaderCell, MenuOption, SelectionMode } from "@silevis/reactgrid";
 import { createChartRow, createSeparatorRow, createEventRow } from './utils/wbsRowCreators';
 import { handleGridChanges } from './utils/gridHandlers';
 import { useSelector, useDispatch } from 'react-redux';
@@ -25,6 +25,31 @@ import { ClipboardCell, cellToClipboardText } from './utils/clipboardCopy';
 import { buildWbsNumberMap } from '../../utils/wbsNumber';
 import { buildCpDisplayTextMap } from '../../utils/CriticalPath';
 import CpHelp from './CpHelp';
+
+// チャート側でバーを選んだ行を、表でも「選択中」と分かるように薄く塗る。
+// ReactGrid には選択範囲を外から与える API が無いので、行の添字(data-cell-rowidx)を狙った
+// <style> で着色する(右クリックメニューの操作対象は、チャート側のメニューへ行IDを渡して揃えている)。
+//
+// ReactGrid の highlights は使わない。highlights が変わるたびに ReactGrid は全セルの描画範囲を
+// 計算し直す(400 行で 1 回数十 ms)ので、矩形選択のように引いている最中に選択が変わり続けると、
+// 表の再計算がチャートの追従を止めてしまう。選択の購読もこの小さなコンポーネントに閉じ込め、
+// 選択が変わっても WBSInfo(= ReactGrid)自体は再レンダーされないようにしている。
+const BarSelectionRowStyle: React.FC<{ rows: Row<any>[] }> = memo(({ rows }) => {
+  const selectedBarRowIds = useSelectedBarRowIds();
+  const css = useMemo(() => {
+    if (selectedBarRowIds.length === 0) return '';
+    const selected = new Set(selectedBarRowIds);
+    const selectors: string[] = [];
+    rows.forEach((row, index) => {
+      if (selected.has(String(row.rowId))) {
+        selectors.push(`[data-wbs-grid] .rg-cell[data-cell-rowidx="${index}"]`);
+      }
+    });
+    if (selectors.length === 0) return '';
+    return `${selectors.join(',')} { background-color: rgba(53, 121, 248, 0.12) !important; }`;
+  }, [rows, selectedBarRowIds]);
+  return css ? <style>{css}</style> : null;
+});
 
 const WBSInfo: React.FC = memo(() => {
   const activeModal = useSelector((state: RootState) => state.uiFlags.activeModal);
@@ -63,11 +88,6 @@ const WBSInfo: React.FC = memo(() => {
   const isCpColumnSelected = useMemo(() => {
     return selectedRanges.selectedColumnIds.includes('cpPredecessors');
   }, [selectedRanges.selectedColumnIds]);
-
-  // チャート側でバーを選んだ行を、表でも「選択中」と分かるようにハイライトする。
-  // ReactGrid には選択範囲を外から与える API が無いので、セルのハイライトで代用する
-  // (右クリックメニューの操作対象は、チャート側のメニューへ行IDを渡して揃えている)。
-  const selectedBarRowIds = useSelectedBarRowIds();
 
   const { visibleColumns, visibleColumnIds } = useMemo(() => {
     let filteredColumns = columns.filter(column => column.visible);
@@ -240,19 +260,6 @@ const WBSInfo: React.FC = memo(() => {
     onRenameColumn: setRenameColumnTarget
   });
 
-  const barSelectionHighlights = useMemo<Highlight[]>(() => {
-    // 数が多いときは描画コストが見合わないので諦める(選択自体は効いている)
-    if (selectedBarRowIds.length === 0 || selectedBarRowIds.length > 200) return [];
-    const highlights: Highlight[] = [];
-    selectedBarRowIds.forEach(rowId => {
-      if (!data[rowId]) return;
-      visibleColumnIds.forEach(columnId => {
-        highlights.push({ rowId, columnId, className: 'rg-bar-selected-cell', borderColor: 'transparent' });
-      });
-    });
-    return highlights;
-  }, [selectedBarRowIds, visibleColumnIds, data]);
-
   const handleSelectionChanged = useCallback((selectedRanges: MyRange[]) => {
     const selectedRowIds: Set<string> = new Set();
     const selectedColumnIds: Set<string> = new Set();
@@ -373,13 +380,13 @@ const WBSInfo: React.FC = memo(() => {
   }, [activeModal, allSelectedColumnsVisible, cKeyDownActive, copiedRows, dataArray, dispatch, insertCopiedRow, vKeyDownActive, renameColumnTarget]);
 
   return (
-    <div ref={wbsRef}>
+    <div ref={wbsRef} data-wbs-grid>
+      <BarSelectionRowStyle rows={rows} />
       <ReactGrid
         rows={rows}
         columns={visibleColumns}
         onCellsChanged={isViewingPast ? undefined : (changes) => handleGridChanges(dispatch, data, changes, columns, holidays, regularDaysOff, consumePastedRowIds(), dateFormat)}
         onColumnResized={isViewingPast ? undefined : onColumnResize}
-        highlights={barSelectionHighlights}
         stickyTopRows={1}
         stickyLeftColumns={1}
         enableRangeSelection

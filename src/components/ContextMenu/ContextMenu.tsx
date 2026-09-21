@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { useDispatch } from 'react-redux';
 import { setIsContextMenuOpen } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { closeAllSubMenus } from '../../reduxStoreAndSlices/subMenuSlice';
+import LazyContextMenuItems, { LazyContextMenuOptions } from './LazyContextMenuItems';
 
 const StyledMenu = styled.div`
   position: fixed;
@@ -16,10 +17,15 @@ const StyledMenu = styled.div`
 
 interface ContextMenuProps {
   items?: MenuItemProps[];
+  /**
+   * items の代わりに渡すと、メニューが開いている間だけ useContextMenuOptions で項目を組み立てる。
+   * チャートの行のように数が多いコンポーネントでは、閉じている間の計算と購読を省ける。
+   */
+  options?: LazyContextMenuOptions;
   targetRef: React.RefObject<HTMLElement>;
 }
 
-const ContextMenu: React.FC<ContextMenuProps> = memo(({ items, targetRef }) => {
+const ContextMenu: React.FC<ContextMenuProps> = memo(({ items, options, targetRef }) => {
   const dispatch = useDispatch();
   const [menuPosition, setMenuPosition] = useState<{ x: number, y: number }>({ x: 0, y: 0 });
   const [isVisible, setIsVisible] = useState(false);
@@ -83,7 +89,9 @@ const ContextMenu: React.FC<ContextMenuProps> = memo(({ items, targetRef }) => {
       data-chart-overlay="true"
       style={{ top: `${menuPosition.y}px`, left: `${menuPosition.x}px` }}
     >
-      {items?.map((item, index) => (
+      {options ? (
+        <LazyContextMenuItems options={options} closeMenu={closeMenu} />
+      ) : items?.map((item, index) => (
         <MenuItem
           key={index}
           closeMenu={closeMenu}

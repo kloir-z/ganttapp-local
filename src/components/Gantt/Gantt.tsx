@@ -1,6 +1,6 @@
 // Gantt.tsx
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector, useDispatch, useStore } from 'react-redux';
 import { RootState, undo, redo } from '../../reduxStoreAndSlices/store';
 import { setWbsWidth, setMaxWbsWidth, setScrollPosition } from '../../reduxStoreAndSlices/baseSettingsSlice';
 import { isChartRow, isEventRow, isSeparatorRow } from '../../types/DataTypes';
@@ -41,6 +41,7 @@ function Gantt() {
   const activeModal = useSelector((state: RootState) => state.uiFlags.activeModal);
   const { t } = useTranslation();
   const dispatch = useDispatch();
+  const store = useStore<RootState>();
   
   // Historical data for preview functionality
   const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
@@ -67,7 +68,9 @@ function Gantt() {
   const isExporting = useSelector((state: RootState) => state.uiFlags.isExporting);
   const isDependencyEditing = useSelector((state: RootState) => state.uiFlags.isDependencyEditing);
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
-  const selectedBarKeys = useSelector((state: RootState) => state.uiFlags.selectedBarKeys);
+  // 選択そのものはハンドラ内で store から読む。ここで配列を購読すると、矩形選択中は
+  // マウス移動ごとに Gantt 全体が再レンダーされるので、件数だけを購読する。
+  const selectedBarCount = useSelector((state: RootState) => state.uiFlags.selectedBarKeys.length);
   // 選択モード: ONの間、チャートの空白ドラッグはパンではなく矩形(ラバーバンド)選択になる
   const isBarSelectionMode = useSelector((state: RootState) => state.uiFlags.isBarSelectionMode);
   const extendActualBarToToday = useSelector((state: RootState) => state.baseSettings.extendActualBarToToday);
@@ -210,8 +213,9 @@ function Gantt() {
         if (point) {
           marqueeStartRef.current = point;
           marqueeAdditiveRef.current = event.ctrlKey || event.metaKey || event.shiftKey;
-          marqueeBaseRef.current = marqueeAdditiveRef.current ? selectedBarKeys : [];
-          marqueeAppliedRef.current = selectedBarKeys;
+          const currentKeys = store.getState().uiFlags.selectedBarKeys;
+          marqueeBaseRef.current = marqueeAdditiveRef.current ? currentKeys : [];
+          marqueeAppliedRef.current = currentKeys;
           canGridRefDragRef.current = false;
           return;
         }
@@ -221,11 +225,14 @@ function Gantt() {
         startYRef.current = event.clientY + gridRef.current.scrollTop;
       }
     }
-  }, [isBarSelectionMode, selectedBarKeys, toContentPoint]);
+  }, [isBarSelectionMode, store, toContentPoint]);
 
   // 矩形に掛かっているバーを求めて選択へ反映する。ドラッグ中に毎回呼ぶので、
   // 内容が変わらないときは dispatch しない(再レンダーを増やさないため)。
-  const applyMarqueeSelection = useCallback((rect: MarqueeRect) => {
+  // 日付キーの索引は dateArray が変わったときだけ作る。矩形選択はマウス移動ごとに
+  // 当たり判定をするので、そのたびに全日付を format し直すと重い。
+  // 行データの日付文字列 → キーの変換も同じ期間中は結果が変わらないので覚えておく。
+  const marqueeDateLookup = useMemo(() => {
     const dateIndex: { [key: string]: number } = {};
     const dateKeys: string[] = [];
     dateArray.forEach((date, index) => {
@@ -233,13 +240,23 @@ function Gantt() {
       dateIndex[key] = index;
       dateKeys.push(key);
     });
+    const keyCache = new Map<string, string>();
+    const toKey = (dateStr: string) => {
+      if (!dateStr) return '';
+      const cached = keyCache.get(dateStr);
+      if (cached !== undefined) return cached;
+      const parsed = cdate(dateStr);
+      const key = isNaN(+parsed.toDate()) ? '' : parsed.format('YYYY-MM-DD');
+      keyCache.set(dateStr, key);
+      return key;
+    };
+    return { dateIndex, dateKeys, toKey };
+  }, [dateArray]);
+
+  const applyMarqueeSelection = useCallback((rect: MarqueeRect) => {
+    const { dateIndex, dateKeys, toKey } = marqueeDateLookup;
     const hitBarKeys = collectBarsInMarquee({
-      filteredData, dateIndex, dateKeys,
-      toKey: (dateStr: string) => {
-        if (!dateStr) return '';
-        const parsed = cdate(dateStr);
-        return isNaN(+parsed.toDate()) ? '' : parsed.format('YYYY-MM-DD');
-      },
+      filteredData, dateIndex, dateKeys, toKey,
       rect, cellWidth, rowHeight, extendActualBarToToday,
       todayString: cdate().format('YYYY/MM/DD'),
     });
@@ -253,7 +270,7 @@ function Gantt() {
     }
     marqueeAppliedRef.current = merged;
     dispatch(setSelectedBars({ barKeys: merged, anchorBarKey: merged[merged.length - 1] ?? null }));
-  }, [cellWidth, dateArray, dispatch, extendActualBarToToday, filteredData, rowHeight]);
+  }, [cellWidth, dispatch, extendActualBarToToday, filteredData, marqueeDateLookup, rowHeight]);
 
   const handleMouseUp = useCallback((event: MouseEvent) => {
     // 浮いている UI を押して離したときは何もしない(選択をそのまま保つ)
@@ -270,7 +287,7 @@ function Gantt() {
       marqueeStartRef.current = null;
       setMarqueeRect(null);
       const isClick = !current || (Math.abs(current.x - start.x) <= 2 && Math.abs(current.y - start.y) <= 2);
-      if (isClick && !marqueeAdditiveRef.current && selectedBarKeys.length > 0) {
+      if (isClick && !marqueeAdditiveRef.current && store.getState().uiFlags.selectedBarKeys.length > 0) {
         dispatch(clearSelectedBars());
       }
       isMouseDownRef.current = false;
@@ -280,7 +297,7 @@ function Gantt() {
     }
     // バー以外の場所を(ドラッグせずに)クリックしたらバーの選択を解除する。
     // パン操作で選択が消えないよう、動いた距離で押しっぱなしのドラッグと区別する。
-    if (isMouseDownRef.current && !isMouseDownOnBarRef.current && selectedBarKeys.length > 0) {
+    if (isMouseDownRef.current && !isMouseDownOnBarRef.current && store.getState().uiFlags.selectedBarKeys.length > 0) {
       const movedDistance = Math.abs(event.clientX - downClientRef.current.x) + Math.abs(event.clientY - downClientRef.current.y);
       if (movedDistance < 3) {
         dispatch(clearSelectedBars());
@@ -293,13 +310,13 @@ function Gantt() {
     // dependency builder), the overlay misses it and drag-scroll stays disabled.
     canGridRefDragRef.current = true;
     calculateAndSetIndicatorPosition(event)
-  }, [calculateAndSetIndicatorPosition, dispatch, selectedBarKeys.length, toContentPoint]);
+  }, [calculateAndSetIndicatorPosition, dispatch, store, toContentPoint]);
 
   // Esc でバーの選択を解除し、選択モード中ならモードごと抜ける。行メモのウィンドウは
   // capture フェーズで Esc を止めて自分を閉じるので、そちらが開いているときは
   // ここまで届かない(メモ閉じが優先)。
   useEffect(() => {
-    if (selectedBarKeys.length === 0 && !isBarSelectionMode) return;
+    if (selectedBarCount === 0 && !isBarSelectionMode) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       if (isBarSelectionMode) {
@@ -310,15 +327,15 @@ function Gantt() {
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [dispatch, isBarSelectionMode, selectedBarKeys.length]);
+  }, [dispatch, isBarSelectionMode, selectedBarCount]);
 
   // 行の削除・ファイル読み込み・undo で消えた行のバーを選択から落とす
   useEffect(() => {
-    if (selectedBarKeys.length === 0) return;
-    if (selectedBarKeys.some(key => !data[rowIdOfBarKey(key)])) {
+    if (selectedBarCount === 0) return;
+    if (store.getState().uiFlags.selectedBarKeys.some(key => !data[rowIdOfBarKey(key)])) {
       dispatch(pruneSelectedBars(Object.keys(data)));
     }
-  }, [data, dispatch, selectedBarKeys]);
+  }, [data, dispatch, selectedBarCount, store]);
 
   const updateVisibleRange = useCallback(() => {
     if (!gridRef.current) return;
@@ -773,9 +790,9 @@ function Gantt() {
           }}
         >
           <span>{t('Drag to select bars (Esc to exit)')}</span>
-          {selectedBarKeys.length > 0 && (
+          {selectedBarCount > 0 && (
             <span style={{ padding: '0 6px', borderRadius: '8px', backgroundColor: 'rgba(255, 255, 255, 0.25)' }}>
-              {t('{{count}} selected', { count: selectedBarKeys.length })}
+              {t('{{count}} selected', { count: selectedBarCount })}
             </span>
           )}
         </div>

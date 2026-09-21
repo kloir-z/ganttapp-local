@@ -17,7 +17,7 @@ const selectWbsDataArray = createSelector(
     (data) => Object.values(data)
 );
 
-interface UseContextMenuOptionsProps {
+export interface UseContextMenuOptionsProps {
     entry?: WBSData;
     selectedRowIds?: string[];
     selectedColumnIds?: string[];

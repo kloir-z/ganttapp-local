@@ -6,7 +6,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import RowNoteButton from './RowNoteButton';
-import { useContextMenuOptions } from '../../hooks/useContextMenuOptions';
 import { MdChevronRight } from 'react-icons/md';
 
 interface SeparatorRowProps {
@@ -47,9 +46,8 @@ const SeparatorRowComponent: React.FC<SeparatorRowProps> = memo(({ entry, topPos
     return { lineStart, lineWidth };
   }, [entry.minStartDate, entry.maxEndDate, dateArray, cellWidth]);
 
-  const menuOptions = useContextMenuOptions({
-    entry
-  });
+  // メニュー項目はメニューが開いている間だけ組み立てる(LazyContextMenuItems)
+  const menuOptions = useMemo(() => ({ entry }), [entry]);
 
   return (
     <>
@@ -85,7 +83,7 @@ const SeparatorRowComponent: React.FC<SeparatorRowProps> = memo(({ entry, topPos
       </GanttRow>
       <ContextMenu
         targetRef={ganttRowRef}
-        items={menuOptions}
+        options={menuOptions}
       />
     </>
   );
