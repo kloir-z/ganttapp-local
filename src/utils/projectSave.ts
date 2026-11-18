@@ -16,6 +16,7 @@ import { setIsSavedChangesStore } from '../reduxStoreAndSlices/store';
 import { setIsSavedChangesColor } from '../reduxStoreAndSlices/colorSlice';
 import { setIsSavedChangesNotes } from '../reduxStoreAndSlices/notesSlice';
 import { setIsSavedChangesSettings, setRevisionId, setTitle } from '../reduxStoreAndSlices/baseSettingsSlice';
+import { setViewMode } from '../reduxStoreAndSlices/uiFlagSlice';
 import { buildExportOptionsFromState, buildProjectData, ProjectData, serializeToZip } from './ExportImportHandler';
 import { buildProjectHtml, htmlFileNameForTitle, readEmbeddedProjectData, readEmbeddedProjectDataFromHtml } from './HtmlSnapshotExport';
 import { downloadBlob } from './downloadBlob';
@@ -93,6 +94,8 @@ const commitSaved = (ctx: SaveContext, revisionId: string, titleOverride?: strin
   dispatch(setIsSavedChangesColor(true));
   dispatch(setIsSavedChangesNotes(true));
   dispatch(setIsSavedChangesSettings(true));
+  // 閲覧モードで保存したら、この先も手を入れるものとして編集モードにする
+  dispatch(setViewMode(false));
 };
 
 // 保存済みファイルに入っているプロジェクトの ID と版の ID を読む(読めなければ null)

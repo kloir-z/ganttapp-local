@@ -231,6 +231,10 @@ export class DraftSession {
         this.clearTimer();
       }
       this.lastSavedState = state;
+    } else if (state.uiFlags.isViewMode) {
+      // 閲覧モードでは下書きを書かない。基準点(最後に保存済みだった状態)だけは追い続けるので、
+      // 編集モードに切り替えた時点で、開いたファイルとの違いが下書きになる。
+      this.clearTimer();
     } else {
       this.schedule();
     }
@@ -263,7 +267,8 @@ export class DraftSession {
     this.clearTimer();
     if (!this.store) return this.queue;
     const state = this.store.getState();
-    if (isAllSaved(state)) return this.queue;
+    // 閲覧モードでは書かない(閉じれば消える。切り替える前の変更も、編集モードにしたら書く)
+    if (isAllSaved(state) || state.uiFlags.isViewMode) return this.queue;
     const project = projectFromState(state);
     const hash = projectContentHash(project);
     const baseHash = this.ensureBaseHash();
@@ -384,6 +389,13 @@ export class DraftSession {
     if (!projectId) return false;
     const { ownDirty, others } = await this.listOtherDrafts();
     return [ownDirty, ...others].some((record) => record?.status === 'dirty' && record.projectId === projectId);
+  }
+
+  // 起動前でも使える: そのプロジェクトの未保存の下書きが、どのタブのものでも残っているか
+  async storageHasDirtyDraft(projectId: string): Promise<boolean> {
+    if (!projectId) return false;
+    const records = await this.storage.list();
+    return records.some((record) => record.status === 'dirty' && record.projectId === projectId);
   }
 
   remove(draftId: string): Promise<void> {

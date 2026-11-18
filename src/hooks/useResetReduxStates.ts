@@ -2,6 +2,7 @@
 import { useDispatch } from 'react-redux';
 import { resetBaseSettings, setCurrentFileId, setHolidayInput, setProjectId } from '../reduxStoreAndSlices/baseSettingsSlice';
 import { resetColor } from '../reduxStoreAndSlices/colorSlice';
+import { setViewMode } from '../reduxStoreAndSlices/uiFlagSlice';
 import { resetNotes } from '../reduxStoreAndSlices/notesSlice';
 import { resetStore, setColumns, setDateFormat, setHolidays } from '../reduxStoreAndSlices/store';
 import { t } from 'i18next';
@@ -35,6 +36,8 @@ const useResetReduxStates = (): (options?: ResetOptions) => Promise<void> => {
         dispatch(resetColor());
         dispatch(setCurrentFileId(''));
         dispatch(setProjectId(uuidv4()));
+        // 新規作成・ファイルを開く・下書きを開くのは作業を始める操作なので、編集モードに戻す
+        dispatch(setViewMode(false));
         dispatch(setDateFormat(dateFormat));
 
         if (!skipNavigation) {

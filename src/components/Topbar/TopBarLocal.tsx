@@ -9,7 +9,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import TextField from '@mui/material/TextField';
 import { useDispatch, useSelector, useStore } from 'react-redux';
-import { setActiveModal, setBarSelectionMode, setIsLoading, setShowCriticalPath } from '../../reduxStoreAndSlices/uiFlagSlice';
+import { setActiveModal, setBarSelectionMode, setIsLoading, setShowCriticalPath, setViewMode } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { selectCriticalPath } from '../../reduxStoreAndSlices/criticalPathSelectors';
 import { RootState, undo, redo, setMessageInfo, removePastState } from '../../reduxStoreAndSlices/store';
 import { handleImport } from '../../utils/ExportImportHandler';
@@ -78,6 +78,7 @@ const TopBarLocal: React.FC = memo(() => {
 
   // Redux state
   const isBarSelectionMode = useSelector((state: RootState) => state.uiFlags.isBarSelectionMode);
+  const isViewMode = useSelector((state: RootState) => state.uiFlags.isViewMode);
   const isSavedStore = useSelector((state: RootState) => state.wbsData.isSavedChanges);
   const isSavedColor = useSelector((state: RootState) => state.color.isSavedChanges);
   const isSavedSettings = useSelector((state: RootState) => state.baseSettings.isSavedChanges);
@@ -104,10 +105,11 @@ const TopBarLocal: React.FC = memo(() => {
   const { exportExcel } = useGanttExcelExport();
   const { save, saveAs, downloadZip, exportHtml } = useProjectSave();
 
-  useWarnIfUnsavedChanges(!isSavedColor)
-  useWarnIfUnsavedChanges(!isSavedNotes)
-  useWarnIfUnsavedChanges(!isSavedSettings)
-  useWarnIfUnsavedChanges(!isSavedStore)
+  // 閲覧モードでは、閉じれば変更が消えることを承知で使っているので警告しない
+  useWarnIfUnsavedChanges(!isViewMode && !isSavedColor)
+  useWarnIfUnsavedChanges(!isViewMode && !isSavedNotes)
+  useWarnIfUnsavedChanges(!isViewMode && !isSavedSettings)
+  useWarnIfUnsavedChanges(!isViewMode && !isSavedStore)
 
   const handleClose = useCallback(() => {
     dispatch(setActiveModal(null));
@@ -424,6 +426,21 @@ const TopBarLocal: React.FC = memo(() => {
           title={t('Bar Selection Mode')}
         >
           {t('Bar Selection Mode')}
+        </ToggleMenuButton>
+        {/* 閲覧モード: 変更はできるが、ブラウザに一時保存せず、閉じれば消える(保存はできる) */}
+        <ToggleMenuButton
+          $active={isViewMode}
+          data-view-mode-toggle
+          onClick={() => {
+            dispatch(setViewMode(!isViewMode));
+            dispatch(setMessageInfo({
+              message: isViewMode ? t('Switched to edit mode.') : t('Switched to view mode.'),
+              severity: 'info',
+            }));
+          }}
+          title={t('View Mode tooltip')}
+        >
+          {t('View Mode')}
         </ToggleMenuButton>
         <MenuButton onClick={() => dispatch(setActiveModal('help'))}>
           {t('Help')}

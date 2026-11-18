@@ -535,6 +535,12 @@ const config = {
         "An unknown error occurred.": "An unknown error occurred.",
         "overwrite newer file confirm": "{{fileName}} has been saved with different content since you opened it (from another tab or by someone else). Overwrite it anyway?",
         "This HTML file has no project data.": "This HTML file has no project data.",
+        // View mode
+        "View Mode": "View Mode",
+        "View Mode tooltip": "View mode: you can still make changes, but they are not kept in this browser and are gone when you close the tab (you can still save them). Click to switch between view and edit mode.",
+        "Opened in view mode.": "Opened in view mode. Changes are not kept in this browser; click View Mode at the top to start editing.",
+        "Switched to view mode.": "Switched to view mode. Changes are not kept in this browser.",
+        "Switched to edit mode.": "Switched to edit mode. Changes are kept in this browser as a draft.",
       },
     },
     ja: {
@@ -1067,6 +1073,12 @@ const config = {
         "An unknown error occurred.": "原因の分からないエラーが起きました。",
         "overwrite newer file confirm": "{{fileName}} は、開いたあとに別の内容で保存されています(別のタブやほかの人が保存した可能性があります)。上書きしますか?",
         "This HTML file has no project data.": "この HTML ファイルにはプロジェクトのデータがありません。",
+        // 閲覧モード
+        "View Mode": "閲覧モード",
+        "View Mode tooltip": "閲覧モード: 変更はできますが、このブラウザには残らず、タブを閉じると消えます(保存はできます)。押すと閲覧モードと編集モードを切り替えます。",
+        "Opened in view mode.": "閲覧モードで開きました。変更してもこのブラウザには残りません。編集するときは上の「閲覧モード」を押してください。",
+        "Switched to view mode.": "閲覧モードにしました。変更してもこのブラウザには残りません。",
+        "Switched to edit mode.": "編集モードにしました。変更はこのブラウザに下書きとして残ります。",
       },
     },
   },

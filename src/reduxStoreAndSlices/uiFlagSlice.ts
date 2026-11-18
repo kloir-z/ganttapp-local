@@ -39,6 +39,9 @@ interface UIFlagsState {
   lastSelectedBarKey: string | null;
   // バーの選択モード。ONの間はチャートの空白ドラッグがパンではなく矩形選択になる。
   isBarSelectionMode: boolean;
+  // 閲覧モード。変更はできるが、ブラウザ内の下書きを書かず、閉じるときの警告も出さない
+  // (閉じれば変更は消える)。保存はでき、保存したら編集モードに戻る。保存も undo もしない UI の状態。
+  isViewMode: boolean;
 }
 
 const initialState: UIFlagsState = {
@@ -57,6 +60,7 @@ const initialState: UIFlagsState = {
   selectedBarKeys: [],
   lastSelectedBarKey: null,
   isBarSelectionMode: false,
+  isViewMode: false,
 };
 
 /** 選択キーの組み立て/分解。予定バーと実績バーを別々に選べるようにするためのキー。 */
@@ -171,8 +175,11 @@ const uiFlagsSlice = createSlice({
         state.lastSelectedBarKey = null;
       }
     },
+    setViewMode(state, action: PayloadAction<boolean>) {
+      state.isViewMode = action.payload;
+    },
   },
 });
 
-export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath, setShowAnnotations, setSelectedAnnotationIds, toggleSelectedAnnotation, clearSelectedAnnotations, setSelectedBars, toggleSelectedBar, clearSelectedBars, pruneSelectedBars, setBarSelectionMode } = uiFlagsSlice.actions;
+export const { setActiveModal, setIsContextMenuOpen, setIsLoading, setIsExporting, setIsDependencyEditing, setDependencyTargetRowId, setDependencySourceRowId, setDependencyChainRowIds, openDependencyBuilder, closeDependencyBuilder, setShowCriticalPath, setShowAnnotations, setSelectedAnnotationIds, toggleSelectedAnnotation, clearSelectedAnnotations, setSelectedBars, toggleSelectedBar, clearSelectedBars, pruneSelectedBars, setBarSelectionMode, setViewMode } = uiFlagsSlice.actions;
 export default uiFlagsSlice.reducer;

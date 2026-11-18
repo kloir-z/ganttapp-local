@@ -57,6 +57,8 @@ export const useDraftAutosave = (isLoading: boolean) => {
 
     const begin = async () => {
       await draftSession.start(store);
+      // 閲覧モードで開いたときは、下書きを戻したり一覧を出したりしない
+      if (store.getState().uiFlags.isViewMode) return;
       const { ownDirty, others } = await draftSession.listOtherDrafts();
       if (ownDirty) {
         await restoreDraft(ownDirty);

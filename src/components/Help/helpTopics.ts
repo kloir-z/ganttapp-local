@@ -159,6 +159,7 @@ export const helpTopics: HelpTopic[] = [
       { type: 'paragraph', key: 'help.topics.saveExport.p1' },
       { type: 'paragraph', key: 'help.topics.saveExport.p2' },
       { type: 'paragraph', key: 'help.topics.saveExport.p3' },
+      { type: 'paragraph', key: 'help.topics.saveExport.p4' },
       { type: 'note', keys: ['help.topics.saveExport.note1'] },
     ],
   },

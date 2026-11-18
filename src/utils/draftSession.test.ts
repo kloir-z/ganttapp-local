@@ -1,5 +1,6 @@
 import { store } from '../reduxStoreAndSlices/store';
 import { setIsSavedChangesStore } from '../reduxStoreAndSlices/store';
+import { setViewMode } from '../reduxStoreAndSlices/uiFlagSlice';
 import { setIsSavedChangesColor } from '../reduxStoreAndSlices/colorSlice';
 import { setIsSavedChangesNotes, updateNotesModalState } from '../reduxStoreAndSlices/notesSlice';
 import { setIsSavedChangesSettings, setProjectId, setScrollPosition, setTitle } from '../reduxStoreAndSlices/baseSettingsSlice';
@@ -85,6 +86,7 @@ describe('DraftSession', () => {
   let sessionStore: Storage;
 
   beforeEach(async () => {
+    store.dispatch(setViewMode(false));
     store.dispatch(setTitle('Base'));
     store.dispatch(setProjectId('project-1'));
     markAllSaved();
@@ -136,7 +138,7 @@ describe('DraftSession', () => {
     expect(await storage.list()).toHaveLength(0);
   });
 
-  it('keeps the draft as downloaded after saving, and comes back to it on undo', async () => {
+  it('keeps the draft as saved after saving, and comes back to it on undo', async () => {
     store.dispatch(setTitle('Saved'));
     await session.flush();
     await session.markSaved();
@@ -152,6 +154,19 @@ describe('DraftSession', () => {
     const records = await storage.list();
     expect(records).toHaveLength(1);
     expect(records[0]).toMatchObject({ status: 'saved', title: 'Saved' });
+  });
+
+  it('writes nothing in view mode, and starts writing once switched to edit mode', async () => {
+    store.dispatch(setViewMode(true));
+    store.dispatch(setTitle('Looked around'));
+    await session.flush();
+    await session.detach();
+    expect(await storage.list()).toHaveLength(0);
+
+    store.dispatch(setTitle('Now editing'));
+    store.dispatch(setViewMode(false));
+    await session.flush();
+    expect((await storage.list()).map((record) => record.title)).toEqual(['Now editing']);
   });
 
   it('releases the draft from the tab on detach and starts a new one afterwards', async () => {
