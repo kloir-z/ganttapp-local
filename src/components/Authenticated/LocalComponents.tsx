@@ -1,6 +1,7 @@
 // LocalComponents.tsx
 import React from 'react';
 import { useJsonExport } from '../../hooks/useJsonExport';
+import { useProjectSave } from '../../hooks/useProjectSave';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import Gantt from '../Gantt/Gantt';
 import SettingsModalBasic from '../Setting/Basic/SettingsModalBasics';
@@ -14,6 +15,7 @@ import DraftsDialog from '../Drafts/DraftsDialog';
 
 const LocalComponents: React.FC = () => {
     const { exportAndCopyJson } = useJsonExport();
+    const { save, saveAs } = useProjectSave();
 
     useKeyboardShortcuts([
         {
@@ -21,6 +23,18 @@ const LocalComponents: React.FC = () => {
             ctrlKey: true,
             shiftKey: true,
             callback: exportAndCopyJson
+        },
+        // ブラウザの「ページを保存」ではなく、プロジェクトを上書き保存する
+        {
+            key: 's',
+            ctrlKey: true,
+            callback: () => { void save(); }
+        },
+        {
+            key: 'S',
+            ctrlKey: true,
+            shiftKey: true,
+            callback: () => { void saveAs(); }
         }
     ]);
 

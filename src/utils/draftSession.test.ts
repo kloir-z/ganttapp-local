@@ -7,6 +7,7 @@ import {
   DRAFT_DEBOUNCE_MS,
   DRAFT_MAX_AGE_MS,
   DRAFT_MAX_RECORDS,
+  draftRelation,
   DraftSession,
   hashString,
   isAllSaved,
@@ -22,18 +23,6 @@ jest.mock('i18next', () => ({
   t: (key: string) => key,
 }));
 
-// jsdom の Blob には text() が無い(ブラウザにはある)。handleImport が使うので、このテストの中だけ補う。
-if (!Blob.prototype.text) {
-  Blob.prototype.text = function text(this: Blob) {
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsText(this);
-    });
-  };
-}
-
 const markAllSaved = () => {
   store.dispatch(setIsSavedChangesStore(true));
   store.dispatch(setIsSavedChangesColor(true));
@@ -46,6 +35,7 @@ const makeRecord = (overrides: Partial<DraftRecord>): DraftRecord => ({
   ownerTabId: '',
   status: 'dirty',
   projectId: 'p',
+  baseRevisionId: '',
   title: 'T',
   rowCount: 0,
   updatedAt: 0,
@@ -151,7 +141,7 @@ describe('DraftSession', () => {
     await session.flush();
     await session.markSaved();
     markAllSaved();
-    expect((await storage.list())[0]).toMatchObject({ status: 'downloaded', title: 'Saved' });
+    expect((await storage.list())[0]).toMatchObject({ status: 'saved', title: 'Saved' });
 
     store.dispatch(setTitle('After save'));
     await session.flush();
@@ -161,7 +151,7 @@ describe('DraftSession', () => {
     await session.flush();
     const records = await storage.list();
     expect(records).toHaveLength(1);
-    expect(records[0]).toMatchObject({ status: 'downloaded', title: 'Saved' });
+    expect(records[0]).toMatchObject({ status: 'saved', title: 'Saved' });
   });
 
   it('releases the draft from the tab on detach and starts a new one afterwards', async () => {
@@ -213,5 +203,22 @@ describe('DraftSession', () => {
     expect(others.map((record) => record.draftId)).toEqual(['closed-tab']);
     expect(await reloaded.hasDirtyDraftForProject('project-1')).toBe(true);
     reloaded.stop();
+  });
+});
+
+describe('draftRelation', () => {
+  it('calls a draft started from the open revision its continuation', () => {
+    expect(draftRelation({ projectId: 'p', baseRevisionId: 'r1' }, 'p', 'r1')).toBe('continuation');
+  });
+
+  it('tells a draft started from another revision of the same project apart', () => {
+    expect(draftRelation({ projectId: 'p', baseRevisionId: 'r0' }, 'p', 'r1')).toBe('otherVersion');
+    // 版が分からない(古いファイル・保存前の新規)ときは続きとは言えない
+    expect(draftRelation({ projectId: 'p', baseRevisionId: '' }, 'p', '')).toBe('otherVersion');
+  });
+
+  it('treats other projects as unrelated', () => {
+    expect(draftRelation({ projectId: 'q', baseRevisionId: 'r1' }, 'p', 'r1')).toBe('otherProject');
+    expect(draftRelation({ projectId: '', baseRevisionId: '' }, '', '')).toBe('otherProject');
   });
 });

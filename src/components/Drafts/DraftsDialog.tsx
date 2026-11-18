@@ -19,7 +19,8 @@ import {
 } from '@mui/material';
 import { setActiveModal } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { AppDispatch, RootState, setMessageInfo } from '../../reduxStoreAndSlices/store';
-import { draftSession } from '../../utils/draftSession';
+import { draftRelation, DraftRelation, draftSession } from '../../utils/draftSession';
+import { v4 as uuidv4 } from 'uuid';
 import type { DraftRecord } from '../../utils/draftStorage';
 import { EXPORT_SCHEMA_VERSION, serializeToZip } from '../../utils/ExportImportHandler';
 import { downloadBlob } from '../../utils/downloadBlob';
@@ -32,6 +33,8 @@ const DraftsDialog: React.FC = () => {
   const restoreDraft = useDraftRestore();
   const [drafts, setDrafts] = useState<DraftRecord[] | null>(null);
   const isOpen = activeModal === 'drafts';
+  const projectId = useSelector((state: RootState) => state.baseSettings.projectId);
+  const revisionId = useSelector((state: RootState) => state.baseSettings.revisionId);
 
   const reload = useCallback(async () => {
     const { ownDirty, others } = await draftSession.listOtherDrafts();
@@ -63,7 +66,8 @@ const DraftsDialog: React.FC = () => {
   }, [dispatch, restoreDraft, t]);
 
   const handleDownload = useCallback(async (record: DraftRecord) => {
-    const blob = await serializeToZip(record.draftId, record.project);
+    // 下書きの版の ID は編集を始めた版のもの。そのまま書くと中身の違うファイルが同じ版を名乗るので作り直す。
+    const blob = await serializeToZip(record.draftId, { ...record.project, revisionId: uuidv4() });
     downloadBlob(blob, `${record.title || 'gantt-chart'}.zip`);
   }, []);
 
@@ -75,6 +79,11 @@ const DraftsDialog: React.FC = () => {
   if (!isOpen) return null;
 
   const dateFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' });
+  // いま開いているファイルの続きの下書きを先頭に、同じプロジェクトの別の版、ほかのプロジェクトの順に並べる
+  const relationOf = (record: DraftRecord) => draftRelation(record, projectId, revisionId);
+  const relationRank: Record<DraftRelation, number> = { continuation: 0, otherVersion: 1, otherProject: 2 };
+  const sortedDrafts = drafts === null ? [] : [...drafts].sort((a, b) =>
+    relationRank[relationOf(a)] - relationRank[relationOf(b)] || b.updatedAt - a.updatedAt);
 
   return (
     <Dialog open={true} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -87,7 +96,7 @@ const DraftsDialog: React.FC = () => {
           <Typography variant="body2" color="text.secondary">{t('No drafts.')}</Typography>
         ) : (
           <List dense disablePadding>
-            {drafts.map((record) => (
+            {sortedDrafts.map((record) => (
               <ListItem
                 key={record.draftId}
                 divider
@@ -99,10 +108,18 @@ const DraftsDialog: React.FC = () => {
                     primary={record.title || t('(Untitled)')}
                     secondary={`${dateFormatter.format(record.updatedAt)} ・ ${t('draft rows', { count: record.rowCount })}`}
                   />
+                  {relationOf(record) === 'continuation' && (
+                    <Chip size="small" color="success" variant="outlined" label={t('Continues this file')}
+                      title={t('Continues this file tooltip')} />
+                  )}
+                  {relationOf(record) === 'otherVersion' && (
+                    <Chip size="small" color="info" variant="outlined" label={t('From another version')}
+                      title={t('From another version tooltip')} />
+                  )}
                   <Chip
                     size="small"
                     color={record.status === 'dirty' ? 'warning' : 'default'}
-                    label={record.status === 'dirty' ? t('Unsaved') : t('Downloaded')}
+                    label={record.status === 'dirty' ? t('Unsaved') : t('Saved')}
                   />
                 </Box>
                 {record.schemaVersion > EXPORT_SCHEMA_VERSION && (

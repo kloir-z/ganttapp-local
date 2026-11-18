@@ -41,6 +41,8 @@ const VIEW_ONLY_KEYS: Record<string, true> = {
   treeScrollPosition: true,
   editorStates: true,
   selectedNodeKey: true,
+  // 版の ID は保存のたびに変わるが、中身の変更ではない
+  revisionId: true,
 };
 
 export const isAllSaved = (state: RootState): boolean =>
@@ -71,6 +73,20 @@ export const projectContentHash = (project: ProjectData): string => {
 
 export const projectFromState = (state: RootState): ProjectData =>
   buildProjectData(buildExportOptionsFromState(state));
+
+// 下書きと、いま開いているプロジェクトとの関係。
+// continuation: 開いている版から編集を始めたもの(保存し忘れた続き)。
+// otherVersion: 同じプロジェクトだが別の版から編集を始めたもの(あとで別の版が保存された、など)。
+// otherProject: 別のプロジェクト。
+export type DraftRelation = 'continuation' | 'otherVersion' | 'otherProject';
+
+export const draftRelation = (
+  record: Pick<DraftRecord, 'projectId' | 'baseRevisionId'>, projectId: string, revisionId: string
+): DraftRelation => {
+  if (!record.projectId || record.projectId !== projectId) return 'otherProject';
+  // 版が分からない(古いファイル・保存前の新規)ときは同じ版とは言えない
+  return record.baseRevisionId !== '' && record.baseRevisionId === revisionId ? 'continuation' : 'otherVersion';
+};
 
 // 起動時に消す下書きを選ぶ。開いているタブのものは消さない。
 // 期限切れを消し、残りが多すぎれば更新の古い順に消す。
@@ -257,7 +273,7 @@ export class DraftSession {
       if (!this.recordExists || !this.draftId) return this.queue;
       const draftId = this.draftId;
       if (this.savedInSession) {
-        return this.enqueue(() => this.storage.put(this.makeRecord(draftId, ownerTabId, 'downloaded', project, baseHash)));
+        return this.enqueue(() => this.storage.put(this.makeRecord(draftId, ownerTabId, 'saved', project, baseHash)));
       }
       this.recordExists = false;
       return this.enqueue(() => this.storage.remove(draftId));
@@ -276,7 +292,7 @@ export class DraftSession {
     const project = projectFromState(this.store.getState());
     const draftId = this.draftId;
     const hash = projectContentHash(project);
-    return this.enqueue(() => this.storage.put(this.makeRecord(draftId, this.tabId, 'downloaded', project, hash)));
+    return this.enqueue(() => this.storage.put(this.makeRecord(draftId, this.tabId, 'saved', project, hash)));
   }
 
   // 別のプロジェクトに切り替える直前に呼ぶ。書きかけはタブから切り離して残す。
@@ -335,7 +351,7 @@ export class DraftSession {
     this.baseHash = record.status === 'dirty' ? record.baseHash : null;
     this.draftId = record.draftId;
     this.recordExists = true;
-    this.savedInSession = record.status === 'downloaded';
+    this.savedInSession = record.status === 'saved';
     this.writeSession(SESSION_DRAFT_ID_KEY, record.draftId);
     await this.enqueue(() => this.storage.put({ ...record, ownerTabId: this.tabId }));
   }
@@ -408,6 +424,8 @@ export class DraftSession {
       ownerTabId,
       status,
       projectId: project.projectId ?? '',
+      // 版の ID は保存か読み込みでしか変わらないので、未保存の間の値がそのまま「編集を始めた版」になる
+      baseRevisionId: project.revisionId ?? '',
       title: project.title,
       rowCount: Object.keys(project.data).length,
       updatedAt: this.now(),

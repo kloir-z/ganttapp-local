@@ -12,15 +12,14 @@ import { useDispatch, useSelector, useStore } from 'react-redux';
 import { setActiveModal, setBarSelectionMode, setIsLoading, setShowCriticalPath } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { selectCriticalPath } from '../../reduxStoreAndSlices/criticalPathSelectors';
 import { RootState, undo, redo, setMessageInfo, removePastState } from '../../reduxStoreAndSlices/store';
-import { setTitle } from '../../reduxStoreAndSlices/baseSettingsSlice';
-import { handleExport, handleImport, buildProjectData, buildExportOptionsFromState } from '../../utils/ExportImportHandler';
-import { exportProjectAsHtml } from '../../utils/HtmlSnapshotExport';
+import { handleImport } from '../../utils/ExportImportHandler';
+import { readEmbeddedProjectDataFromHtml } from '../../utils/HtmlSnapshotExport';
+import { useProjectSave } from '../../hooks/useProjectSave';
 import { useTranslation } from 'react-i18next';
 import TitleSetting from './TitleSetting';
 import TopMenu from './TopMenu';
 import JsonDataModal from './JsonDataModal';
 import styled from 'styled-components';
-import { downloadBlob } from '../../utils/downloadBlob';
 import { draftSession } from '../../utils/draftSession';
 import { useGanttPdfExport } from '../../hooks/useGanttPdfExport';
 import { useGanttExcelExport } from '../../hooks/useGanttExcelExport';
@@ -103,6 +102,7 @@ const TopBarLocal: React.FC = memo(() => {
   const resetReduxStates = useResetReduxStates();
   const { exportPdf } = useGanttPdfExport();
   const { exportExcel } = useGanttExcelExport();
+  const { save, saveAs, downloadZip, exportHtml } = useProjectSave();
 
   useWarnIfUnsavedChanges(!isSavedColor)
   useWarnIfUnsavedChanges(!isSavedNotes)
@@ -138,63 +138,38 @@ const TopBarLocal: React.FC = memo(() => {
     dispatch(setActiveModal('notes'));
   }, [dispatch]);
 
-  const handleLocalSave = useCallback(async (newTitle?: string) => {
-    const options = buildExportOptionsFromState(store.getState());
-    const effectiveTitle = newTitle || options.title;
-    try {
-      const zipData = await handleExport({ ...options, title: effectiveTitle });
-      downloadBlob(new Blob([zipData], { type: 'application/zip' }), `${effectiveTitle || 'gantt-chart'}.zip`);
-
-      // 下書きは消さずに「ダウンロード済み」にする(保存先を尋ねる設定で取り消した場合に開き直せる)
-      void draftSession.markSaved();
-      resetIsSavedChangesFlags();
-      handleClose();
-      dispatch(setMessageInfo({ message: t('File downloaded successfully.'), severity: 'success' }));
-    } catch (error) {
-      const errorMessage = error instanceof Error
-        ? t('Download failed: ') + error.message
-        : t('Download failed. An unknown error occurred.');
-      dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
-    }
-  }, [store, resetIsSavedChangesFlags, handleClose, dispatch, t]);
-
   const handleSaveAsSubmit = useCallback(async () => {
     if (!newTitle) return;
-    dispatch(setTitle(newTitle));
-    handleLocalSave(newTitle);
-  }, [dispatch, handleLocalSave, newTitle]);
-
-  const handleExportHtml = useCallback(async () => {
-    try {
-      const projectData = buildProjectData(buildExportOptionsFromState(store.getState()));
-      await exportProjectAsHtml(projectData, projectData.title);
-      handleClose();
-      dispatch(setMessageInfo({ message: t('HTML file downloaded successfully.'), severity: 'success' }));
-    } catch (error) {
-      const errorMessage = error instanceof Error
-        ? t('HTML export failed: ') + error.message
-        : t('HTML export failed. An unknown error occurred.');
-      dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
-    }
-  }, [store, handleClose, dispatch, t]);
+    handleClose();
+    await downloadZip(newTitle);
+  }, [handleClose, downloadZip, newTitle]);
 
   const handleLocalOpen = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.zip';
+    input.accept = '.zip,.html,.htm';
     input.onchange = async (event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (file) {
         try {
           dispatch(setIsLoading(true));
-          const fileBlob = new Blob([file], { type: file.type });
+          // 書き出した HTML も開ける(埋め込まれたプロジェクトのデータを読む)
+          let fileBlob: Blob;
+          if (/\.html?$/i.test(file.name)) {
+            const embedded = readEmbeddedProjectDataFromHtml(await file.text());
+            if (!embedded) throw new Error(t('This HTML file has no project data.'));
+            fileBlob = new Blob([JSON.stringify(embedded)], { type: 'application/json' });
+          } else {
+            fileBlob = new Blob([file], { type: file.type });
+          }
           await resetReduxStates();
            
           await dispatch(handleImport({ file: fileBlob }) as any);
           dispatch(removePastState(1));
           resetIsSavedChangesFlags();
-          // 同じプロジェクトの未保存の下書きがブラウザに残っていれば、そちらが新しいかもしれないと知らせる
+          // 同じプロジェクトの未保存の下書きがブラウザに残っていれば、一覧を開いて知らせる
           const hasDraft = await draftSession.hasDirtyDraftForProject(store.getState().baseSettings.projectId);
+          if (hasDraft) dispatch(setActiveModal('drafts'));
           dispatch(setMessageInfo(hasDraft
             ? { message: t('This project has an unsaved draft in this browser. Open it from File > Drafts.'), severity: 'warning' }
             : { message: t('Saved data opened successfully.'), severity: 'success' }));
@@ -231,8 +206,19 @@ const TopBarLocal: React.FC = memo(() => {
         path: '1'
       },
       {
+        // 前に保存したファイル(書き出した HTML を開いているならそのファイル)に上書きする
+        children: t('Save File'),
+        onClick: () => { handleClose(); void save(); },
+        path: '7'
+      },
+      {
+        children: t('Save File As'),
+        onClick: () => { handleClose(); void saveAs(); },
+        path: '8'
+      },
+      {
         children: t('Download'),
-        onClick: () => handleLocalSave(),
+        onClick: () => { handleClose(); void downloadZip(); },
         path: '2'
       },
       {
@@ -241,7 +227,7 @@ const TopBarLocal: React.FC = memo(() => {
         path: '3'
       },
       {
-        // ブラウザ内に残っている下書き(閉じたタブ・切り替える前のプロジェクト・ダウンロード済み)
+        // ブラウザ内に残っている下書き(閉じたタブ・切り替える前のプロジェクト・保存済み)
         children: t('Drafts'),
         onClick: () => dispatch(setActiveModal('drafts')),
         path: '6'
@@ -276,15 +262,16 @@ const TopBarLocal: React.FC = memo(() => {
             path: '5.1'
           },
           {
+            // 書き出した HTML を作業ファイルとして使うので、これも保存として扱う(useProjectSave)
             children: t('Export HTML'),
-            onClick: () => handleExportHtml(),
+            onClick: () => { handleClose(); void exportHtml(); },
             path: '5.2'
           }
         ]
       }
     ];
     return options;
-  }, [t, dispatch, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, exportExcel, handleExportHtml, treeData, rowNoteData]);
+  }, [t, dispatch, handleNewClick, handleLocalOpen, handleClose, save, saveAs, downloadZip, exportHtml, handleSaveAsClick, handleJsonModalOpen, exportPdf, exportExcel, treeData, rowNoteData]);
 
   // 色分け基準列のクイック切替メニュー。列名はユーザーのリネームをそのまま表示する。
   const coloringMenuOptions = useMemo(() => {

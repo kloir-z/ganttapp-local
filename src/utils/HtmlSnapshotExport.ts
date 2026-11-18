@@ -4,18 +4,18 @@
 // current project data. Opening the file boots the app and auto-loads the data,
 // so the recipient sees the finished Gantt chart (and can scroll/edit/view notes)
 // without any server — ideal for the single-file build opened via file://.
+// Writing the file (download or overwrite save) lives in projectSave.ts.
 //
 // The exported data is read back on startup by `readEmbeddedProjectData` (see
 // LocalApp), which feeds it through the normal import path.
 
 import type { ProjectData } from './ExportImportHandler';
-import { downloadBlob } from './downloadBlob';
 
 // Id of the <script> tag that carries the embedded project JSON.
 export const EMBEDDED_DATA_SCRIPT_ID = 'gantt-embedded-project-data';
 
 // Read the embedded project data injected into this document by a previous
-// HTML export. Returns null when the document was not produced by exportProjectAsHtml.
+// HTML export. Returns null when the document was not produced by buildProjectHtml.
 export const readEmbeddedProjectData = (): ProjectData | null => {
   const el = document.getElementById(EMBEDDED_DATA_SCRIPT_ID);
   if (!el || !el.textContent) return null;
@@ -72,6 +72,12 @@ const inlineExternalAssets = async (root: HTMLElement): Promise<void> => {
   for (const icon of icons) {
     const href = icon.getAttribute('href');
     if (!href || href.startsWith('data:')) continue;
+    // From file:// a fetch is always blocked (and logs a console error each time — now on
+    // every Ctrl+S), so drop the link without trying.
+    if (location.protocol === 'file:') {
+      icon.remove();
+      continue;
+    }
     try {
       const res = await fetch(new URL(href, document.baseURI).href);
       if (!res.ok) throw new Error(`status ${res.status}`);
@@ -91,9 +97,10 @@ const inlineExternalAssets = async (root: HTMLElement): Promise<void> => {
   }
 };
 
-// Build a self-contained HTML snapshot of the current app with `projectData`
-// baked in, then download it as `<title>.html`.
-export const exportProjectAsHtml = async (projectData: ProjectData, title: string): Promise<void> => {
+// Build a self-contained HTML document of the current app with `projectData`
+// baked in. Used both for "Export ▸ HTML" (download) and for overwrite-saving
+// to an HTML file.
+export const buildProjectHtml = async (projectData: ProjectData): Promise<string> => {
   // Clone the live DOM rather than the static template so all runtime-inlined
   // assets (the single-file build) come along for free.
   const clone = document.documentElement.cloneNode(true) as HTMLElement;
@@ -105,6 +112,15 @@ export const exportProjectAsHtml = async (projectData: ProjectData, title: strin
   // Boot fresh: the exported app rebuilds the UI from the embedded data.
   const root = clone.querySelector('#root');
   if (root) root.innerHTML = '';
+  // Menus, dialogs and snackbars render into portals directly under <body>. The
+  // source document's body holds only #root (and scripts), so drop everything
+  // else — otherwise a save from an open dialog (Ctrl+S) would bake it in as dead HTML.
+  const body = clone.querySelector('body');
+  if (body) {
+    for (const child of Array.from(body.children)) {
+      if (child.id !== 'root' && child.tagName !== 'SCRIPT') child.remove();
+    }
+  }
 
   // Avoid stacking embedded payloads when re-exporting an already-exported file.
   clone.querySelector(`#${EMBEDDED_DATA_SCRIPT_ID}`)?.remove();
@@ -121,7 +137,20 @@ export const exportProjectAsHtml = async (projectData: ProjectData, title: strin
   const head = clone.querySelector('head');
   (head ?? clone).appendChild(dataScript);
 
-  const html = `<!DOCTYPE html>\n${clone.outerHTML}`;
-  const safeTitle = (title || 'gantt-chart').replace(/[\\/:*?"<>|]/g, '_');
-  downloadBlob(new Blob([html], { type: 'text/html' }), `${safeTitle}.html`);
+  return `<!DOCTYPE html>\n${clone.outerHTML}`;
 };
+
+// Read the project data embedded in a saved HTML file's text (the counterpart of
+// buildProjectHtml, for files on disk rather than the running document).
+export const readEmbeddedProjectDataFromHtml = (html: string): Partial<ProjectData> | null => {
+  const match = html.match(new RegExp(`<script[^>]*id="${EMBEDDED_DATA_SCRIPT_ID}"[^>]*>([\\s\\S]*?)</script>`));
+  if (!match) return null;
+  try {
+    return JSON.parse(match[1]) as Partial<ProjectData>;
+  } catch {
+    return null;
+  }
+};
+
+export const htmlFileNameForTitle = (title: string): string =>
+  `${(title || 'gantt-chart').replace(/[\\/:*?"<>|]/g, '_')}.html`;

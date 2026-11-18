@@ -24,6 +24,10 @@ interface BaseSettingsState {
   // プロジェクトを見分ける ID。新規作成のときに作り、保存しても変えない(ファイルに書く)。
   // ブラウザ内の下書きがどのプロジェクトのものかを判断するのに使う。
   projectId: string;
+  // 保存した版の ID。保存(ダウンロード・書き出し・上書き保存)のたびに新しく作ってファイルに書く。
+  // 開いたファイルの版を覚えておき、下書きがどの版から編集を始めたものかや、
+  // 上書きしようとしたファイルが開いたあとに更新されていないかを見分ける。未保存の新規は空文字。
+  revisionId: string;
   isSavedChanges: boolean;
   scrollPosition: {
     scrollLeft: number;
@@ -53,6 +57,7 @@ const initialState: BaseSettingsState = {
   currentFileId: "",
   userEmail: "",
   projectId: "",
+  revisionId: "",
   isSavedChanges: true,
   scrollPosition: {
     scrollLeft: 0,
@@ -137,6 +142,7 @@ const baseSettingsSlice = createSlice({
       state.title = initialState.title;
       state.scrollPosition = initialState.scrollPosition;
       state.projectId = initialState.projectId;
+      state.revisionId = initialState.revisionId;
       state.isSavedChanges = true;
       document.title = "Gantty";
     },
@@ -157,9 +163,13 @@ const baseSettingsSlice = createSlice({
     setProjectId(state, action: PayloadAction<string>) {
       state.projectId = action.payload;
     },
+    // 保存した版の ID。保存のたびに作り直す。中身の変更ではないので isSavedChanges は汚さない。
+    setRevisionId(state, action: PayloadAction<string>) {
+      state.revisionId = action.payload;
+    },
   },
 });
 
-export const { setWbsWidth, setMaxWbsWidth, setCalendarWidth, setCellWidth, setDateRange, setHolidayInput, setExtendActualBarToToday, setTitle, setScrollPosition, resetBaseSettings, setSavedFileList, setCurrentFileId, setUserEmail, setLanguage, setIsSavedChangesSettings, setProjectId } = baseSettingsSlice.actions;
+export const { setWbsWidth, setMaxWbsWidth, setCalendarWidth, setCellWidth, setDateRange, setHolidayInput, setExtendActualBarToToday, setTitle, setScrollPosition, resetBaseSettings, setSavedFileList, setCurrentFileId, setUserEmail, setLanguage, setIsSavedChangesSettings, setProjectId, setRevisionId } = baseSettingsSlice.actions;
 
 export default baseSettingsSlice.reducer;

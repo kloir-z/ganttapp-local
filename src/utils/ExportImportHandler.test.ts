@@ -405,6 +405,25 @@ describe('ExportImportHandler', () => {
       expect(types).toContain('baseSettings/setTitle');
       expect(types.some(type => typeof type === 'string' && type.startsWith('history/'))).toBe(false);
     });
+
+    it('restores the project and revision ids, and gives old files a project id but no revision', async () => {
+      const importIds = async (data: object) => {
+        const dispatch = jest.fn();
+        const jsonFile = {
+          type: 'application/json',
+          text: jest.fn().mockResolvedValue(JSON.stringify(data))
+        } as unknown as File;
+        await handleImport({ file: jsonFile })(dispatch, () => ({}), {});
+        const payloadOf = (type: string) => dispatch.mock.calls.map(([action]) => action).find((action) => action?.type === type)?.payload;
+        return { projectId: payloadOf('baseSettings/setProjectId'), revisionId: payloadOf('baseSettings/setRevisionId') };
+      };
+
+      expect(await importIds({ title: 'New', projectId: 'p1', revisionId: 'r1' })).toEqual({ projectId: 'p1', revisionId: 'r1' });
+      const legacy = await importIds({ title: 'Old' });
+      expect(legacy.projectId).toEqual(expect.any(String));
+      expect(legacy.projectId).not.toBe('');
+      expect(legacy.revisionId).toBe('');
+    });
   });
 
   describe('business logic validation', () => {

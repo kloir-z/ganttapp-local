@@ -4,7 +4,7 @@ import { ColorInfo, ColorScheme, setIsSavedChangesColor } from "../reduxStoreAnd
 import { WBSData, DateFormatType, RegularDaysOffSettingsType, HolidayColor, ChartAnnotation } from "../types/DataTypes";
 import { updateEntireColorSettings, setEntireColorState } from "../reduxStoreAndSlices/colorSlice";
 import { setEntireData, setHolidays, setEntireAnnotations } from "../reduxStoreAndSlices/store";
-import { setWbsWidth, setDateRange, setHolidayInput, setTitle, setCalendarWidth, setCellWidth, setExtendActualBarToToday, setLanguage, setIsSavedChangesSettings, setScrollPosition, setProjectId } from "../reduxStoreAndSlices/baseSettingsSlice";
+import { setWbsWidth, setDateRange, setHolidayInput, setTitle, setCalendarWidth, setCellWidth, setExtendActualBarToToday, setLanguage, setIsSavedChangesSettings, setScrollPosition, setProjectId, setRevisionId } from "../reduxStoreAndSlices/baseSettingsSlice";
 import JSZip from 'jszip';
 import { parseHolidaysFromInput } from '../components/Setting/utils/settingHelpers';
 import { createAsyncThunk } from "@reduxjs/toolkit";
@@ -53,6 +53,8 @@ export interface ExportData {
   annotations?: ChartAnnotation[];
   // プロジェクトを見分ける ID(下書きとの対応づけ用)。後から追加した項目なので省略可。
   projectId?: string;
+  // 保存した版の ID(保存のたびに新しくなる)。後から追加した項目なので省略可。
+  revisionId?: string;
 }
 
 // Collect the canonical, format-agnostic project model from the export options.
@@ -87,6 +89,7 @@ export const buildProjectData = (options: ExportData) => {
     selectedNodeKey,
     annotations,
     projectId,
+    revisionId,
   } = options;
   // Deferred orphan cleanup: only persist row notes whose row still exists in
   // the current WBS data. Rows deleted earlier leave their notes in state until
@@ -101,6 +104,7 @@ export const buildProjectData = (options: ExportData) => {
   return {
     version: EXPORT_SCHEMA_VERSION,
     ...(projectId && { projectId }),
+    ...(revisionId && { revisionId }),
     colors,
     ...(colorSchemes && { colorSchemes }),
     ...(colorBasisColumn && { colorBasisColumn }),
@@ -151,6 +155,7 @@ export const handleExport = async (options: ExportData): Promise<Blob> => {
 export const buildExportOptionsFromState = (state: RootState): ExportData => ({
   fileId: uuidv4(),
   projectId: state.baseSettings.projectId,
+  revisionId: state.baseSettings.revisionId,
   colors: state.color.colors,
   colorSchemes: state.color.schemes,
   colorBasisColumn: state.color.basisColumnId,
@@ -267,6 +272,8 @@ export const handleImport = createAsyncThunk<void, { file: Blob }, { state: Root
     dispatch(setProjectId(
       typeof parsedData.projectId === 'string' && parsedData.projectId !== '' ? parsedData.projectId : uuidv4()
     ));
+    // 版の ID。無い(古い)ファイルは版が分からないので空にする。
+    dispatch(setRevisionId(typeof parsedData.revisionId === 'string' ? parsedData.revisionId : ''));
     if (parsedData.showYear) {
       dispatch(setShowYear(parsedData.showYear));
     }
