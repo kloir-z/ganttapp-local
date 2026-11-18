@@ -1,81 +1,19 @@
 import { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useStore } from 'react-redux';
 import { RootState, setMessageInfo } from '../reduxStoreAndSlices/store';
-import { handleExport } from '../utils/ExportImportHandler';
-import { v4 as uuidv4 } from 'uuid';
+import { buildExportOptionsFromState, buildProjectData } from '../utils/ExportImportHandler';
 import { useTranslation } from 'react-i18next';
 
 export const useJsonExport = () => {
     const { t } = useTranslation();
     const dispatch = useDispatch();
-
-    const colors = useSelector((state: RootState) => state.color.colors);
-    const colorSchemes = useSelector((state: RootState) => state.color.schemes);
-    const colorBasisColumn = useSelector((state: RootState) => state.color.basisColumnId);
-    const dateRange = useSelector((state: RootState) => state.baseSettings.dateRange);
-    const columns = useSelector((state: RootState) => state.wbsData.columns);
-    const data = useSelector((state: RootState) => state.wbsData.data);
-    const holidayInput = useSelector((state: RootState) => state.baseSettings.holidayInput);
-    const holidayColor = useSelector((state: RootState) => state.wbsData.holidayColor);
-    const regularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
-    const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
-    const calendarWidth = useSelector((state: RootState) => state.baseSettings.calendarWidth);
-    const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
-  const extendActualBarToToday = useSelector((state: RootState) => state.baseSettings.extendActualBarToToday);
-    const title = useSelector((state: RootState) => state.baseSettings.title);
-    const showYear = useSelector((state: RootState) => state.wbsData.showYear);
-    const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
-    const treeData = useSelector((state: RootState) => state.notes.treeData);
-    const noteData = useSelector((state: RootState) => state.notes.noteData);
-    const rowNoteData = useSelector((state: RootState) => state.notes.rowNoteData);
-    const treeExpandedKeys = useSelector((state: RootState) => state.notes.treeExpandedKeys);
-    const treeScrollPosition = useSelector((state: RootState) => state.notes.treeScrollPosition);
-    const editorStates = useSelector((state: RootState) => state.notes.editorStates);
-    const selectedNodeKey = useSelector((state: RootState) => state.notes.selectedNodeKey);
-    const currentLanguage = useSelector((state: RootState) => state.baseSettings.language);
-    const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
-    const notesModalState = useSelector((state: RootState) => state.notes.modalState);
-    const annotations = useSelector((state: RootState) => state.wbsData.annotations);
+    const store = useStore<RootState>();
 
     const exportAndCopyJson = useCallback(async () => {
         try {
-            const zipBlob = await handleExport({
-                fileId: uuidv4(),
-                colors,
-                colorSchemes,
-                colorBasisColumn,
-                dateRange,
-                columns,
-                data,
-                holidayInput,
-                holidayColor,
-                regularDaysOffSetting,
-                wbsWidth,
-                calendarWidth,
-                cellWidth,
-                extendActualBarToToday,
-                title,
-                showYear,
-                dateFormat,
-                treeData,
-                noteData,
-                rowNoteData,
-                language: currentLanguage,
-                scrollPosition,
-                notesModalState,
-                treeExpandedKeys,
-                treeScrollPosition,
-                editorStates,
-                selectedNodeKey,
-                annotations,
-            });
-
-            const JSZip = (await import('jszip')).default;
-            const zip = new JSZip();
-            const loadedZip = await zip.loadAsync(zipBlob);
-            const jsonFileEntry = Object.values(loadedZip.files).find(file => file.name.endsWith('.json'));
-            if (!jsonFileEntry) throw new Error("No JSON file found in ZIP");
-            const jsonString = await jsonFileEntry.async("string");
+            // ZIP に入れる JSON と同じもの(serializeToZip と同じ整形)
+            const projectData = buildProjectData(buildExportOptionsFromState(store.getState()));
+            const jsonString = JSON.stringify(projectData, null, 2);
 
             await navigator.clipboard.writeText(jsonString);
 
@@ -95,13 +33,7 @@ export const useJsonExport = () => {
             }));
             throw error;
         }
-    }, [
-        colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor,
-        regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title,
-        showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage,
-        scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition,
-        editorStates, selectedNodeKey, annotations, dispatch, t
-    ]);
+    }, [store, dispatch, t]);
 
     return { exportAndCopyJson };
 };

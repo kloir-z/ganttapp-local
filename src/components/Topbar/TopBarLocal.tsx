@@ -8,19 +8,20 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import TextField from '@mui/material/TextField';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector, useStore } from 'react-redux';
 import { setActiveModal, setBarSelectionMode, setIsLoading, setShowCriticalPath } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { selectCriticalPath } from '../../reduxStoreAndSlices/criticalPathSelectors';
 import { RootState, undo, redo, setMessageInfo, removePastState } from '../../reduxStoreAndSlices/store';
 import { setTitle } from '../../reduxStoreAndSlices/baseSettingsSlice';
-import { handleExport, handleImport, buildProjectData } from '../../utils/ExportImportHandler'; // handleImportを追加
+import { handleExport, handleImport, buildProjectData, buildExportOptionsFromState } from '../../utils/ExportImportHandler';
 import { exportProjectAsHtml } from '../../utils/HtmlSnapshotExport';
 import { useTranslation } from 'react-i18next';
 import TitleSetting from './TitleSetting';
 import TopMenu from './TopMenu';
 import JsonDataModal from './JsonDataModal';
 import styled from 'styled-components';
-import { v4 as uuidv4 } from 'uuid';
+import { downloadBlob } from '../../utils/downloadBlob';
+import { draftSession } from '../../utils/draftSession';
 import { useGanttPdfExport } from '../../hooks/useGanttPdfExport';
 import { useGanttExcelExport } from '../../hooks/useGanttExcelExport';
 import { useColorBasis } from '../../hooks/useColorBasis';
@@ -68,6 +69,7 @@ const TopBarLocal: React.FC = memo(() => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const dispatch = useDispatch();
+  const store = useStore<RootState>();
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [jsonModalOpen, setJsonModalOpen] = useState(false);
@@ -77,37 +79,13 @@ const TopBarLocal: React.FC = memo(() => {
 
   // Redux state
   const isBarSelectionMode = useSelector((state: RootState) => state.uiFlags.isBarSelectionMode);
-  const colorSchemes = useSelector((state: RootState) => state.color.schemes);
-  const colorBasisColumn = useSelector((state: RootState) => state.color.basisColumnId);
   const isSavedStore = useSelector((state: RootState) => state.wbsData.isSavedChanges);
   const isSavedColor = useSelector((state: RootState) => state.color.isSavedChanges);
   const isSavedSettings = useSelector((state: RootState) => state.baseSettings.isSavedChanges);
   const isSavedNotes = useSelector((state: RootState) => state.notes.isSavedChanges);
-  const currentLanguage = useSelector((state: RootState) => state.baseSettings.language);
-  const dateRange = useSelector((state: RootState) => state.baseSettings.dateRange);
-  const holidayColor = useSelector((state: RootState) => state.wbsData.holidayColor);
-  const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
-  const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
-  const extendActualBarToToday = useSelector((state: RootState) => state.baseSettings.extendActualBarToToday);
-  const calendarWidth = useSelector((state: RootState) => state.baseSettings.calendarWidth);
-  const showYear = useSelector((state: RootState) => state.wbsData.showYear);
-  const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
-  const data = useSelector((state: RootState) => state.wbsData.data);
   const title = useSelector((state: RootState) => state.baseSettings.title);
-  const regularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
-  const colors = useSelector((state: RootState) => state.color.colors);
-  const holidayInput = useSelector((state: RootState) => state.baseSettings.holidayInput);
-  const columns = useSelector((state: RootState) => state.wbsData.columns);
   const treeData = useSelector((state: RootState) => state.notes.treeData);
-  const noteData = useSelector((state: RootState) => state.notes.noteData);
   const rowNoteData = useSelector((state: RootState) => state.notes.rowNoteData);
-  const notesModalState = useSelector((state: RootState) => state.notes.modalState);
-  const treeExpandedKeys = useSelector((state: RootState) => state.notes.treeExpandedKeys);
-  const treeScrollPosition = useSelector((state: RootState) => state.notes.treeScrollPosition);
-  const editorStates = useSelector((state: RootState) => state.notes.editorStates);
-  const selectedNodeKey = useSelector((state: RootState) => state.notes.selectedNodeKey);
-  const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
-  const annotations = useSelector((state: RootState) => state.wbsData.annotations);
   const pastLength = useSelector((state: RootState) => state.wbsData.past.length);
   const futureLength = useSelector((state: RootState) => state.wbsData.future.length);
   const showCriticalPath = useSelector((state: RootState) => state.uiFlags.showCriticalPath);
@@ -161,49 +139,14 @@ const TopBarLocal: React.FC = memo(() => {
   }, [dispatch]);
 
   const handleLocalSave = useCallback(async (newTitle?: string) => {
-    const effectiveTitle = newTitle || title;
+    const options = buildExportOptionsFromState(store.getState());
+    const effectiveTitle = newTitle || options.title;
     try {
-      const zipData = await handleExport({
-        fileId: uuidv4(),
-        colors,
-        colorSchemes,
-        colorBasisColumn,
-        dateRange,
-        columns,
-        data,
-        holidayInput,
-        holidayColor,
-        regularDaysOffSetting,
-        wbsWidth,
-        calendarWidth,
-        cellWidth,
-        extendActualBarToToday,
-        title: effectiveTitle,
-        showYear,
-        dateFormat,
-        treeData,
-        noteData,
-        rowNoteData,
-        language: currentLanguage,
-        scrollPosition,
-        notesModalState,
-        treeExpandedKeys,
-        treeScrollPosition,
-        editorStates,
-        selectedNodeKey,
-        annotations,
-      });
+      const zipData = await handleExport({ ...options, title: effectiveTitle });
+      downloadBlob(new Blob([zipData], { type: 'application/zip' }), `${effectiveTitle || 'gantt-chart'}.zip`);
 
-      const blob = new Blob([zipData], { type: 'application/zip' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${effectiveTitle || 'gantt-chart'}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
+      // 下書きは消さずに「ダウンロード済み」にする(保存先を尋ねる設定で取り消した場合に開き直せる)
+      void draftSession.markSaved();
       resetIsSavedChangesFlags();
       handleClose();
       dispatch(setMessageInfo({ message: t('File downloaded successfully.'), severity: 'success' }));
@@ -213,7 +156,7 @@ const TopBarLocal: React.FC = memo(() => {
         : t('Download failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
     }
-  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, notesModalState, annotations, resetIsSavedChangesFlags, handleClose, dispatch, t]);
+  }, [store, resetIsSavedChangesFlags, handleClose, dispatch, t]);
 
   const handleSaveAsSubmit = useCallback(async () => {
     if (!newTitle) return;
@@ -223,37 +166,8 @@ const TopBarLocal: React.FC = memo(() => {
 
   const handleExportHtml = useCallback(async () => {
     try {
-      const projectData = buildProjectData({
-        fileId: uuidv4(),
-        colors,
-        colorSchemes,
-        colorBasisColumn,
-        dateRange,
-        columns,
-        data,
-        holidayInput,
-        holidayColor,
-        regularDaysOffSetting,
-        wbsWidth,
-        calendarWidth,
-        cellWidth,
-        extendActualBarToToday,
-        title,
-        showYear,
-        dateFormat,
-        treeData,
-        noteData,
-        rowNoteData,
-        language: currentLanguage,
-        scrollPosition,
-        notesModalState,
-        treeExpandedKeys,
-        treeScrollPosition,
-        editorStates,
-        selectedNodeKey,
-        annotations,
-      });
-      await exportProjectAsHtml(projectData, title);
+      const projectData = buildProjectData(buildExportOptionsFromState(store.getState()));
+      await exportProjectAsHtml(projectData, projectData.title);
       handleClose();
       dispatch(setMessageInfo({ message: t('HTML file downloaded successfully.'), severity: 'success' }));
     } catch (error) {
@@ -262,7 +176,7 @@ const TopBarLocal: React.FC = memo(() => {
         : t('HTML export failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
     }
-  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey, annotations, handleClose, dispatch, t]);
+  }, [store, handleClose, dispatch, t]);
 
   const handleLocalOpen = useCallback(() => {
     const input = document.createElement('input');
@@ -279,10 +193,11 @@ const TopBarLocal: React.FC = memo(() => {
           await dispatch(handleImport({ file: fileBlob }) as any);
           dispatch(removePastState(1));
           resetIsSavedChangesFlags();
-          dispatch(setMessageInfo({
-            message: t('Saved data opened successfully.'),
-            severity: 'success'
-          }));
+          // 同じプロジェクトの未保存の下書きがブラウザに残っていれば、そちらが新しいかもしれないと知らせる
+          const hasDraft = await draftSession.hasDirtyDraftForProject(store.getState().baseSettings.projectId);
+          dispatch(setMessageInfo(hasDraft
+            ? { message: t('This project has an unsaved draft in this browser. Open it from File > Drafts.'), severity: 'warning' }
+            : { message: t('Saved data opened successfully.'), severity: 'success' }));
           if (visibleMenu) {
             setVisibleMenu(null);
           }
@@ -301,7 +216,7 @@ const TopBarLocal: React.FC = memo(() => {
       }
     };
     input.click();
-  }, [dispatch, t, resetIsSavedChangesFlags, resetReduxStates, visibleMenu, setVisibleMenu]);
+  }, [dispatch, store, t, resetIsSavedChangesFlags, resetReduxStates, visibleMenu, setVisibleMenu]);
 
   const fileMenuOptions = useMemo(() => {
     const options = [
@@ -324,6 +239,12 @@ const TopBarLocal: React.FC = memo(() => {
         children: t('Download As'),
         onClick: handleSaveAsClick,
         path: '3'
+      },
+      {
+        // ブラウザ内に残っている下書き(閉じたタブ・切り替える前のプロジェクト・ダウンロード済み)
+        children: t('Drafts'),
+        onClick: () => dispatch(setActiveModal('drafts')),
+        path: '6'
       },
       {
         children: t('JSON Data'),
@@ -363,7 +284,7 @@ const TopBarLocal: React.FC = memo(() => {
       }
     ];
     return options;
-  }, [t, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, exportExcel, handleExportHtml, treeData, rowNoteData]);
+  }, [t, dispatch, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, exportExcel, handleExportHtml, treeData, rowNoteData]);
 
   // 色分け基準列のクイック切替メニュー。列名はユーザーのリネームをそのまま表示する。
   const coloringMenuOptions = useMemo(() => {

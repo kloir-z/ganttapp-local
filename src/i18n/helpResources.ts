@@ -93,7 +93,7 @@ export const helpEn = {
       p1: "File > Download saves the whole project (chart, settings and notes) as a single ZIP file, and File > Upload loads it back. Everything runs inside your browser — no data ever leaves your machine.",
       p2: "File > JSON Data lets you view, copy and import the raw project data as JSON. Ctrl+Shift+J copies the same JSON straight to the clipboard.",
       p3: "File > Export offers three formats: PDF (the full chart as an image), Excel (a styled workbook that reproduces the table and chart), and Standalone HTML (a single self-contained file that shows the finished chart in any browser). When the project has notes, the Excel export first asks whether to include the notes sheet.",
-      note1: "Nothing is saved automatically. Download your project before closing the tab.",
+      note1: "Changes are kept automatically in this browser as drafts, so after closing the tab or reloading you can reopen them from File > Drafts. They are not written to a file, though: download the project to keep it.",
     },
     undoRedo: {
       title: "Undo & Redo",
@@ -190,7 +190,7 @@ export const helpJa: typeof helpEn = {
       p1: "「ファイル > プロジェクトZIPファイルをダウンロード」でプロジェクト全体(チャート・設定・メモ)を1つのZIPファイルとして保存し、「プロジェクトZIPファイルをアップロード」で読み込みます。処理はすべてブラウザ内で行われ、データが外部に送信されることはありません。",
       p2: "「ファイル > JSONデータ」ではプロジェクトの生データをJSON形式で表示・コピー・読み込みできます。Ctrl+Shift+J で同じJSONを直接クリップボードにコピーすることもできます。",
       p3: "「ファイル > エクスポート」からPDF(チャート全体を画像化)、Excel(表とチャートを再現したワークブック)、単体HTML(どのブラウザでも完成形のチャートを表示できる自己完結型ファイル)の3形式で出力できます。メモがあるプロジェクトでは、Excel出力時にメモシートを含めるかどうかを選択できます。",
-      note1: "データは自動保存されません。タブを閉じる前にプロジェクトをダウンロードしてください。",
+      note1: "変更はこのブラウザの中に下書きとして自動で残り、タブを閉じたり再読み込みしたりしても「ファイル > 下書き」から開き直せます。ただしファイルには自動で書き込まれないので、残したい内容はプロジェクトをダウンロードしてください。",
     },
     undoRedo: {
       title: "元に戻す・やり直す",

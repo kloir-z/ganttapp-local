@@ -14,13 +14,12 @@ import {
   Paper
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useStore } from 'react-redux';
 import { RootState, setMessageInfo } from '../../reduxStoreAndSlices/store';
 import { setIsLoading } from '../../reduxStoreAndSlices/uiFlagSlice';
-import { handleImport, handleExport } from '../../utils/ExportImportHandler';
+import { handleImport, buildExportOptionsFromState, buildProjectData } from '../../utils/ExportImportHandler';
 import useResetReduxStates from '../../hooks/useResetReduxStates';
 import useResetIsSavedChangesFlags from '../../hooks/useResetIsSavedChangesFlags';
-import { v4 as uuidv4 } from 'uuid';
 
 interface JsonDataModalProps {
   open: boolean;
@@ -53,6 +52,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
 const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
+  const store = useStore<RootState>();
   const resetReduxStates = useResetReduxStates();
   const resetIsSavedChangesFlags = useResetIsSavedChangesFlags();
 
@@ -61,35 +61,6 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
   const [jsonOutput, setJsonOutput] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Redux state for export
-  const colors = useSelector((state: RootState) => state.color.colors);
-  const colorSchemes = useSelector((state: RootState) => state.color.schemes);
-  const colorBasisColumn = useSelector((state: RootState) => state.color.basisColumnId);
-  const dateRange = useSelector((state: RootState) => state.baseSettings.dateRange);
-  const columns = useSelector((state: RootState) => state.wbsData.columns);
-  const data = useSelector((state: RootState) => state.wbsData.data);
-  const holidayInput = useSelector((state: RootState) => state.baseSettings.holidayInput);
-  const holidayColor = useSelector((state: RootState) => state.wbsData.holidayColor);
-  const regularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
-  const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
-  const calendarWidth = useSelector((state: RootState) => state.baseSettings.calendarWidth);
-  const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
-  const extendActualBarToToday = useSelector((state: RootState) => state.baseSettings.extendActualBarToToday);
-  const title = useSelector((state: RootState) => state.baseSettings.title);
-  const showYear = useSelector((state: RootState) => state.wbsData.showYear);
-  const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
-  const treeData = useSelector((state: RootState) => state.notes.treeData);
-  const noteData = useSelector((state: RootState) => state.notes.noteData);
-  const rowNoteData = useSelector((state: RootState) => state.notes.rowNoteData);
-  const treeExpandedKeys = useSelector((state: RootState) => state.notes.treeExpandedKeys);
-  const treeScrollPosition = useSelector((state: RootState) => state.notes.treeScrollPosition);
-  const editorStates = useSelector((state: RootState) => state.notes.editorStates);
-  const selectedNodeKey = useSelector((state: RootState) => state.notes.selectedNodeKey);
-  const currentLanguage = useSelector((state: RootState) => state.baseSettings.language);
-  const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
-  const notesModalState = useSelector((state: RootState) => state.notes.modalState);
-  const annotations = useSelector((state: RootState) => state.wbsData.annotations);
 
   const handleTabChange = useCallback((_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -101,46 +72,9 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
     setError('');
 
     try {
-      const zipBlob = await handleExport({
-        fileId: uuidv4(),
-        colors,
-        colorSchemes,
-        colorBasisColumn,
-        dateRange,
-        columns,
-        data,
-        holidayInput,
-        holidayColor,
-        regularDaysOffSetting,
-        wbsWidth,
-        calendarWidth,
-        cellWidth,
-        extendActualBarToToday,
-        title,
-        showYear,
-        dateFormat,
-        treeData,
-        noteData,
-        rowNoteData,
-        language: currentLanguage,
-        scrollPosition,
-        notesModalState,
-        treeExpandedKeys,
-        treeScrollPosition,
-        editorStates,
-        selectedNodeKey,
-        annotations,
-      });
-
-      // Extract JSON from ZIP for display
-      const JSZip = (await import('jszip')).default;
-      const zip = new JSZip();
-      const loadedZip = await zip.loadAsync(zipBlob);
-      const jsonFileEntry = Object.values(loadedZip.files).find(file => file.name.endsWith('.json'));
-      if (!jsonFileEntry) throw new Error("No JSON file found in ZIP");
-      const jsonString = await jsonFileEntry.async("string");
-      
-      setJsonOutput(jsonString);
+      // ZIP に入れる JSON と同じもの(serializeToZip と同じ整形)
+      const projectData = buildProjectData(buildExportOptionsFromState(store.getState()));
+      setJsonOutput(JSON.stringify(projectData, null, 2));
 
       dispatch(setMessageInfo({
         message: t('JSON data exported successfully.'),
@@ -154,11 +88,7 @@ const JsonDataModal: React.FC<JsonDataModalProps> = ({ open, onClose }) => {
     } finally {
       setLoading(false);
     }
-  }, [
-    colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor,
-    regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title,
-    showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, annotations, dispatch, t
-  ]);
+  }, [store, dispatch, t]);
 
   const handleImportJson = useCallback(async () => {
     if (!jsonInput.trim()) {

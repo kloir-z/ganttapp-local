@@ -9,6 +9,7 @@
 // LocalApp), which feeds it through the normal import path.
 
 import type { ProjectData } from './ExportImportHandler';
+import { downloadBlob } from './downloadBlob';
 
 // Id of the <script> tag that carries the embedded project JSON.
 export const EMBEDDED_DATA_SCRIPT_ID = 'gantt-embedded-project-data';
@@ -90,18 +91,6 @@ const inlineExternalAssets = async (root: HTMLElement): Promise<void> => {
   }
 };
 
-const triggerDownload = (html: string, fileName: string): void => {
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-};
-
 // Build a self-contained HTML snapshot of the current app with `projectData`
 // baked in, then download it as `<title>.html`.
 export const exportProjectAsHtml = async (projectData: ProjectData, title: string): Promise<void> => {
@@ -134,5 +123,5 @@ export const exportProjectAsHtml = async (projectData: ProjectData, title: strin
 
   const html = `<!DOCTYPE html>\n${clone.outerHTML}`;
   const safeTitle = (title || 'gantt-chart').replace(/[\\/:*?"<>|]/g, '_');
-  triggerDownload(html, `${safeTitle}.html`);
+  downloadBlob(new Blob([html], { type: 'text/html' }), `${safeTitle}.html`);
 };

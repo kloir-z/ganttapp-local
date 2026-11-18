@@ -1,6 +1,6 @@
 // useResetReduxStates.ts
 import { useDispatch } from 'react-redux';
-import { resetBaseSettings, setCurrentFileId, setHolidayInput } from '../reduxStoreAndSlices/baseSettingsSlice';
+import { resetBaseSettings, setCurrentFileId, setHolidayInput, setProjectId } from '../reduxStoreAndSlices/baseSettingsSlice';
 import { resetColor } from '../reduxStoreAndSlices/colorSlice';
 import { resetNotes } from '../reduxStoreAndSlices/notesSlice';
 import { resetStore, setColumns, setDateFormat, setHolidays } from '../reduxStoreAndSlices/store';
@@ -8,6 +8,8 @@ import { t } from 'i18next';
 import { initialColumns } from '../reduxStoreAndSlices/initialColumns';
 import { determineDateFormat, getInitialHolidays } from '../utils/CommonUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+import { draftSession } from '../utils/draftSession';
 
 interface ResetOptions {
     skipNavigation?: boolean;
@@ -23,11 +25,16 @@ const useResetReduxStates = (): (options?: ResetOptions) => Promise<void> => {
     const resetReduxStates = async (options: ResetOptions = {}): Promise<void> => {
         const { skipNavigation = false, isLocalMode } = options;
 
+        // 別のプロジェクトに切り替える前に、書きかけの下書きをタブから切り離して残す
+        // (中身はこの時点で取るので、続く reset より前に呼ぶ)。
+        void draftSession.detach();
+
         dispatch(resetStore());
         dispatch(resetNotes());
         dispatch(resetBaseSettings());
         dispatch(resetColor());
         dispatch(setCurrentFileId(''));
+        dispatch(setProjectId(uuidv4()));
         dispatch(setDateFormat(dateFormat));
 
         if (!skipNavigation) {

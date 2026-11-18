@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { handleImport } from '../../utils/ExportImportHandler';
+import { draftSession } from '../../utils/draftSession';
 import { setActiveModal, setIsLoading } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { WelcomeUtils } from '../../utils/WelcomeUtils';
 import { AppDispatch, RootState } from '../../reduxStoreAndSlices/store';
@@ -83,6 +84,8 @@ const WelcomeModal: React.FC = () => {
             }
             const blob = await response.blob();
 
+            // サンプルは今の状態の上に読み込むので、書きかけの下書きを先に切り離して残す
+            void draftSession.detach();
             const result = await dispatch(handleImport({ file: blob }));
 
             if (handleImport.rejected.match(result)) {

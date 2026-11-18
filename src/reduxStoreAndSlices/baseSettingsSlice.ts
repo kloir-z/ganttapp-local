@@ -21,6 +21,9 @@ interface BaseSettingsState {
   savedFileList: SavedFileList;
   currentFileId: string;
   userEmail: string;
+  // プロジェクトを見分ける ID。新規作成のときに作り、保存しても変えない(ファイルに書く)。
+  // ブラウザ内の下書きがどのプロジェクトのものかを判断するのに使う。
+  projectId: string;
   isSavedChanges: boolean;
   scrollPosition: {
     scrollLeft: number;
@@ -49,6 +52,7 @@ const initialState: BaseSettingsState = {
   savedFileList: {},
   currentFileId: "",
   userEmail: "",
+  projectId: "",
   isSavedChanges: true,
   scrollPosition: {
     scrollLeft: 0,
@@ -96,8 +100,9 @@ const baseSettingsSlice = createSlice({
       }
     },
     setTitle(state, action: PayloadAction<string>) {
-      state.title = action.payload;
+      // 代入より先に比べる(以前は代入してから比べていたので、タイトルを変えても未保存にならなかった)
       if (state.title !== action.payload) {
+        state.title = action.payload;
         if (action.payload) {
           document.title = action.payload + " - Gantty";
         } else {
@@ -131,6 +136,7 @@ const baseSettingsSlice = createSlice({
       state.extendActualBarToToday = initialState.extendActualBarToToday;
       state.title = initialState.title;
       state.scrollPosition = initialState.scrollPosition;
+      state.projectId = initialState.projectId;
       state.isSavedChanges = true;
       document.title = "Gantty";
     },
@@ -147,9 +153,13 @@ const baseSettingsSlice = createSlice({
     setIsSavedChangesSettings(state, action: PayloadAction<boolean>) {
       state.isSavedChanges = action.payload;
     },
+    // 下書きとプロジェクトを結びつけるための識別子。中身の変更ではないので isSavedChanges は汚さない。
+    setProjectId(state, action: PayloadAction<string>) {
+      state.projectId = action.payload;
+    },
   },
 });
 
-export const { setWbsWidth, setMaxWbsWidth, setCalendarWidth, setCellWidth, setDateRange, setHolidayInput, setExtendActualBarToToday, setTitle, setScrollPosition, resetBaseSettings, setSavedFileList, setCurrentFileId, setUserEmail, setLanguage, setIsSavedChangesSettings } = baseSettingsSlice.actions;
+export const { setWbsWidth, setMaxWbsWidth, setCalendarWidth, setCellWidth, setDateRange, setHolidayInput, setExtendActualBarToToday, setTitle, setScrollPosition, resetBaseSettings, setSavedFileList, setCurrentFileId, setUserEmail, setLanguage, setIsSavedChangesSettings, setProjectId } = baseSettingsSlice.actions;
 
 export default baseSettingsSlice.reducer;

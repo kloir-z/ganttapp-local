@@ -4,12 +4,13 @@ import { ColorInfo, ColorScheme, setIsSavedChangesColor } from "../reduxStoreAnd
 import { WBSData, DateFormatType, RegularDaysOffSettingsType, HolidayColor, ChartAnnotation } from "../types/DataTypes";
 import { updateEntireColorSettings, setEntireColorState } from "../reduxStoreAndSlices/colorSlice";
 import { setEntireData, setHolidays, setEntireAnnotations } from "../reduxStoreAndSlices/store";
-import { setWbsWidth, setDateRange, setHolidayInput, setTitle, setCalendarWidth, setCellWidth, setExtendActualBarToToday, setLanguage, setIsSavedChangesSettings, setScrollPosition } from "../reduxStoreAndSlices/baseSettingsSlice";
+import { setWbsWidth, setDateRange, setHolidayInput, setTitle, setCalendarWidth, setCellWidth, setExtendActualBarToToday, setLanguage, setIsSavedChangesSettings, setScrollPosition, setProjectId } from "../reduxStoreAndSlices/baseSettingsSlice";
 import JSZip from 'jszip';
 import { parseHolidaysFromInput } from '../components/Setting/utils/settingHelpers';
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { ExtendedTreeDataNode, noteData, setIsSavedChangesNotes, setNotes, NotesModalState } from "../reduxStoreAndSlices/notesSlice";
 import i18n from "i18next";
+import { v4 as uuidv4 } from 'uuid';
 
 // Schema version of the exported project data. Bump this whenever the shape of
 // the exported JSON changes in a way that import logic must account for.
@@ -50,6 +51,8 @@ export interface ExportData {
   selectedNodeKey?: string;
   // チャート注釈(複数行を指し示す見せる用のメモ)。後から追加した項目なので省略可。
   annotations?: ChartAnnotation[];
+  // プロジェクトを見分ける ID(下書きとの対応づけ用)。後から追加した項目なので省略可。
+  projectId?: string;
 }
 
 // Collect the canonical, format-agnostic project model from the export options.
@@ -83,6 +86,7 @@ export const buildProjectData = (options: ExportData) => {
     editorStates,
     selectedNodeKey,
     annotations,
+    projectId,
   } = options;
   // Deferred orphan cleanup: only persist row notes whose row still exists in
   // the current WBS data. Rows deleted earlier leave their notes in state until
@@ -96,6 +100,7 @@ export const buildProjectData = (options: ExportData) => {
   }
   return {
     version: EXPORT_SCHEMA_VERSION,
+    ...(projectId && { projectId }),
     colors,
     ...(colorSchemes && { colorSchemes }),
     ...(colorBasisColumn && { colorBasisColumn }),
@@ -140,6 +145,40 @@ export const handleExport = async (options: ExportData): Promise<Blob> => {
   const projectData = buildProjectData(options);
   return serializeToZip(options.fileId, projectData);
 };
+
+// Collect the export options straight from the store, so callers read the state at
+// the moment they save instead of each keeping its own long list of selectors.
+export const buildExportOptionsFromState = (state: RootState): ExportData => ({
+  fileId: uuidv4(),
+  projectId: state.baseSettings.projectId,
+  colors: state.color.colors,
+  colorSchemes: state.color.schemes,
+  colorBasisColumn: state.color.basisColumnId,
+  dateRange: state.baseSettings.dateRange,
+  columns: state.wbsData.columns,
+  data: state.wbsData.data,
+  holidayInput: state.baseSettings.holidayInput,
+  holidayColor: state.wbsData.holidayColor,
+  regularDaysOffSetting: state.wbsData.regularDaysOffSetting,
+  wbsWidth: state.baseSettings.wbsWidth,
+  calendarWidth: state.baseSettings.calendarWidth,
+  cellWidth: state.baseSettings.cellWidth,
+  extendActualBarToToday: state.baseSettings.extendActualBarToToday,
+  title: state.baseSettings.title,
+  showYear: state.wbsData.showYear,
+  dateFormat: state.wbsData.dateFormat,
+  treeData: state.notes.treeData,
+  noteData: state.notes.noteData,
+  rowNoteData: state.notes.rowNoteData,
+  language: state.baseSettings.language,
+  scrollPosition: state.baseSettings.scrollPosition,
+  notesModalState: state.notes.modalState,
+  treeExpandedKeys: state.notes.treeExpandedKeys,
+  treeScrollPosition: state.notes.treeScrollPosition,
+  editorStates: state.notes.editorStates,
+  selectedNodeKey: state.notes.selectedNodeKey,
+  annotations: state.wbsData.annotations,
+});
 
 export const handleImport = createAsyncThunk<void, { file: Blob }, { state: RootState, dispatch: AppDispatch }>(
   'project/import',
@@ -224,6 +263,10 @@ export const handleImport = createAsyncThunk<void, { file: Blob }, { state: Root
     if (parsedData.title) {
       dispatch(setTitle(parsedData.title));
     }
+    // projectId の無い古いファイルには、開いたときに ID を付ける(次の保存でファイルにも入る)。
+    dispatch(setProjectId(
+      typeof parsedData.projectId === 'string' && parsedData.projectId !== '' ? parsedData.projectId : uuidv4()
+    ));
     if (parsedData.showYear) {
       dispatch(setShowYear(parsedData.showYear));
     }
