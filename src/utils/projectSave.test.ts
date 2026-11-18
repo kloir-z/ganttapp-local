@@ -40,6 +40,7 @@ const makeContext = (confirmOverwrite = jest.fn(() => true)): SaveContext & { co
   getState: store.getState,
   dispatch: store.dispatch,
   confirmOverwrite,
+  pageFileName: null,
 });
 
 const writtenProject = async (handle: FakeHandle) => readEmbeddedProjectDataFromHtml(await handle.content.text());

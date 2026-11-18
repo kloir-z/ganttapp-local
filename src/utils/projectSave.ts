@@ -54,6 +54,8 @@ export interface SaveContext {
   dispatch: AppDispatch;
   // 上書きしようとしたファイルが、開いたあとに別の内容で保存されていたときに尋ねる
   confirmOverwrite: (fileName: string) => boolean;
+  // file:// で開いているページのファイル名(currentPageFileName)。それ以外は null。
+  pageFileName: string | null;
 }
 
 export type SaveOutcome =
@@ -64,8 +66,9 @@ export type SaveOutcome =
 let currentTarget: { projectId: string; handle: WritableFileHandle } | null = null;
 let saving = false;
 
-// file:// で開いているページのファイル名(書き出した HTML を直接開いているときは、それが作業ファイル)
-const pageFileName = (): string | null => {
+// file:// で開いているページのファイル名(書き出した HTML を直接開いているときは、それが作業ファイル)。
+// SaveContext.pageFileName に渡す(テストでは環境の URL に頼らず値を渡せるようにするため)。
+export const currentPageFileName = (): string | null => {
   if (typeof location === 'undefined' || location.protocol !== 'file:') return null;
   const name = decodeURIComponent(location.pathname.split('/').pop() ?? '');
   return name || null;
@@ -165,7 +168,7 @@ const saveAsUnlocked = async (ctx: SaveContext): Promise<SaveOutcome> => {
   const picker = getSavePicker();
   if (!picker) return downloadHtmlUnlocked(ctx);
   const { title, projectId } = ctx.getState().baseSettings;
-  const page = pageFileName();
+  const page = ctx.pageFileName;
   const suggestedName = page && readEmbeddedProjectData() && /\.html?$/i.test(page) ? page : htmlFileNameForTitle(title);
   let handle: FileSystemFileHandle;
   try {
@@ -193,7 +196,7 @@ export const saveProject = (ctx: SaveContext): Promise<SaveOutcome> => exclusive
   let handle: WritableFileHandle | null = currentTarget?.projectId === projectId ? currentTarget.handle : null;
   if (!handle) {
     const stored = await loadSavedFileHandle(projectId).catch(() => undefined);
-    const page = pageFileName();
+    const page = ctx.pageFileName;
     // 書き出した HTML を直接開いているのに、覚えている保存先と名前が違う(複製したファイルを
     // 開いている、など)ときは、元のファイルを黙って上書きしないよう保存先を尋ね直す。
     const pageIsProjectFile = page !== null && readEmbeddedProjectData() !== null;

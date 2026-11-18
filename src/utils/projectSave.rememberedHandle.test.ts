@@ -1,9 +1,7 @@
-/**
- * @jest-environment jsdom
- * @jest-environment-options {"url": "file:///home/user/plans/work.html"}
- */
-// 書き出した HTML(work.html)を直接開いている場面。覚えておいた保存先の使い方と、
+// 書き出した HTML(work.html)を file:// で直接開いている場面。覚えておいた保存先の使い方と、
 // 名前の違う複製から元のファイルを黙って上書きしないことを確かめる。
+// ページのファイル名は SaveContext.pageFileName で渡す(jsdom の URL を file:// にすると、
+// Node 20 では localStorage が使えずテストファイルごと読み込めない)。
 import { store } from '../reduxStoreAndSlices/store';
 import { setIsSavedChangesStore } from '../reduxStoreAndSlices/store';
 import { setProjectId, setRevisionId, setTitle } from '../reduxStoreAndSlices/baseSettingsSlice';
@@ -40,7 +38,7 @@ const makeHandle = (name: string, permission: PermissionState) => {
   return handle;
 };
 
-const ctx: SaveContext = { getState: store.getState, dispatch: store.dispatch, confirmOverwrite: () => true };
+const ctx: SaveContext = { getState: store.getState, dispatch: store.dispatch, confirmOverwrite: () => true, pageFileName: 'work.html' };
 
 const picked = makeHandle('picked.html', 'granted');
 const picker = jest.fn(async () => picked);

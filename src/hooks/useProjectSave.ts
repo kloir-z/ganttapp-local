@@ -3,6 +3,7 @@ import { useDispatch, useStore } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { AppDispatch, RootState, setMessageInfo } from '../reduxStoreAndSlices/store';
 import {
+  currentPageFileName,
   downloadProjectHtml,
   downloadProjectZip,
   saveProject,
@@ -21,6 +22,7 @@ export const useProjectSave = () => {
     getState: store.getState,
     dispatch,
     confirmOverwrite: (fileName) => window.confirm(t('overwrite newer file confirm', { fileName })),
+    pageFileName: currentPageFileName(),
   }), [store, dispatch, t]);
 
   const run = useCallback(async (
