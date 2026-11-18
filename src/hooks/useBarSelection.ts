@@ -65,7 +65,6 @@ export const useBarSelection = (rowId: string, barType: BarType) => {
   const handleSelectionMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>): boolean => {
     if (event.button !== 0) return false;
     const state = store.getState();
-    if (state.history?.isViewingPast) return false;
 
     // Shift は範囲選択、Ctrl(⌘)は1本ずつの追加/解除。
     // Shift に起点が無ければ、そのバーを選ぶところから始める。
@@ -109,7 +108,6 @@ export const useBarSelection = (rowId: string, barType: BarType) => {
   const handleSelectionClick = useCallback((moved: boolean) => {
     if (moved) return;
     const state = store.getState();
-    if (state.history?.isViewingPast) return;
     if (state.uiFlags.isBarSelectionMode) {
       // モード中のクリックは追加/解除(選択済みのバーを押したら外れる)
       dispatch(toggleSelectedBar(barKey));

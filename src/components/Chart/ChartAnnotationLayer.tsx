@@ -57,7 +57,6 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
   const annotations = useSelector((state: RootState) => state.wbsData.annotations);
   const selectedIds = useSelector((state: RootState) => state.uiFlags.selectedAnnotationIds);
   const showAnnotations = useSelector((state: RootState) => state.uiFlags.showAnnotations);
-  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
   const isExporting = useSelector((state: RootState) => state.uiFlags.isExporting);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
@@ -74,10 +73,6 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
   // カードと右クリックメニューをまとめる入れ物。右クリックの受け口であり、
   // 「注釈の外を押したら選択を外す」判定の境界でもある。
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // 履歴プレビュー中は描かない。注釈はまだ履歴スナップショットに含めていないので、
-  // 過去データの上に現在の注釈を重ねると対応がずれて見える(CP 表示と同じ判断)。
-  const isActive = showAnnotations && !isViewingPast;
 
   // 日付キーの索引は dateArray が変わったときだけ作る。geometries はカードのドラッグ中に
   // マウス移動ごと再計算されるので、そのたびに全日付を format し直さないようにする。
@@ -110,7 +105,7 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
   }, []);
 
   const geometries = useMemo(() => {
-    if (!isActive || annotations.length === 0) return [];
+    if (!showAnnotations || annotations.length === 0) return [];
     const { dateIndex, dateKeys } = dateLookup;
     const toKey = (dateStr: string) => {
       if (!dateStr) return '';
@@ -128,7 +123,7 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
         return geometry ? { annotation, geometry } : null;
       })
       .filter((entry): entry is { annotation: ChartAnnotation; geometry: AnnotationGeometry } => entry !== null);
-  }, [isActive, annotations, dateLookup, filteredData, allRowIds, cellWidth, rowHeight, dragOffset, measureText]);
+  }, [showAnnotations, annotations, dateLookup, filteredData, allRowIds, cellWidth, rowHeight, dragOffset, measureText]);
 
   // undo などで消えた注釈は選択として数えない。
   const effectiveSelectedIds = useMemo(
@@ -266,7 +261,7 @@ const ChartAnnotationLayer: React.FC<ChartAnnotationLayerProps> = memo(({ filter
     setEditingId('');
   }, [dispatch, draft, editingId]);
 
-  if (!isActive || geometries.length === 0) return null;
+  if (!showAnnotations || geometries.length === 0) return null;
 
   return (
     <>

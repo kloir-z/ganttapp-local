@@ -5,7 +5,6 @@ import { GanttRow, CalendarCell } from '../../styles/GanttStyles';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../reduxStoreAndSlices/store';
 import { cdate } from 'cdate';
-import { RegularDaysOffSettingsType } from '../../types/DataTypes';
 
 interface CalendarProps {
   dateArray: ReturnType<typeof cdate>[];
@@ -13,13 +12,9 @@ interface CalendarProps {
 }
 
 const GridVertical: React.FC<CalendarProps> = memo(({ dateArray, gridHeight }) => {
-  const currentHolidays = useSelector((state: RootState) => state.wbsData.holidays);
+  const holidays = useSelector((state: RootState) => state.wbsData.holidays);
   const holidayColor = useSelector((state: RootState) => state.wbsData.holidayColor);
-  const currentRegularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
-  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-  const previewData = useSelector((state: RootState) => state.history?.previewData);
-  const holidays = isViewingPast && previewData?.holidays ? previewData.holidays : currentHolidays;
-  const regularDaysOffSetting: RegularDaysOffSettingsType = isViewingPast && previewData?.regularDaysOffSetting ? previewData.regularDaysOffSetting : currentRegularDaysOffSetting;
+  const regularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
 
   return (

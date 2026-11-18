@@ -53,12 +53,7 @@ const StyledInput = styled.input`
 const TitleSetting: React.FC = memo(() => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
-  
-  // Historical data for preview functionality
-  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-  const previewData = useSelector((state: RootState) => state.history?.previewData);
-  const currentTitle = useSelector((state: RootState) => state.baseSettings.title);
-  const globalTitle = isViewingPast && previewData?.title ? previewData.title : currentTitle;
+  const globalTitle = useSelector((state: RootState) => state.baseSettings.title);
   const [title, setTitleLocal] = useState(globalTitle);
   const [isEditing, setIsEditing] = useState(false);
   const dummyRef = useRef<HTMLDivElement>(null);
@@ -122,12 +117,10 @@ const TitleSetting: React.FC = memo(() => {
         type="text"
         placeholder={placeholder}
         value={title}
-        onChange={isViewingPast ? undefined : handleChange}
-        onFocus={isViewingPast ? undefined : handleFocus}
-        onBlur={isViewingPast ? undefined : handleBlur}
+        onChange={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         onDoubleClick={handleDoubleClick}
-        disabled={isViewingPast}
-        readOnly={isViewingPast}
       />
     </TitleWrapper>
   );

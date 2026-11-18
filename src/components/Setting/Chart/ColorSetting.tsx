@@ -8,22 +8,15 @@ import ColorInfoItem from "./ColorInfoItem";
 import ColorPickerPopover from "./ColorPickerPopover";
 import { useTranslation } from "react-i18next";
 import { RootState } from "../../../reduxStoreAndSlices/store";
-import { resetToDefaultColors, updateFallbackColor, addColorInfo, ColorInfo } from "../../../reduxStoreAndSlices/colorSlice";
+import { resetToDefaultColors, updateFallbackColor, addColorInfo } from "../../../reduxStoreAndSlices/colorSlice";
 import { useColorBasis } from "../../../hooks/useColorBasis";
 
 const ColorSetting: React.FC = memo(() => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
-  const currentColors = useSelector((state: RootState) => state.color.colors);
-  const currentFallbackColor = useSelector((state: RootState) => state.color.fallbackColor);
-  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-  const previewData = useSelector((state: RootState) => state.history?.previewData);
+  const colors = useSelector((state: RootState) => state.color.colors);
+  const fallbackColor = useSelector((state: RootState) => state.color.fallbackColor);
   const { basisColumnId, candidates, switchTo, autoAssign } = useColorBasis();
-
-  const colors: { [id: number]: ColorInfo } = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
-  const fallbackColor = isViewingPast && previewData?.fallbackColor ? previewData.fallbackColor : currentFallbackColor;
-
-
 
   type DisplayColorPickerType = { [key: number]: boolean };
   const [displayColorPicker, setDisplayColorPicker] = useState<DisplayColorPickerType>({});

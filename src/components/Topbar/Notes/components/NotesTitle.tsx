@@ -10,10 +10,9 @@ import { findNodeByKey, formatToLocalDateTime } from '../NoteUtils';
 interface NotesTitleProps {
   selectedNodeKey: string;
   addNode: (sameLevel?: boolean, title?: string, content?: string) => void;
-  isViewingPast: boolean;
 }
 
-const NotesTitle: React.FC<NotesTitleProps> = memo(({ selectedNodeKey, addNode, isViewingPast }) => {
+const NotesTitle: React.FC<NotesTitleProps> = memo(({ selectedNodeKey, addNode }) => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const treeData = useSelector((state: RootState) => state.notes.treeData);
@@ -56,11 +55,9 @@ const NotesTitle: React.FC<NotesTitleProps> = memo(({ selectedNodeKey, addNode, 
       <Input 
         variant="outlined" 
         value={selectedNodeTitle} 
-        onChange={isViewingPast ? undefined : handleTitleChange} 
+        onChange={handleTitleChange} 
         placeholder={t('Title') + '...'} 
         style={{ minHeight: '35px' }} 
-        disabled={isViewingPast}
-        readOnly={isViewingPast}
       />
     </Tooltip>
   );

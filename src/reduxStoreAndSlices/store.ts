@@ -8,7 +8,6 @@ import uiFlagsReducer from './uiFlagSlice';
 import subMenuReducer from './subMenuSlice';
 import notesReducer from './notesSlice';
 import rowDialogReducer from './rowDialogSlice';
-import historyReducer from './historySlice';
 import { Column } from "@silevis/reactgrid";
 import { initializedEmptyData } from './initialData';
 import { initialRegularDaysOffSetting } from './initialHolidays';
@@ -895,7 +894,6 @@ export const store = configureStore({
     subMenu: subMenuReducer,
     notes: notesReducer,
     rowDialog: rowDialogReducer,
-    history: historyReducer,
   },
   devTools: process.env.NODE_ENV !== 'production',
 });

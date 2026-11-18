@@ -3,7 +3,6 @@ import React, { memo, useState, useCallback, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../../reduxStoreAndSlices/store';
 import { updateNotesModalState, updateTreeData } from '../../../reduxStoreAndSlices/notesSlice';
-import { updateTempModalState } from '../../../reduxStoreAndSlices/historySlice';
 import { StyledContainer } from './NotesStyles';
 import { validateModalState, getMinRequiredWidth } from './utils/notesValidation';
 import { migrateLegacyNoteData } from './utils/notesDataMigration';
@@ -16,29 +15,13 @@ import ModalResizer from './ModalResizer';
 
 const NotesModal: React.FC = memo(() => {
   const activeModal = useSelector((state: RootState) => state.uiFlags.activeModal);
-  
-  // Historical data for preview functionality
-  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-  const previewData = useSelector((state: RootState) => state.history?.previewData);
-  const tempModalState = useSelector((state: RootState) => state.history?.tempModalState);
-  
-  // Get current data
-  const currentModalState = useSelector((state: RootState) => state.notes.modalState);
-  const currentTreeData = useSelector((state: RootState) => state.notes.treeData);
-  const currentNoteData = useSelector((state: RootState) => state.notes.noteData);
-  const currentSelectedNodeKey = useSelector((state: RootState) => state.notes.selectedNodeKey);
+  const modalState = useSelector((state: RootState) => state.notes.modalState);
+  const treeData = useSelector((state: RootState) => state.notes.treeData);
+  const noteData = useSelector((state: RootState) => state.notes.noteData);
+  const selectedNodeKey = useSelector((state: RootState) => state.notes.selectedNodeKey);
   const selectedRowNoteId = useSelector((state: RootState) => state.notes.selectedRowNoteId);
   const rowNoteData = useSelector((state: RootState) => state.notes.rowNoteData);
-  
-  // Use historical data if viewing past, otherwise current data
-  // Note: For selectedNodeKey, always use current selection even during history viewing to allow navigation
-  const baseModalState = isViewingPast && previewData?.notesModalState ? previewData.notesModalState : currentModalState;
-  const modalState = isViewingPast && tempModalState ? 
-    { ...baseModalState, ...tempModalState } : baseModalState;
-  const treeData = isViewingPast && previewData?.treeData ? previewData.treeData : currentTreeData;
-  const noteData = isViewingPast && previewData?.noteData ? previewData.noteData : currentNoteData;
-  const selectedNodeKey = currentSelectedNodeKey; // Always use current selection to allow navigation
-  
+
   const dispatch = useDispatch();
   const [resizeAnimate, setResizeAnimate] = useState(false);
   
@@ -71,19 +54,15 @@ const NotesModal: React.FC = memo(() => {
 
   // Handle position changes
   const handlePositionChange = useCallback((newPosition: { x: number; y: number }) => {
-    if (isViewingPast) {
-      dispatch(updateTempModalState({ position: newPosition }));
-    } else {
-      dispatch(updateNotesModalState({ position: newPosition }));
-    }
-  }, [dispatch, isViewingPast]);
+    dispatch(updateNotesModalState({ position: newPosition }));
+  }, [dispatch]);
 
   if (activeModal !== 'notes') {
     return null;
   }
 
   return (
-    <NotesModalWrapper position={position} isViewingPast={isViewingPast} onPositionChange={handlePositionChange}>
+    <NotesModalWrapper position={position} onPositionChange={handlePositionChange}>
       {/* 行メモ表示中は、対象タスク(チャート側)からメモ帳へ向かう矢印を描く。 */}
       {selectedRowNoteId && <RowNoteConnector rowId={selectedRowNoteId} />}
       <StyledContainer style={{ width: `${noteWidth}px`, height: `${noteHeight}px` }}>
@@ -93,18 +72,13 @@ const NotesModal: React.FC = memo(() => {
           activeModal={activeModal}
           treeData={treeData}
           selectedNodeKey={selectedNodeKey}
-          isViewingPast={isViewingPast}
         />
         
         <TreePaneResizer 
           treeWidth={treeWidth} 
           setTreeWidth={(width) => {
             const newWidth = typeof width === 'function' ? width(treeWidth) : width;
-            if (isViewingPast) {
-              dispatch(updateTempModalState({ treeWidth: newWidth }));
-            } else {
-              dispatch(updateNotesModalState({ treeWidth: newWidth }));
-            }
+            dispatch(updateNotesModalState({ treeWidth: newWidth }));
           }} 
           setResizeAnimate={setResizeAnimate} 
         />
@@ -117,7 +91,6 @@ const NotesModal: React.FC = memo(() => {
           activeModal={activeModal}
           selectedNodeKey={selectedNodeKey}
           noteData={noteData}
-          isViewingPast={isViewingPast}
           selectedRowNoteId={selectedRowNoteId}
           rowNoteData={rowNoteData}
         />
@@ -130,19 +103,11 @@ const NotesModal: React.FC = memo(() => {
         onPositionChange={handlePositionChange}
         setNoteWidth={(width) => {
           const newWidth = typeof width === 'function' ? width(noteWidth) : width;
-          if (isViewingPast) {
-            dispatch(updateTempModalState({ noteWidth: newWidth }));
-          } else {
-            dispatch(updateNotesModalState({ noteWidth: newWidth }));
-          }
+          dispatch(updateNotesModalState({ noteWidth: newWidth }));
         }}
         setNoteHeight={(height) => {
           const newHeight = typeof height === 'function' ? height(noteHeight) : height;
-          if (isViewingPast) {
-            dispatch(updateTempModalState({ noteHeight: newHeight }));
-          } else {
-            dispatch(updateNotesModalState({ noteHeight: newHeight }));
-          }
+          dispatch(updateNotesModalState({ noteHeight: newHeight }));
         }}
         minWidth={getMinRequiredWidth(treeWidth)}
         minHeight={300}

@@ -163,11 +163,10 @@ export const helpTopics: HelpTopic[] = [
     ],
   },
   {
-    id: 'historyUndo',
-    titleKey: 'help.topics.historyUndo.title',
+    id: 'undoRedo',
+    titleKey: 'help.topics.undoRedo.title',
     blocks: [
-      { type: 'paragraph', key: 'help.topics.historyUndo.p1' },
-      { type: 'paragraph', key: 'help.topics.historyUndo.p2' },
+      { type: 'paragraph', key: 'help.topics.undoRedo.p1' },
     ],
   },
 ];

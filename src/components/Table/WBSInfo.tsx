@@ -56,28 +56,13 @@ const WBSInfo: React.FC = memo(() => {
   const dispatch = useDispatch();
   const [allSelectedColumnsVisible, areAllSelectedColumnsVisible] = useState(false);
   const insertCopiedRow = useInsertCopiedRow();
-  
-  // Historical data for preview functionality
-  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-  const previewData = useSelector((state: RootState) => state.history?.previewData);
-  
-  // Always get current data
-  const currentData = useSelector((state: RootState) => state.wbsData.data);
-  const currentColumns = useSelector((state: RootState) => state.wbsData.columns);
-  const currentShowYear = useSelector((state: RootState) => state.wbsData.showYear);
-  const currentDateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
-  const currentWbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
-  
-  // Get data based on viewing mode
-  const data = isViewingPast && previewData?.data ? previewData.data : currentData;
-  const columns = isViewingPast && previewData?.columns ? previewData.columns : currentColumns;
-  const showYear = isViewingPast && previewData?.showYear !== undefined ? previewData.showYear : currentShowYear;
-  const dateFormat = isViewingPast && previewData?.dateFormat ? (previewData.dateFormat as any) : currentDateFormat;
-  const wbsWidth = isViewingPast && previewData?.wbsWidth ? previewData.wbsWidth : currentWbsWidth;
-  
-  // Holiday data with preview support
-  const currentHolidays = useSelector((state: RootState) => state.wbsData.holidays);
-  const holidays = isViewingPast && previewData?.holidays ? previewData.holidays : currentHolidays;
+
+  const data = useSelector((state: RootState) => state.wbsData.data);
+  const columns = useSelector((state: RootState) => state.wbsData.columns);
+  const showYear = useSelector((state: RootState) => state.wbsData.showYear);
+  const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
+  const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
+  const holidays = useSelector((state: RootState) => state.wbsData.holidays);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
   const copiedRows = useSelector((state: RootState) => state.copiedRows.rows);
   const [selectedRanges, setSelectedRanges] = useState<{ selectedRowIds: string[], selectedColumnIds: string[] }>({
@@ -256,7 +241,7 @@ const WBSInfo: React.FC = memo(() => {
     includeColumnSettings: true,
     columns,
     dataArray,
-    headerColumn: isViewingPast ? null : headerContextColumn,
+    headerColumn: headerContextColumn,
     onRenameColumn: setRenameColumnTarget
   });
 
@@ -297,7 +282,7 @@ const WBSInfo: React.FC = memo(() => {
   const handlePasteRange = useCallback((range: PasteRange) => {
     pastedRowsRef.current = { rowIds: range.rowIds, at: Date.now() };
   }, []);
-  useRangePasteFill(wbsRef, getPasteRange, handlePasteRange, !isViewingPast);
+  useRangePasteFill(wbsRef, getPasteRange, handlePasteRange);
 
   // コピー/切り取り: ReactGrid のプレーンテキストは区切り文字が入らず、メモ帳などに貼ると
   // 1行につながってしまうため、タブ区切りのテキストを自前でクリップボードへ載せる。
@@ -385,15 +370,15 @@ const WBSInfo: React.FC = memo(() => {
       <ReactGrid
         rows={rows}
         columns={visibleColumns}
-        onCellsChanged={isViewingPast ? undefined : (changes) => handleGridChanges(dispatch, data, changes, columns, holidays, regularDaysOff, consumePastedRowIds(), dateFormat)}
-        onColumnResized={isViewingPast ? undefined : onColumnResize}
+        onCellsChanged={(changes) => handleGridChanges(dispatch, data, changes, columns, holidays, regularDaysOff, consumePastedRowIds(), dateFormat)}
+        onColumnResized={onColumnResize}
         stickyTopRows={1}
         stickyLeftColumns={1}
         enableRangeSelection
         enableColumnSelection
         enableRowSelection
-        onRowsReordered={isViewingPast ? undefined : handleRowsReorder}
-        onColumnsReordered={isViewingPast ? undefined : handleColumnsReorder}
+        onRowsReordered={handleRowsReorder}
+        onColumnsReordered={handleColumnsReorder}
         onContextMenu={handleContextMenu}
         onSelectionChanged={handleSelectionChanged}
         canReorderRows={handleCanReorderRows}

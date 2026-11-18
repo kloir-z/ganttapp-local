@@ -9,7 +9,6 @@ import { followCursor } from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
 import { cdate } from 'cdate';
 import { useTranslation } from 'react-i18next';
-import { RegularDaysOffSettingsType } from '../../types/DataTypes';
 
 interface CalendarProps {
   dateArray: ReturnType<typeof cdate>[];
@@ -22,13 +21,9 @@ const Calendar: React.FC<CalendarProps> = memo(({ dateArray }) => {
   const calendarWidth = useSelector((state: RootState) => state.baseSettings.calendarWidth);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
-  const currentHolidays = useSelector((state: RootState) => state.wbsData.holidays);
+  const holidays = useSelector((state: RootState) => state.wbsData.holidays);
   const holidayColor = useSelector((state: RootState) => state.wbsData.holidayColor);
-  const currentRegularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
-  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-  const previewData = useSelector((state: RootState) => state.history?.previewData);
-  const holidays = isViewingPast && previewData?.holidays ? previewData.holidays : currentHolidays;
-  const regularDaysOffSetting: RegularDaysOffSettingsType = isViewingPast && previewData?.regularDaysOffSetting ? previewData.regularDaysOffSetting : currentRegularDaysOffSetting;
+  const regularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
   const calendarRef = useRef<HTMLDivElement>(null);
 

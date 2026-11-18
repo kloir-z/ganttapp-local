@@ -71,12 +71,7 @@ const AutoWidthInputBox: React.FC<AutoWidthInputBoxProps> = memo(({
 }) => {
   const { t } = useTranslation();
   const storeDisplayName = useSelector((state: RootState) => {
-    // Handle preview data for historical viewing
-    const isViewingPast = state.history?.isViewingPast || false;
-    const previewData = state.history?.previewData;
-    const dataSource = isViewingPast && previewData?.data ? previewData.data : state.wbsData.data;
-    
-    const rowData = dataSource[entryId];
+    const rowData = state.wbsData.data[entryId];
     if (isEventRow(rowData) && typeof eventIndex === 'number') {
       if (rowData.eventData && rowData.eventData[eventIndex]) {
         return rowData.eventData[eventIndex].eachDisplayName;

@@ -14,7 +14,7 @@ interface CpFloatTagProps {
 const CpFloatTag: React.FC<CpFloatTagProps> = memo(({ entryId }) => {
   // プリミティブ(number | undefined)を返すので、値が変わった行だけ再レンダーされる。
   const totalFloat = useSelector((state: RootState) => {
-    if (state.history?.isViewingPast || !state.uiFlags.showCriticalPath) return undefined;
+    if (!state.uiFlags.showCriticalPath) return undefined;
     return selectCriticalPath(state).floatByTaskId[entryId];
   });
 

@@ -25,17 +25,15 @@ export interface PasteRange {
  * @param getPasteRange 貼り付け先の選択範囲を返す(選択なしなら null)
  * @param onPaste 横取りした貼り付けごとに、その貼り付け先範囲を通知する
  *   (タイル化の有無によらず呼ぶ。貼り付けた行を依存計算から守るために使う)
- * @param enabled 履歴プレビュー中など編集不可のときは false
  */
 export function useRangePasteFill(
   containerRef: RefObject<HTMLElement>,
   getPasteRange: () => PasteRange | null,
-  onPaste: (range: PasteRange) => void,
-  enabled = true
+  onPaste: (range: PasteRange) => void
 ): void {
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !enabled) return;
+    if (!container) return;
 
     // 自分で投げ直したイベントを再度横取りしないための目印
     let reissuedEvent: ClipboardEvent | null = null;
@@ -86,5 +84,5 @@ export function useRangePasteFill(
 
     container.addEventListener('paste', handlePasteCapture, true);
     return () => container.removeEventListener('paste', handlePasteCapture, true);
-  }, [containerRef, getPasteRange, onPaste, enabled]);
+  }, [containerRef, getPasteRange, onPaste]);
 }

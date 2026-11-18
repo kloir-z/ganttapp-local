@@ -5,15 +5,8 @@ import { RootState } from '../../reduxStoreAndSlices/store';
 import { isChartRow } from '../../types/DataTypes';
 import { createSelector } from 'reselect';
 
-const selectData = (state: RootState) => {
-  // Handle preview data for historical viewing
-  const isViewingPast = state.history?.isViewingPast || false;
-  const previewData = state.history?.previewData;
-  return isViewingPast && previewData?.data ? previewData.data : state.wbsData.data;
-};
-
 const makeSelectProgressAndColor = () => createSelector(
-  [selectData, (_, entryId) => entryId],
+  [(state: RootState) => state.wbsData.data, (_, entryId) => entryId],
   (data, entryId) => {
     if (isChartRow(data[entryId])) {
       const rowData = data[entryId];

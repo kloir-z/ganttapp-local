@@ -9,7 +9,6 @@ import { useNotesModalPosition } from '../hooks/useNotesModalPosition';
 interface NotesModalWrapperProps {
   children: React.ReactNode;
   position: { x: number; y: number };
-  isViewingPast?: boolean;
   onPositionChange?: (position: { x: number; y: number }) => void;
 }
 

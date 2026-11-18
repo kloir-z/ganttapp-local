@@ -90,15 +90,14 @@ export const helpEn = {
     },
     saveExport: {
       title: "Save & Export",
-      p1: "File > Download saves the whole project (chart, settings, notes and history) as a single ZIP file, and File > Upload loads it back. Everything runs inside your browser — no data ever leaves your machine.",
+      p1: "File > Download saves the whole project (chart, settings and notes) as a single ZIP file, and File > Upload loads it back. Everything runs inside your browser — no data ever leaves your machine.",
       p2: "File > JSON Data lets you view, copy and import the raw project data as JSON. Ctrl+Shift+J copies the same JSON straight to the clipboard.",
       p3: "File > Export offers three formats: PDF (the full chart as an image), Excel (a styled workbook that reproduces the table and chart), and Standalone HTML (a single self-contained file that shows the finished chart in any browser). When the project has notes, the Excel export first asks whether to include the notes sheet.",
       note1: "Nothing is saved automatically. Download your project before closing the tab.",
     },
-    historyUndo: {
-      title: "Undo & History",
+    undoRedo: {
+      title: "Undo & Redo",
       p1: "Edit > Undo / Redo (or Ctrl+Z / Ctrl+Y) reverts editing operations. Up to 30 steps are kept, and the Edit menu shows how many steps remain in each direction.",
-      p2: "The History button saves named snapshots of the whole project so you can review any of them later. While viewing a past state, click \"Return to Latest\" to come back. Snapshots are stored in the project ZIP.",
     },
   },
 };
@@ -188,15 +187,14 @@ export const helpJa: typeof helpEn = {
     },
     saveExport: {
       title: "保存とエクスポート",
-      p1: "「ファイル > プロジェクトZIPファイルをダウンロード」でプロジェクト全体(チャート・設定・メモ・履歴)を1つのZIPファイルとして保存し、「プロジェクトZIPファイルをアップロード」で読み込みます。処理はすべてブラウザ内で行われ、データが外部に送信されることはありません。",
+      p1: "「ファイル > プロジェクトZIPファイルをダウンロード」でプロジェクト全体(チャート・設定・メモ)を1つのZIPファイルとして保存し、「プロジェクトZIPファイルをアップロード」で読み込みます。処理はすべてブラウザ内で行われ、データが外部に送信されることはありません。",
       p2: "「ファイル > JSONデータ」ではプロジェクトの生データをJSON形式で表示・コピー・読み込みできます。Ctrl+Shift+J で同じJSONを直接クリップボードにコピーすることもできます。",
       p3: "「ファイル > エクスポート」からPDF(チャート全体を画像化)、Excel(表とチャートを再現したワークブック)、単体HTML(どのブラウザでも完成形のチャートを表示できる自己完結型ファイル)の3形式で出力できます。メモがあるプロジェクトでは、Excel出力時にメモシートを含めるかどうかを選択できます。",
       note1: "データは自動保存されません。タブを閉じる前にプロジェクトをダウンロードしてください。",
     },
-    historyUndo: {
-      title: "元に戻す・履歴",
+    undoRedo: {
+      title: "元に戻す・やり直す",
       p1: "「編集 > 元に戻す / やり直す」(または Ctrl+Z / Ctrl+Y)で編集操作を取り消せます。最大30ステップまで保持され、残り回数は「編集」メニューに表示されます。",
-      p2: "「履歴」ボタンからプロジェクト全体のスナップショットをコメント付きで保存し、後からその時点の状態を確認できます。過去の状態を表示中は「最新に戻る」で現在に戻ります。スナップショットはプロジェクトZIPに含まれます。",
     },
   },
 };

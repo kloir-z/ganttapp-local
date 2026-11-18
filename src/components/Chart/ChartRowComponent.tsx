@@ -8,7 +8,7 @@ import RowNoteButton from './RowNoteButton';
 import { GanttRow } from '../../styles/GanttStyles';
 import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
-import { ColorInfo, getColorSourceValue, resolveColorFromPalette } from '../../reduxStoreAndSlices/colorSlice';
+import { getColorSourceValue, resolveColorFromPalette } from '../../reduxStoreAndSlices/colorSlice';
 import { openDependencyBuilder } from '../../reduxStoreAndSlices/uiFlagSlice';
 import { selectCriticalPath } from '../../reduxStoreAndSlices/criticalPathSelectors';
 import { useBarSelection } from '../../hooks/useBarSelection';
@@ -30,12 +30,8 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
-  const currentColors = useSelector((state: RootState) => state.color.colors);
-  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-  const previewData = useSelector((state: RootState) => state.history?.previewData);
-  const colors: { [id: number]: ColorInfo } = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
-  const currentFallbackColor = useSelector((state: RootState) => state.color.fallbackColor);
-  const fallbackColor = isViewingPast && previewData?.fallbackColor ? previewData.fallbackColor : currentFallbackColor;
+  const colors = useSelector((state: RootState) => state.color.colors);
+  const fallbackColor = useSelector((state: RootState) => state.color.fallbackColor);
   // 色分け基準列(Color列/テキスト列)。基準列の値をパレットと照合して色を決める。
   const basisColumnId = useSelector((state: RootState) => state.color.basisColumnId);
 
@@ -49,8 +45,7 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   }, [colors]);
   const plannedDays = useMemo(() => { return entry.plannedDays }, [entry.plannedDays]);
   const isIncludeHolidays = useMemo(() => { return entry.isIncludeHolidays }, [entry.isIncludeHolidays]);
-  const currentHolidays = useSelector((state: RootState) => state.wbsData.holidays);
-  const holidays = isViewingPast && previewData?.holidays ? previewData.holidays : currentHolidays;
+  const holidays = useSelector((state: RootState) => state.wbsData.holidays);
   // 依存ビルダーが現在この行を依存先/依存元にしているか(チャート上で強調表示する)
   const isDependencyTarget = useSelector((state: RootState) => state.uiFlags.dependencyTargetRowId === entry.id);
   const isDependencySource = useSelector((state: RootState) => state.uiFlags.dependencySourceRowId === entry.id);
@@ -59,12 +54,11 @@ const ChartRowComponent: React.FC<ChartRowProps> = memo(({ entry, dateArray, gri
   const isDependencyChain = useSelector((state: RootState) => state.uiFlags.dependencyChainRowIds.includes(entry.id));
   // クリティカルパス表示。boolean を返すセレクタなので、判定が変わった行だけ再レンダーされる。
   // selectCriticalPath はメモ化済みで、トグルOFF時は短絡評価により計算コストゼロ。
-  // 履歴プレビュー中は現在の data と表示がずれるため無効化する。
   const isCpCritical = useSelector((state: RootState) =>
-    !isViewingPast && state.uiFlags.showCriticalPath && selectCriticalPath(state).criticalIds.has(entry.id)
+    state.uiFlags.showCriticalPath && selectCriticalPath(state).criticalIds.has(entry.id)
   );
   const isCpDimmed = useSelector((state: RootState) => {
-    if (isViewingPast || !state.uiFlags.showCriticalPath) return false;
+    if (!state.uiFlags.showCriticalPath) return false;
     const { criticalIds } = selectCriticalPath(state);
     return criticalIds.size > 0 && !criticalIds.has(entry.id);
   });

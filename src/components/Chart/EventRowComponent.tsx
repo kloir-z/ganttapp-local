@@ -8,7 +8,7 @@ import RowNoteButton from './RowNoteButton';
 import { GanttRow } from '../../styles/GanttStyles';
 import { cdate } from 'cdate';
 import ContextMenu from '../ContextMenu/ContextMenu';
-import { ColorInfo, DEFAULT_FALLBACK_COLOR, getColorSourceValue, resolveColorFromPalette } from '../../reduxStoreAndSlices/colorSlice';
+import { DEFAULT_FALLBACK_COLOR, getColorSourceValue, resolveColorFromPalette } from '../../reduxStoreAndSlices/colorSlice';
 import { useBarSelection } from '../../hooks/useBarSelection';
 import { useMultiBarDrag } from '../../hooks/useMultiBarDrag';
 
@@ -76,10 +76,7 @@ const EventRowComponent: React.FC<EventRowProps> = memo(({ entry, dateArray, gri
   const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
-  const currentColors = useSelector((state: RootState) => state.color.colors);
-  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-  const previewData = useSelector((state: RootState) => state.history?.previewData);
-  const colors: { [id: number]: ColorInfo } = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
+  const colors = useSelector((state: RootState) => state.color.colors);
   // 色分け基準列(Color列/テキスト列)。基準列の値をパレットと照合して色を決める。
   const basisColumnId = useSelector((state: RootState) => state.color.basisColumnId);
   const colorSourceValue = getColorSourceValue(entry, basisColumnId);

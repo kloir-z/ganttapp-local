@@ -18,7 +18,6 @@ interface NotesEditorProps {
   activeModal: string | null;
   selectedNodeKey?: string;
   noteData?: any;
-  isViewingPast?: boolean;
   // When set, the editor is in "row note" mode: it edits the note attached to a
   // WBS row (rowNoteData) instead of a tree node.
   selectedRowNoteId?: string;
@@ -34,7 +33,6 @@ const NotesEditor: React.FC<NotesEditorProps> = memo(({
   resizeAnimate,
   selectedNodeKey: propsSelectedNodeKey,
   noteData: propsNoteData,
-  isViewingPast: propsIsViewingPast,
   selectedRowNoteId,
   rowNoteData,
 }) => {
@@ -42,12 +40,8 @@ const NotesEditor: React.FC<NotesEditorProps> = memo(({
   const dispatch = useDispatch();
   const { selectedNodeKey: hookSelectedNodeKey, addNode } = useNotesTree();
 
-  // Use props if provided (for historical data), otherwise use hook data
+  // Use the prop if provided, otherwise the hook's selection
   const selectedNodeKey = propsSelectedNodeKey ?? hookSelectedNodeKey;
-  // Always call the hook unconditionally (`?? useSelector(...)` would skip it
-  // when the prop is set, breaking the Rules of Hooks).
-  const storeIsViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-  const isViewingPast = propsIsViewingPast ?? storeIsViewingPast;
 
   const isRowMode = !!selectedRowNoteId;
   const rowDisplayName = useSelector((state: RootState) =>
@@ -77,7 +71,7 @@ const NotesEditor: React.FC<NotesEditorProps> = memo(({
           style={{ minHeight: '35px' }}
         />
       ) : (
-        <NotesTitle selectedNodeKey={selectedNodeKey} addNode={addNode} isViewingPast={isViewingPast} />
+        <NotesTitle selectedNodeKey={selectedNodeKey} addNode={addNode} />
       )}
       <div
         style={{
@@ -91,7 +85,7 @@ const NotesEditor: React.FC<NotesEditorProps> = memo(({
         {isRowMode ? (
           <QuillEditor
             key="row-editor"
-            readOnly={isViewingPast}
+            readOnly={false}
             selectedNodeKey={selectedRowNoteId as string}
             addNode={noop}
             noteData={rowNoteData}
@@ -100,7 +94,7 @@ const NotesEditor: React.FC<NotesEditorProps> = memo(({
         ) : (
           <QuillEditor
             key="tree-editor"
-            readOnly={isViewingPast}
+            readOnly={false}
             selectedNodeKey={selectedNodeKey}
             addNode={addNode}
             noteData={propsNoteData}

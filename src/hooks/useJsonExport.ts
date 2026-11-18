@@ -9,19 +9,12 @@ export const useJsonExport = () => {
     const { t } = useTranslation();
     const dispatch = useDispatch();
 
-    const currentColors = useSelector((state: RootState) => state.color.colors);
+    const colors = useSelector((state: RootState) => state.color.colors);
     const colorSchemes = useSelector((state: RootState) => state.color.schemes);
     const colorBasisColumn = useSelector((state: RootState) => state.color.basisColumnId);
-    const currentDateRange = useSelector((state: RootState) => state.baseSettings.dateRange);
-    const currentColumns = useSelector((state: RootState) => state.wbsData.columns);
-    const currentData = useSelector((state: RootState) => state.wbsData.data);
-    const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-    const previewData = useSelector((state: RootState) => state.history?.previewData);
-    
-    const colors = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
-    const dateRange = isViewingPast && previewData?.dateRange ? previewData.dateRange : currentDateRange;
-    const columns = isViewingPast && previewData?.columns ? previewData.columns : currentColumns;
-    const data = isViewingPast && previewData?.data ? previewData.data : currentData;
+    const dateRange = useSelector((state: RootState) => state.baseSettings.dateRange);
+    const columns = useSelector((state: RootState) => state.wbsData.columns);
+    const data = useSelector((state: RootState) => state.wbsData.data);
     const holidayInput = useSelector((state: RootState) => state.baseSettings.holidayInput);
     const holidayColor = useSelector((state: RootState) => state.wbsData.holidayColor);
     const regularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
@@ -42,7 +35,6 @@ export const useJsonExport = () => {
     const currentLanguage = useSelector((state: RootState) => state.baseSettings.language);
     const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
     const notesModalState = useSelector((state: RootState) => state.notes.modalState);
-    const historySnapshots = useSelector((state: RootState) => state.history?.snapshots || []);
     const annotations = useSelector((state: RootState) => state.wbsData.annotations);
 
     const exportAndCopyJson = useCallback(async () => {
@@ -75,7 +67,6 @@ export const useJsonExport = () => {
                 treeScrollPosition,
                 editorStates,
                 selectedNodeKey,
-                historySnapshots,
                 annotations,
             });
 
@@ -109,7 +100,7 @@ export const useJsonExport = () => {
         regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title,
         showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage,
         scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition,
-        editorStates, selectedNodeKey, historySnapshots, annotations, dispatch, t
+        editorStates, selectedNodeKey, annotations, dispatch, t
     ]);
 
     return { exportAndCopyJson };

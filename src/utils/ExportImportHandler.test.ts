@@ -384,6 +384,27 @@ describe('ExportImportHandler', () => {
 
       expect(mockDispatchFn).toHaveBeenCalled();
     });
+
+    it('should still open files saved with the removed history snapshots, ignoring them', async () => {
+      const legacyData = {
+        title: 'With History',
+        colors: testColors,
+        historySnapshots: [{ id: '1', timestamp: 1, commitMessage: 'old', projectDataSnapshot: '{}' }],
+      };
+
+      const jsonFile = {
+        type: 'application/json',
+        text: jest.fn().mockResolvedValue(JSON.stringify(legacyData))
+      } as unknown as File;
+
+      const thunkAction = handleImport({ file: jsonFile });
+      const result = await thunkAction(mockDispatchFn, () => ({}), {});
+
+      expect(result.meta.requestStatus).toBe('fulfilled');
+      const types = mockDispatchFn.mock.calls.map(([action]) => action?.type);
+      expect(types).toContain('baseSettings/setTitle');
+      expect(types.some(type => typeof type === 'string' && type.startsWith('history/'))).toBe(false);
+    });
   });
 
   describe('business logic validation', () => {

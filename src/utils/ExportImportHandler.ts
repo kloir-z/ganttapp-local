@@ -9,7 +9,6 @@ import JSZip from 'jszip';
 import { parseHolidaysFromInput } from '../components/Setting/utils/settingHelpers';
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { ExtendedTreeDataNode, noteData, setIsSavedChangesNotes, setNotes, NotesModalState } from "../reduxStoreAndSlices/notesSlice";
-import { importHistory, clearHistory } from "../reduxStoreAndSlices/historySlice";
 import i18n from "i18next";
 
 // Schema version of the exported project data. Bump this whenever the shape of
@@ -49,7 +48,6 @@ export interface ExportData {
   treeScrollPosition?: number;
   editorStates?: { [key: string]: any };
   selectedNodeKey?: string;
-  historySnapshots?: any[];
   // チャート注釈(複数行を指し示す見せる用のメモ)。後から追加した項目なので省略可。
   annotations?: ChartAnnotation[];
 }
@@ -84,7 +82,6 @@ export const buildProjectData = (options: ExportData) => {
     treeScrollPosition,
     editorStates,
     selectedNodeKey,
-    historySnapshots,
     annotations,
   } = options;
   // Deferred orphan cleanup: only persist row notes whose row still exists in
@@ -125,7 +122,6 @@ export const buildProjectData = (options: ExportData) => {
     ...(treeScrollPosition !== undefined && { treeScrollPosition }),
     ...(editorStates && { editorStates }),
     ...(selectedNodeKey && { selectedNodeKey }),
-    ...(historySnapshots && { historySnapshots }),
     ...(annotations && annotations.length > 0 && { annotations }),
   };
 };
@@ -145,9 +141,9 @@ export const handleExport = async (options: ExportData): Promise<Blob> => {
   return serializeToZip(options.fileId, projectData);
 };
 
-export const handleImport = createAsyncThunk<void, { file: Blob; skipHistoryImport?: boolean }, { state: RootState, dispatch: AppDispatch }>(
+export const handleImport = createAsyncThunk<void, { file: Blob }, { state: RootState, dispatch: AppDispatch }>(
   'project/import',
-  async ({ file, skipHistoryImport = false }, { dispatch }) => {
+  async ({ file }, { dispatch }) => {
     if (!file) throw new Error("File is not provided");
     
     let parsedData: any;
@@ -269,17 +265,10 @@ export const handleImport = createAsyncThunk<void, { file: Blob; skipHistoryImpo
     } else {
       dispatch(setScrollPosition({ scrollLeft: 0, scrollTop: 0 }));
     }
-    
-    // Import history snapshots if they exist and not skipping history import
-    if (!skipHistoryImport) {
-      if (parsedData.historySnapshots && Array.isArray(parsedData.historySnapshots)) {
-        dispatch(importHistory(parsedData.historySnapshots));
-      } else {
-        // Clear history if no history data exists in imported file
-        dispatch(clearHistory());
-      }
-    }
-    
+
+    // 以前の版で保存したファイルには historySnapshots(履歴スナップショット)が
+    // 入っていることがある。機能を廃止したので読み込まず、次の保存で消える。
+
     dispatch(setIsSavedChangesStore(true));
     dispatch(setIsSavedChangesColor(true));
     dispatch(setIsSavedChangesNotes(true));

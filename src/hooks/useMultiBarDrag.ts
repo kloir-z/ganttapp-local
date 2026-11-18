@@ -60,7 +60,7 @@ export const useMultiBarDrag = ({ gridRef, setCanGridRefDrag }: UseMultiBarDragP
 
   /**
    * 一括ドラッグを開始できるなら開始して true を返す。掴んだ行が選択に入っていない、
-   * 選択が1行以下、履歴プレビュー中などの場合は false を返し、呼び出し側は
+   * 選択が1行以下などの場合は false を返し、呼び出し側は
    * 従来どおりの単体ドラッグへ進む。
    */
   const tryBeginMultiDrag = useCallback((
@@ -71,7 +71,6 @@ export const useMultiBarDrag = ({ gridRef, setCanGridRefDrag }: UseMultiBarDragP
   ): boolean => {
     if (event.button !== 0) return false;
     const state = store.getState();
-    if (state.history?.isViewingPast) return false;
 
     // 掴んだバーが選択に入っているときだけ一括ドラッグ。動かすのは **選択しているバー全部**
     // で、掴んだ種別には限らない。予定と実績の両方を選んでいれば両方が同じ日数だけ動く

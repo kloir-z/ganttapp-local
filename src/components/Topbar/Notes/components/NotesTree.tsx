@@ -3,8 +3,6 @@ import React, { memo, useRef, useEffect } from 'react';
 import { Tree, Button, Tooltip } from 'antd';
 import { PlusCircleOutlined, MinusCircleOutlined, PlusSquareOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../../../reduxStoreAndSlices/store';
 import { StyledTreeContainer } from '../NotesStyles';
 import { useNotesTree } from '../hooks/useNotesTree';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
@@ -16,7 +14,6 @@ interface NotesTreeProps {
   activeModal: string | null;
   treeData?: any[];
   selectedNodeKey?: string;
-  isViewingPast?: boolean;
 }
 
 const NotesTree: React.FC<NotesTreeProps> = memo(({ 
@@ -25,17 +22,10 @@ const NotesTree: React.FC<NotesTreeProps> = memo(({
   activeModal,
   treeData: propsTreeData,
   selectedNodeKey: propsSelectedNodeKey,
-  isViewingPast: propsIsViewingPast
 }) => {
   const { t } = useTranslation();
   const treeContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Use props if provided, otherwise use current state.
-  // Always call the hook unconditionally (`?? useSelector(...)` would skip it
-  // when the prop is set, breaking the Rules of Hooks).
-  const storeIsViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-  const isViewingPast = propsIsViewingPast ?? storeIsViewingPast;
-  
+
   const {
     treeData: hookTreeData,
     treeExpandedKeys,
@@ -52,7 +42,7 @@ const NotesTree: React.FC<NotesTreeProps> = memo(({
     handleTreeScroll
   } = useNotesTree();
   
-  // Use props if provided (for historical data), otherwise use hook data
+  // Use props if provided, otherwise use hook data
   const treeData = propsTreeData ?? hookTreeData;
   const selectedNodeKey = propsSelectedNodeKey ?? hookSelectedNodeKey;
 
@@ -78,17 +68,17 @@ const NotesTree: React.FC<NotesTreeProps> = memo(({
     >
       <div style={{ overflow: 'hidden', minWidth: '150px' }}>
         <Tooltip title={t('Add Sibling Node')}>
-          <Button type="text" onClick={isViewingPast ? undefined : () => addNode(true)} disabled={isViewingPast}>
+          <Button type="text" onClick={() => addNode(true)}>
             <PlusSquareOutlined />
           </Button>
         </Tooltip>
         <Tooltip title={t('Add Child Node')}>
-          <Button type="text" onClick={isViewingPast ? undefined : () => addNode(false)} disabled={isViewingPast}>
+          <Button type="text" onClick={() => addNode(false)}>
             <PlusCircleOutlined />
           </Button>
         </Tooltip>
         <Tooltip title={t('Remove Node')}>
-          <Button type="text" onClick={isViewingPast ? undefined : onRemoveNodeClick} disabled={isViewingPast}>
+          <Button type="text" onClick={onRemoveNodeClick}>
             <MinusCircleOutlined />
           </Button>
         </Tooltip>
@@ -102,9 +92,9 @@ const NotesTree: React.FC<NotesTreeProps> = memo(({
       
       <Tree
         className="draggable-tree"
-        draggable={!isViewingPast}
+        draggable
         blockNode
-        onDrop={isViewingPast ? undefined : onDrop}
+        onDrop={onDrop}
         onSelect={onSelect}
         onExpand={onExpand}
         treeData={treeData}

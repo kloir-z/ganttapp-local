@@ -42,26 +42,12 @@ function Gantt() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const store = useStore<RootState>();
-  
-  // Historical data for preview functionality
-  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-  const previewData = useSelector((state: RootState) => state.history?.previewData);
-  
-  // Always get current data
-  const currentData = useSelector((state: RootState) => state.wbsData.data);
-  const currentColumns = useSelector((state: RootState) => state.wbsData.columns);
-  const currentDateRange = useSelector((state: RootState) => state.baseSettings.dateRange);
-  const currentCellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
-  const currentWbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
-  
-  // Get data based on viewing mode
-  const data = isViewingPast && previewData?.data ? previewData.data : currentData;
-  const columns = isViewingPast && previewData?.columns ? previewData.columns : currentColumns;
-  const dateRange = isViewingPast && previewData?.dateRange ? previewData.dateRange : currentDateRange;
-  const cellWidth = isViewingPast && previewData?.cellWidth ? previewData.cellWidth : currentCellWidth;
-  const wbsWidth = isViewingPast && previewData?.wbsWidth ? previewData.wbsWidth : currentWbsWidth;
-  
-  // These still come from current state as they don't affect data display
+
+  const data = useSelector((state: RootState) => state.wbsData.data);
+  const columns = useSelector((state: RootState) => state.wbsData.columns);
+  const dateRange = useSelector((state: RootState) => state.baseSettings.dateRange);
+  const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
+  const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
   const maxWbsWidth = useSelector((state: RootState) => state.baseSettings.maxWbsWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
   const isContextMenuOpen = useSelector((state: RootState) => state.uiFlags.isContextMenuOpen);
@@ -612,7 +598,7 @@ function Gantt() {
       if (event.key === 'Escape' && activeModal !== null) {
         event.preventDefault();
         dispatch(setActiveModal(null));
-      } else if (!activeModal && !isViewingPast) {
+      } else if (!activeModal) {
         if ((event.ctrlKey || event.metaKey)) {
           // When typing in a rich-text editor (e.g. a row-note popover), let the
           // editor handle Ctrl+Z/Y itself; don't also undo/redo the chart state.
@@ -639,7 +625,7 @@ function Gantt() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [dispatch, activeModal, isViewingPast]);
+  }, [dispatch, activeModal]);
 
   return (
     <div style={{ position: 'fixed' }}>

@@ -21,12 +21,11 @@ const NORMAL_COLOR = 'rgba(120, 120, 120, 0.55)';
 
 const CpArrowsOverlay: React.FC<CpArrowsOverlayProps> = memo(({ filteredData, dateArray }) => {
   const showCriticalPath = useSelector((state: RootState) => state.uiFlags.showCriticalPath);
-  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
   const rowHeight = useSelector((state: RootState) => state.baseSettings.rowHeight);
-  // 表示 OFF・履歴プレビュー中はセレクタ自体を評価しない(バー側の表示条件と同じ)。
+  // 表示 OFF の間はセレクタ自体を評価しない(バー側の表示条件と同じ)。
   const criticalLinkKeys = useSelector((state: RootState) =>
-    showCriticalPath && !isViewingPast ? selectCriticalPath(state).criticalLinkKeys : null
+    showCriticalPath ? selectCriticalPath(state).criticalLinkKeys : null
   );
 
   const paths = useMemo(() => {

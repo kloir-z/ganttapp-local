@@ -29,7 +29,6 @@ import useResetIsSavedChangesFlags from '../../hooks/useResetIsSavedChangesFlags
 import useResetReduxStates from '../../hooks/useResetReduxStates';
 import { useNavigate } from 'react-router-dom';
 import { WelcomeUtils } from '../../utils/WelcomeUtils';
-import { returnToPresentWithRestore } from '../../reduxStoreAndSlices/historyThunks';
 
 const MenuButton = styled.button`
   border: none;
@@ -65,20 +64,6 @@ const ToggleMenuButton = styled.button<{ $active?: boolean }>`
   }
 `;
 
-const ReturnButton = styled.button`
-  border: none;
-  border-radius: 3px;
-  height: 100%;
-  padding: 0px 15px;
-  background-color: #ff9800;
-  color: white;
-  font-weight: bold;
-  transition: background-color 0.3s ease;
-  &:hover {
-    background-color: #f57c00;
-  }
-`;
-
 const TopBarLocal: React.FC = memo(() => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -92,8 +77,6 @@ const TopBarLocal: React.FC = memo(() => {
 
   // Redux state
   const isBarSelectionMode = useSelector((state: RootState) => state.uiFlags.isBarSelectionMode);
-  const currentRegularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
-  const currentColors = useSelector((state: RootState) => state.color.colors);
   const colorSchemes = useSelector((state: RootState) => state.color.schemes);
   const colorBasisColumn = useSelector((state: RootState) => state.color.basisColumnId);
   const isSavedStore = useSelector((state: RootState) => state.wbsData.isSavedChanges);
@@ -102,7 +85,6 @@ const TopBarLocal: React.FC = memo(() => {
   const isSavedNotes = useSelector((state: RootState) => state.notes.isSavedChanges);
   const currentLanguage = useSelector((state: RootState) => state.baseSettings.language);
   const dateRange = useSelector((state: RootState) => state.baseSettings.dateRange);
-  const currentHolidayInput = useSelector((state: RootState) => state.baseSettings.holidayInput);
   const holidayColor = useSelector((state: RootState) => state.wbsData.holidayColor);
   const wbsWidth = useSelector((state: RootState) => state.baseSettings.wbsWidth);
   const cellWidth = useSelector((state: RootState) => state.baseSettings.cellWidth);
@@ -111,14 +93,10 @@ const TopBarLocal: React.FC = memo(() => {
   const showYear = useSelector((state: RootState) => state.wbsData.showYear);
   const dateFormat = useSelector((state: RootState) => state.wbsData.dateFormat);
   const data = useSelector((state: RootState) => state.wbsData.data);
-  // Historical data for preview functionality
-  const isViewingPast = useSelector((state: RootState) => state.history?.isViewingPast || false);
-  const previewData = useSelector((state: RootState) => state.history?.previewData);
-  const currentTitle = useSelector((state: RootState) => state.baseSettings.title);
-  const title = isViewingPast && previewData?.title ? previewData.title : currentTitle;
-  const regularDaysOffSetting = isViewingPast && previewData?.regularDaysOffSetting ? previewData.regularDaysOffSetting : currentRegularDaysOffSetting;
-  const colors = isViewingPast && previewData?.colors ? previewData.colors : currentColors;
-  const holidayInput = isViewingPast && previewData?.holidayInput ? previewData.holidayInput : currentHolidayInput;
+  const title = useSelector((state: RootState) => state.baseSettings.title);
+  const regularDaysOffSetting = useSelector((state: RootState) => state.wbsData.regularDaysOffSetting);
+  const colors = useSelector((state: RootState) => state.color.colors);
+  const holidayInput = useSelector((state: RootState) => state.baseSettings.holidayInput);
   const columns = useSelector((state: RootState) => state.wbsData.columns);
   const treeData = useSelector((state: RootState) => state.notes.treeData);
   const noteData = useSelector((state: RootState) => state.notes.noteData);
@@ -129,7 +107,6 @@ const TopBarLocal: React.FC = memo(() => {
   const editorStates = useSelector((state: RootState) => state.notes.editorStates);
   const selectedNodeKey = useSelector((state: RootState) => state.notes.selectedNodeKey);
   const scrollPosition = useSelector((state: RootState) => state.baseSettings.scrollPosition);
-  const historySnapshots = useSelector((state: RootState) => state.history?.snapshots || []);
   const annotations = useSelector((state: RootState) => state.wbsData.annotations);
   const pastLength = useSelector((state: RootState) => state.wbsData.past.length);
   const futureLength = useSelector((state: RootState) => state.wbsData.future.length);
@@ -214,7 +191,6 @@ const TopBarLocal: React.FC = memo(() => {
         treeScrollPosition,
         editorStates,
         selectedNodeKey,
-        historySnapshots,
         annotations,
       });
 
@@ -237,7 +213,7 @@ const TopBarLocal: React.FC = memo(() => {
         : t('Download failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
     }
-  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, notesModalState, historySnapshots, annotations, resetIsSavedChangesFlags, handleClose, dispatch, t]);
+  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, notesModalState, annotations, resetIsSavedChangesFlags, handleClose, dispatch, t]);
 
   const handleSaveAsSubmit = useCallback(async () => {
     if (!newTitle) return;
@@ -275,7 +251,6 @@ const TopBarLocal: React.FC = memo(() => {
         treeScrollPosition,
         editorStates,
         selectedNodeKey,
-        historySnapshots,
         annotations,
       });
       await exportProjectAsHtml(projectData, title);
@@ -287,7 +262,7 @@ const TopBarLocal: React.FC = memo(() => {
         : t('HTML export failed. An unknown error occurred.');
       dispatch(setMessageInfo({ message: errorMessage, severity: 'error' }));
     }
-  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey, historySnapshots, annotations, handleClose, dispatch, t]);
+  }, [colors, colorSchemes, colorBasisColumn, dateRange, columns, data, holidayInput, holidayColor, regularDaysOffSetting, wbsWidth, calendarWidth, cellWidth, extendActualBarToToday, title, showYear, dateFormat, treeData, noteData, rowNoteData, currentLanguage, scrollPosition, notesModalState, treeExpandedKeys, treeScrollPosition, editorStates, selectedNodeKey, annotations, handleClose, dispatch, t]);
 
   const handleLocalOpen = useCallback(() => {
     const input = document.createElement('input');
@@ -356,18 +331,13 @@ const TopBarLocal: React.FC = memo(() => {
         path: '4'
       },
       {
-        children: t('History'),
-        onClick: () => dispatch(setActiveModal('history')),
-        path: '5'
-      },
-      {
         children: t('Export'),
-        path: '6',
+        path: '5',
         items: [
           {
             children: t('Export PDF'),
             onClick: () => exportPdf(),
-            path: '6.0'
+            path: '5.0'
           },
           {
             children: t('Export Excel'),
@@ -382,18 +352,18 @@ const TopBarLocal: React.FC = memo(() => {
                 exportExcel();
               }
             },
-            path: '6.1'
+            path: '5.1'
           },
           {
             children: t('Export HTML'),
             onClick: () => handleExportHtml(),
-            path: '6.2'
+            path: '5.2'
           }
         ]
       }
     ];
     return options;
-  }, [t, dispatch, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, exportExcel, handleExportHtml, treeData, rowNoteData]);
+  }, [t, handleNewClick, handleLocalOpen, handleLocalSave, handleSaveAsClick, handleJsonModalOpen, exportPdf, exportExcel, handleExportHtml, treeData, rowNoteData]);
 
   // 色分け基準列のクイック切替メニュー。列名はユーザーのリネームをそのまま表示する。
   const coloringMenuOptions = useMemo(() => {
@@ -472,14 +442,6 @@ const TopBarLocal: React.FC = memo(() => {
     navigate('/');
   }, [navigate]);
 
-  const handleReturnToPresent = useCallback(() => {
-    dispatch(returnToPresentWithRestore() as any);
-    dispatch(setMessageInfo({ 
-      message: t('Returned to the latest state'), 
-      severity: 'success' 
-    }));
-  }, [dispatch]);
-
   const userMenuOptions = useMemo(() => {
     const options = [
       {
@@ -505,30 +467,26 @@ const TopBarLocal: React.FC = memo(() => {
   return (
     <div className="Topbar" style={{ display: 'flex', height: '100%', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
       <div className="TopMenus" style={{ height: '100%', marginLeft: '2px', flex: '0 0 auto' }}>
-        <MenuButton ref={fileButtonRef} disabled={isViewingPast}>
+        <MenuButton ref={fileButtonRef}>
           {t('File')}
         </MenuButton>
-        {!isViewingPast && (
-          <TopMenu
-            menuType='file'
-            targetRef={fileButtonRef}
-            items={fileMenuOptions}
-            visibleMenu={visibleMenu}
-            setVisibleMenu={setVisibleMenu}
-          />
-        )}
-        <MenuButton ref={editButtonRef} disabled={isViewingPast}>
+        <TopMenu
+          menuType='file'
+          targetRef={fileButtonRef}
+          items={fileMenuOptions}
+          visibleMenu={visibleMenu}
+          setVisibleMenu={setVisibleMenu}
+        />
+        <MenuButton ref={editButtonRef}>
           {t('Edit')}
         </MenuButton>
-        {!isViewingPast && (
-          <TopMenu
-            menuType='edit'
-            targetRef={editButtonRef}
-            items={editMenuOptions}
-            visibleMenu={visibleMenu}
-            setVisibleMenu={setVisibleMenu}
-          />
-        )}
+        <TopMenu
+          menuType='edit'
+          targetRef={editButtonRef}
+          items={editMenuOptions}
+          visibleMenu={visibleMenu}
+          setVisibleMenu={setVisibleMenu}
+        />
         <MenuButton ref={settingButtonRef} disabled={false}>
           {t('Setting')}
         </MenuButton>
@@ -539,43 +497,29 @@ const TopBarLocal: React.FC = memo(() => {
             visibleMenu={visibleMenu}
             setVisibleMenu={setVisibleMenu}
           />
-        <MenuButton ref={coloringButtonRef} disabled={isViewingPast}>
+        <MenuButton ref={coloringButtonRef}>
           {t('Coloring')}
         </MenuButton>
-        {!isViewingPast && (
-          <TopMenu
-            menuType='coloring'
-            targetRef={coloringButtonRef}
-            items={coloringMenuOptions}
-            visibleMenu={visibleMenu}
-            setVisibleMenu={setVisibleMenu}
-          />
-        )}
+        <TopMenu
+          menuType='coloring'
+          targetRef={coloringButtonRef}
+          items={coloringMenuOptions}
+          visibleMenu={visibleMenu}
+          setVisibleMenu={setVisibleMenu}
+        />
         <MenuButton onClick={handleNotesClick}>
           {t('Notes')}
         </MenuButton>
         <ToggleMenuButton
           $active={isBarSelectionMode}
-          disabled={isViewingPast}
           onClick={() => dispatch(setBarSelectionMode(!isBarSelectionMode))}
           title={t('Bar Selection Mode')}
         >
           {t('Bar Selection Mode')}
         </ToggleMenuButton>
-        {isViewingPast && (
-          // 過去を閲覧中はファイルメニューが無効なので、履歴だけは単独で出しておく
-          <MenuButton onClick={() => dispatch(setActiveModal('history'))}>
-            {t('History')}
-          </MenuButton>
-        )}
         <MenuButton onClick={() => dispatch(setActiveModal('help'))}>
           {t('Help')}
         </MenuButton>
-        {isViewingPast && (
-          <ReturnButton onClick={handleReturnToPresent}>
-            {t('Return to Latest')}
-          </ReturnButton>
-        )}
         <Dialog open={saveAsDialogOpen} onClose={handleClose} maxWidth='lg'>
           <DialogContent>
             <TextField
